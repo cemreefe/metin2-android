@@ -9,9 +9,9 @@
 #pragma once
 #endif // _MSC_VER > 1000
 
-#include "../gamelib/MapManager.h"
-#include "../gamelib/TerrainDecal.h"
-#include "../gamelib/SnowEnvironment.h"
+#include "../GameLib/MapManager.h"
+#include "../GameLib/TerrainDecal.h"
+#include "../GameLib/SnowEnvironment.h"
 
 class CInstanceBase;
 
@@ -166,7 +166,7 @@ private:
 	struct FFindWarpMapName
 	{
 		DWORD m_dwX, m_dwY;
-		FFindWarpMapName::FFindWarpMapName(DWORD dwX, DWORD dwY)
+		FFindWarpMapName(DWORD dwX, DWORD dwY)
 		{
 			m_dwX = dwX;
 			m_dwY = dwY;

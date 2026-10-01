@@ -1,4 +1,4 @@
-#include "Stdafx.h"
+#include "StdAfx.h"
 #include "../EterLib/GrpLightManager.h"
 
 #include "SimpleLightInstance.h"

@@ -6,11 +6,11 @@
 #include "PythonCharacterManager.h"
 #include "AbstractPlayer.h"
 #include "AbstractApplication.h"
-#include "packet.h"
+#include "Packet.h"
 
-#include "../eterlib/StateManager.h"
-#include "../gamelib/ItemManager.h"
-#include "../gamelib/GameLibDefines.h"
+#include "../EterLib/StateManager.h"
+#include "../GameLib/ItemManager.h"
+#include "../GameLib/GameLibDefines.h"
 
 #ifdef WJ_SHOW_MOB_INFO
 #include "PythonSystem.h"

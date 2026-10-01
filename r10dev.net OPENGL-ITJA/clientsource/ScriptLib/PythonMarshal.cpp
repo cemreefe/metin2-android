@@ -3,7 +3,7 @@
    a true persistent storage facility would be much harder, since
    it would have to take circular links and sharing into account. */
 
-#include "Stdafx.h"
+#include "StdAfx.h"
 #include "../../Extern/include/Python2/longintrepr.h"
 
    /* High water mark to determine when the marshalled object is dangerously deep

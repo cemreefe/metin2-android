@@ -1,4 +1,4 @@
-#include "Stdafx.h"
+#include "StdAfx.h"
 #include "EterPackPolicy_CSHybridCrypt.h"
 #include "../EterBase/Stl.h"
 #include "../EterBase/Filename.h"
@@ -46,10 +46,11 @@ using namespace CryptoPP;
 //Twofish 16 16 0 32
 //XTEA 8 16 1 16
 
-inline std::string GetFileExt(std::string& rfileName)
+inline std::string GetFileExt(const std::string& rfileName)
 {
-	stl_lowers(rfileName);
-	return CFileNameHelper::GetExtension(rfileName);
+	std::string lowered = rfileName;
+	stl_lowers(lowered);
+	return CFileNameHelper::GetExtension(lowered);
 }
 
 EterPackPolicy_CSHybridCrypt::~EterPackPolicy_CSHybridCrypt()
@@ -63,7 +64,7 @@ bool EterPackPolicy_CSHybridCrypt::IsContainingCryptKey() const
 	return (m_mapHybridCryptKey.size() > 0) ? true : false;
 }
 
-bool EterPackPolicy_CSHybridCrypt::GenerateCryptKey(std::string& rfileName)
+bool EterPackPolicy_CSHybridCrypt::GenerateCryptKey(const std::string& rfileName)
 {
 #ifdef __THEMIDA__
 	VM_START
@@ -103,7 +104,7 @@ bool EterPackPolicy_CSHybridCrypt::GenerateCryptKey(std::string& rfileName)
 		return true;
 }
 
-bool EterPackPolicy_CSHybridCrypt::GetPerFileCryptKey(std::string& rfileName, eHybridCipherAlgorithm& eAlgorithm, TEncryptKey& key, TEncryptIV& iv)
+bool EterPackPolicy_CSHybridCrypt::GetPerFileCryptKey(const std::string& rfileName, eHybridCipherAlgorithm& eAlgorithm, TEncryptKey& key, TEncryptIV& iv)
 {
 #ifdef __THEMIDA__
 	VM_START
@@ -146,7 +147,7 @@ bool EterPackPolicy_CSHybridCrypt::GetPerFileCryptKey(std::string& rfileName, eH
 		return true;
 }
 
-bool EterPackPolicy_CSHybridCrypt::EncryptMemory(std::string& rfileName, IN const BYTE* pSrcData, IN int iSrcLen, OUT CLZObject& zObj)
+bool EterPackPolicy_CSHybridCrypt::EncryptMemory(const std::string& rfileName, IN const BYTE* pSrcData, IN int iSrcLen, OUT CLZObject& zObj)
 {
 #ifdef __THEMIDA__
 	VM_START
@@ -211,7 +212,7 @@ bool EterPackPolicy_CSHybridCrypt::EncryptMemory(std::string& rfileName, IN cons
 		return true;
 }
 
-bool EterPackPolicy_CSHybridCrypt::DecryptMemory(std::string& rfilename, IN const BYTE* pEncryptedData, IN int iEncryptedLen, OUT CLZObject& zObj)
+bool EterPackPolicy_CSHybridCrypt::DecryptMemory(const std::string& rfilename, IN const BYTE* pEncryptedData, IN int iEncryptedLen, OUT CLZObject& zObj)
 {
 #ifdef __THEMIDA__
 	VM_START
@@ -330,7 +331,7 @@ int EterPackPolicy_CSHybridCrypt::ReadCryptKeyInfoFromStream(IN const BYTE* pStr
 	return iStreamOffset;
 }
 
-bool EterPackPolicy_CSHybridCrypt::GenerateSupplementaryDataBlock(std::string& rfilename, const std::string& strMapName, IN const BYTE* pSrcData, IN int iSrcLen, OUT LPBYTE& pDestData, OUT int& iDestLen)
+bool EterPackPolicy_CSHybridCrypt::GenerateSupplementaryDataBlock(const std::string& rfilename, const std::string& strMapName, IN const BYTE* pSrcData, IN int iSrcLen, OUT LPBYTE& pDestData, OUT int& iDestLen)
 {
 #ifdef __THEMIDA__
 	VM_START
@@ -386,7 +387,7 @@ bool EterPackPolicy_CSHybridCrypt::GenerateSupplementaryDataBlock(std::string& r
 		return true;
 }
 
-bool EterPackPolicy_CSHybridCrypt::GetSupplementaryDataBlock(std::string& rfilename, OUT LPBYTE& pSDB, OUT int& iSDBSize)
+bool EterPackPolicy_CSHybridCrypt::GetSupplementaryDataBlock(const std::string& rfilename, OUT LPBYTE& pSDB, OUT int& iSDBSize)
 {
 #ifdef __THEMIDA__
 	VM_START

@@ -35,7 +35,7 @@ bool CNetworkDatagram::Create(UINT uPort)
 	sockAddrIn.sin_addr.s_addr = INADDR_ANY;
 	sockAddrIn.sin_port = htons(uPort);
 
-	if (SOCKET_ERROR == bind(m_sock, (PSOCKADDR)&sockAddrIn, sizeof(SOCKADDR_IN)))
+	if (SOCKET_ERROR == ::bind(m_sock, (PSOCKADDR)&sockAddrIn, sizeof(SOCKADDR_IN)))
 	{
 		return false;
 	}
@@ -76,14 +76,14 @@ bool CNetworkDatagram::CanRecv()
 
 int CNetworkDatagram::PeekRecvFrom(UINT uBufLen, void* pvBuf, SOCKADDR_IN* pkSockAddrIn)
 {
-	int nSockAddrInLen = sizeof(SOCKADDR_IN);
-	return recvfrom(m_sock, (char*)pvBuf, uBufLen, MSG_PEEK, (PSOCKADDR)pkSockAddrIn, &nSockAddrInLen);
+	socklen_t nSockAddrInLen = sizeof(SOCKADDR_IN);
+	return ::recvfrom(m_sock, (char*)pvBuf, uBufLen, MSG_PEEK, (PSOCKADDR)pkSockAddrIn, &nSockAddrInLen);
 }
 
 int CNetworkDatagram::RecvFrom(UINT uBufLen, void* pvBuf, SOCKADDR_IN* pkSockAddrIn)
 {
-	int nSockAddrInLen = sizeof(SOCKADDR_IN);
-	return recvfrom(m_sock, (char*)pvBuf, uBufLen, 0, (PSOCKADDR)pkSockAddrIn, &nSockAddrInLen);
+	socklen_t nSockAddrInLen = sizeof(SOCKADDR_IN);
+	return ::recvfrom(m_sock, (char*)pvBuf, uBufLen, 0, (PSOCKADDR)pkSockAddrIn, &nSockAddrInLen);
 }
 
 int CNetworkDatagram::SendTo(UINT uBufLen, const void* c_pvBuf, const SOCKADDR_IN& c_rkSockAddrIn)

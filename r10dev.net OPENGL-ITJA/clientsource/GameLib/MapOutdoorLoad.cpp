@@ -4,7 +4,7 @@
 #include "AreaLoaderThread.h"
 #include "../EterLib/ResourceManager.h"
 #include "../EterLib/GrpObjectInstance.h"
-#include "../EterPack/EterPackManager.h"
+#include "../eterPack/EterPackManager.h"
 
 //CAreaLoaderThread CMapOutdoor::ms_AreaLoaderThread;
 

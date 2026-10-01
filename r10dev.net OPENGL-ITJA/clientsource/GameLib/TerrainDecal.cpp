@@ -2,7 +2,7 @@
 //
 //////////////////////////////////////////////////////////////////////
 
-#include "stdafx.h"
+#include "StdAfx.h"
 #include "../EterLib/StateManager.h"
 #include "../PRTerrainLib/StdAfx.h"
 

@@ -11,7 +11,7 @@
 
 #include <math.h>
 #include <vector>
-//#include "stl.h"
+//#include "Stl.h"
 
 /***********************************************************************/
 /** VECTOR.H    : Template class to represent a 2d and 3d vector type. */
@@ -21,6 +21,9 @@
 
 class Vector3d : public D3DXVECTOR3
 {
+public:
+	Vector3d* operator&() { return this; }
+	const Vector3d* operator&() const { return this; }
 public:
 	Vector3d(void) { };  // null constructor, does not inialize point.
 

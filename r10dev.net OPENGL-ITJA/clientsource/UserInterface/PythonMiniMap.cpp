@@ -1,8 +1,8 @@
 #include "StdAfx.h"
 #include "../EterLib/StateManager.h"
 #include "../EterLib/GrpSubImage.h"
-#include "../eterlib/Camera.h"
-#include "../EterPack/EterPackManager.h"
+#include "../EterLib/Camera.h"
+#include "../eterPack/EterPackManager.h"
 
 #include "PythonMiniMap.h"
 #include "PythonBackground.h"

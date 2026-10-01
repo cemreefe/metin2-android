@@ -15,7 +15,7 @@ void PrintfTabs(FILE* File, int iTabCount, const char* c_szString, ...)
 	for (int i = 0; i < iTabCount; ++i)
 		fprintf(File, "    ");
 
-	fprintf(File, szBuf);
+	fprintf(File, "%s", szBuf);
 }
 
 bool LoadTextData(const char* c_szFileName, CTokenMap& rstTokenMap)
@@ -257,7 +257,7 @@ const char* GetFontFaceFromCodePage(WORD codePage)
 
 	HDC hDC = GetDC(NULL);
 
-	if (EnumFontFamiliesEx(hDC, &logFont, (FONTENUMPROC)EnumFontFamExProc, (LONG)fontFace, 0) == 0)
+	if (EnumFontFamiliesEx(hDC, &logFont, (FONTENUMPROC)EnumFontFamExProc, (LONG)(intptr_t)fontFace, 0) == 0)
 	{
 		ReleaseDC(NULL, hDC);
 		return fontFace;
@@ -265,7 +265,7 @@ const char* GetFontFaceFromCodePage(WORD codePage)
 
 	fontFace = GetFontFaceFromCodePageNT(codePage);
 
-	if (EnumFontFamiliesEx(hDC, &logFont, (FONTENUMPROC)EnumFontFamExProc, (LONG)fontFace, 0) == 0)
+	if (EnumFontFamiliesEx(hDC, &logFont, (FONTENUMPROC)EnumFontFamExProc, (LONG)(intptr_t)fontFace, 0) == 0)
 	{
 		ReleaseDC(NULL, hDC);
 		return fontFace;
@@ -380,8 +380,8 @@ void base64_decode(const char* str, char* resultStr)
 	for (i = 0; i < strlen(resultStr); i++)
 	{
 		char c = resultStr[i];
-		int xor = i + 5;
-		resultStr[i] = char(c^xor);
+		int iXor = i + 5;
+		resultStr[i] = char(c^iXor);
 	}
 	// E
 }

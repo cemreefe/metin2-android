@@ -39,7 +39,7 @@ public class MainActivity extends Activity {
         }
 
         public void onSurfaceChanged(GL10 gl, int width, int height) {
-            NativeLib.init(MainActivity.this.getAssets(), width, height);
+            NativeLib.init(MainActivity.this.getAssets(), getExternalFilesDir(null).getAbsolutePath(), width, height);
         }
 
         public void onDrawFrame(GL10 gl) {

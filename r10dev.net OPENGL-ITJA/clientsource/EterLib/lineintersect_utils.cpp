@@ -6,7 +6,7 @@
  |         Author: Graham Rhodes
  |      Revisions: 05-Apr-2001 - GSR. Original.
  **************************************************************************************/
-#include "Stdafx.h"
+#include "StdAfx.h"
 #include <math.h>
 #include "lineintersect_utils.h"
 #include <assert.h>

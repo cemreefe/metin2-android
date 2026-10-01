@@ -5,6 +5,7 @@
 
 #ifdef ANDROID
 #include <android/log.h>
+#include <EGL/egl.h>
 #define LOG_TAG "Metin2Mobile"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
@@ -83,7 +84,7 @@ HRESULT IDirect3D8::CreateDevice(UINT Adapter, D3DDEVTYPE DeviceType, HWND hFocu
     return S_OK;
 }
 
-HRESULT IDirect3DDevice8::Clear(DWORD Count, const D3DRECT* pRects, DWORD Flags, D3DCOLOR Color, float Z, DWORD Stencil) {
+HRESULT IDirect3DDevice8::Clear(DWORD Count, const void* pRects, DWORD Flags, D3DCOLOR Color, float Z, DWORD Stencil) {
     GLbitfield mask = 0;
     if (Flags & D3DCLEAR_TARGET) {
         glClearColor(Color.r, Color.g, Color.b, Color.a);
@@ -137,7 +138,10 @@ HRESULT IDirect3DDevice8::DrawIndexedPrimitive(D3DPRIMITIVETYPE Type, UINT MinIn
 HRESULT IDirect3DDevice8::Reset(D3DPRESENT_PARAMETERS* pPresentationParameters) { return S_OK; }
 HRESULT IDirect3DDevice8::BeginScene() { return S_OK; }
 HRESULT IDirect3DDevice8::EndScene() { return S_OK; }
-HRESULT IDirect3DDevice8::Present(const RECT* pSourceRect, const RECT* pDestRect, HWND hDestWindowOverride, const void* pDirtyRegion) { return S_OK; }
+HRESULT IDirect3DDevice8::Present(const RECT* pSourceRect, const RECT* pDestRect, HWND hDestWindowOverride, const void* pDirtyRegion) {
+    eglSwapBuffers(eglGetCurrentDisplay(), eglGetCurrentSurface(EGL_DRAW));
+    return S_OK;
+}
 HRESULT IDirect3DDevice8::SetTexture(DWORD Stage, LPDIRECT3DBaseTexture8 pTexture) { 
     if (pTexture) {
         IDirect3DTexture8* tex = (IDirect3DTexture8*)pTexture;

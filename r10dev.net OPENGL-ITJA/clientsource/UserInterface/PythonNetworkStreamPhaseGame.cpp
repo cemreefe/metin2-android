@@ -17,8 +17,8 @@
 #include "PythonMessenger.h"
 #include "PythonApplication.h"
 
-#include "../EterPack/EterPackManager.h"
-#include "../gamelib/ItemManager.h"
+#include "../eterPack/EterPackManager.h"
+#include "../GameLib/ItemManager.h"
 
 #include "AbstractApplication.h"
 #include "AbstractCharacterManager.h"

@@ -7,6 +7,8 @@
 #ifndef ENABLE_OPENGL
 #include <d3d8.h>
 #include <d3dx8.h>
+#else
+#include "../EterLib/GrpOpenGL.h"
 #endif
 
 #include <stdio.h>

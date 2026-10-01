@@ -7,10 +7,10 @@
 #include "../EterLib/NetDevice.h"
 #include "../EterLib/GrpLightManager.h"
 #include "../EffectLib/EffectManager.h"
-#include "../gamelib/RaceManager.h"
-#include "../gamelib/ItemManager.h"
-#include "../gamelib/FlyingObjectManager.h"
-#include "../gamelib/GameEventManager.h"
+#include "../GameLib/RaceManager.h"
+#include "../GameLib/ItemManager.h"
+#include "../GameLib/FlyingObjectManager.h"
+#include "../GameLib/GameEventManager.h"
 #include "../MilesLib/SoundManager.h"
 
 #include "PythonEventManager.h"
@@ -258,6 +258,7 @@ public:
 	void OnLogoClose();
 
 protected:
+#ifndef __ANDROID__
 	IGraphBuilder* m_pGraphBuilder;			// Graph Builder
 	IBaseFilter* m_pFilterSG;				// Sample Grabber ����
 	ISampleGrabber* m_pSampleGrabber;			// ���� �̹��� ĸó�� ���� ���� �׷���
@@ -268,6 +269,7 @@ protected:
 	BYTE* m_pCaptureBuffer;			// ���� �̹����� ĸó�� ����
 	LONG					m_lBufferSize;				// Video ���� ũ�� ����
 	CGraphicImageTexture* m_pLogoTex;					// ����� �ؽ���
+#endif
 	bool					m_bLogoError;				// ���� �б� ����
 	bool					m_bLogoPlay;
 
@@ -276,6 +278,21 @@ protected:
 public:
 	void OnKeyDown(int iIndex);
 	void OnKeyUp(int iIndex);
+
+#ifdef __ANDROID__
+	void OnMouseMovePublic(int x, int y) { OnMouseMove(x, y); }
+	void OnMouseLeftButtonDownPublic(int x, int y) { OnMouseLeftButtonDown(x, y); }
+	void OnMouseLeftButtonUpPublic(int x, int y) { OnMouseLeftButtonUp(x, y); }
+	void OnTouchEvent(int action, int x, int y) override
+	{
+		if (action == 0)
+			OnMouseLeftButtonDown(x, y);
+		else if (action == 1)
+			OnMouseLeftButtonUp(x, y);
+		else if (action == 2)
+			OnMouseMove(x, y);
+	}
+#endif
 
 protected:
 	LRESULT WindowProcedure(HWND hWnd, UINT uiMsg, WPARAM wParam, LPARAM lParam);

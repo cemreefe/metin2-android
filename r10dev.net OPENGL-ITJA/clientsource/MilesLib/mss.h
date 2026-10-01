@@ -3,7 +3,17 @@
 
 // Android / OpenAL stub for Miles Sound System
 #ifdef __ANDROID__
+typedef unsigned int U32;
+typedef int S32;
+typedef unsigned short U16;
+typedef short S16;
+typedef unsigned char U8;
+typedef signed char S8;
+typedef float F32;
 typedef int HPROVIDER;
+typedef int H3DPOBJECT;
+#define AILCALLBACK
+#define FILE_READ_WITH_SIZE 1
 typedef int HSAMPLE;
 typedef int HSTREAM;
 typedef int H3DSAMPLE;
@@ -73,6 +83,39 @@ typedef int HDIGDRIVER;
 
 #define SMP_PLAYMULTI 1
 #define AIL_FILE_ERROR 0
+
+#define AILFILETYPE_PCM_WAV 1
+#define AILFILETYPE_ADPCM_WAV 2
+#define AILFILETYPE_MPEG_L3_AUDIO 5
+#define AILFILETYPE_MPEG_L2_AUDIO 6
+#define AILFILETYPE_MPEG_L1_AUDIO 7
+#define AILFILETYPE_RAW_L16 9
+#define AILFILETYPE_VOC 12
+#define AILFILETYPE_VOX 13
+#define AILFILETYPE_AIFF 14
+#define AILFILETYPE_XM 15
+#define AILFILETYPE_MOD 16
+#define AILFILETYPE_S3M 17
+#define AILFILETYPE_IT 18
+#define AILFILETYPE_SPX 19
+#define AILFILETYPE_UNKNOWN 0
+
+typedef struct _AILSOUNDINFO {
+    S32 format;
+    void* data_ptr;
+    U32 data_len;
+    U32 rate;
+    S32 bits;
+    S32 channels;
+    U32 samples;
+    U32 block_size;
+    void* initial_ptr;
+} AILSOUNDINFO;
+
+typedef int HPROENUM;
+#define HPROENUM_FIRST 0
+#define HPROENUM_NEXT 1
+#define M3D_NOERR 0
 
 #else
 // Windows MSS includes

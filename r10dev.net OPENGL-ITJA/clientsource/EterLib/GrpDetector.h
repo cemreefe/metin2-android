@@ -79,7 +79,7 @@ protected:
 	};
 
 protected:
-	const TCHAR* m_szDevDesc;
+	const CHAR* m_szDevDesc;
 
 	D3DDEVTYPE	m_eD3DDevType;
 	D3DCAPS8	m_kD3DCaps;

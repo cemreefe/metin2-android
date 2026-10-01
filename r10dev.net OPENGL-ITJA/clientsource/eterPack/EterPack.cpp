@@ -24,7 +24,7 @@
 #include <cryptopp/cryptoppLibLink.h>
 #pragma warning(pop)
 
-#include "../EterBase/utils.h"
+#include "../EterBase/Utils.h"
 #include "../EterBase/Debug.h"
 #include "../EterBase/CRC32.h"
 

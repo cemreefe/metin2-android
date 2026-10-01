@@ -4,7 +4,7 @@
 
 #include "lzo.h"
 #include "tea.h"
-#include "debug.h"
+#include "Debug.h"
 
 #define dbg_printf
 

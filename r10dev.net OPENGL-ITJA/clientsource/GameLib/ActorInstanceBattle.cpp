@@ -134,7 +134,8 @@ BOOL CActorInstance::IsClickableDistanceDestInstance(CActorInstance& rkInstDst, 
 		{
 			CDynamicSphereInstance& rkSphere = (*j);
 
-			float fMovDistance = D3DXVec3Length(&D3DXVECTOR3(rkSphere.v3Position - kD3DVct3Src));
+			D3DXVECTOR3 v3Mov(rkSphere.v3Position - kD3DVct3Src);
+			float fMovDistance = D3DXVec3Length(&v3Mov);
 			float fAtkDistance = rkSphere.fRadius + fDistance;
 
 			if (fAtkDistance > fMovDistance)

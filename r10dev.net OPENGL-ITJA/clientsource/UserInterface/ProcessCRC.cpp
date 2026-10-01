@@ -1,3 +1,4 @@
+#ifndef __ANDROID__
 #include "StdAfx.h"
 
 #include <tlhelp32.h>
@@ -128,3 +129,16 @@ BYTE GetProcessCRCMagicCubePiece()
 
 	return bPiece;
 }
+#else
+#include "ProcessCRC.h"
+static BYTE s_abCRCMagicCube[8] = {0};
+static int s_bMagicCubeIdx = 0;
+bool GetExeCRC(DWORD& r_dwProcCRC, DWORD& r_dwFileCRC) { r_dwProcCRC = 0; r_dwFileCRC = 0; return true; }
+void BuildProcessCRC() {}
+BYTE GetProcessCRCMagicCubePiece()
+{
+	BYTE bPiece = s_abCRCMagicCube[s_bMagicCubeIdx];
+	if (!(++s_bMagicCubeIdx & 7)) s_bMagicCubeIdx = 0;
+	return bPiece;
+}
+#endif

@@ -6,8 +6,8 @@ BOOL CNetDatagramReceiver::Process()
 	m_recvBufCurrentPos = 0;
 	m_recvBufCurrentSize = 0;
 
-	int irecvAddrLength = sizeof(SOCKADDR_IN);
-	m_recvBufCurrentSize = recvfrom(m_Socket, (char*)m_recvBuf, m_recvBufSize, 0, (PSOCKADDR)&m_SockAddr, &irecvAddrLength);
+	socklen_t irecvAddrLength = sizeof(SOCKADDR_IN);
+	m_recvBufCurrentSize = ::recvfrom(m_Socket, (char*)m_recvBuf, m_recvBufSize, 0, (PSOCKADDR)&m_SockAddr, &irecvAddrLength);
 
 	if (m_recvBufCurrentSize <= 0)
 	{
@@ -53,7 +53,7 @@ BOOL CNetDatagramReceiver::Bind(DWORD /*dwAddress*/, WORD wPortIndex)
 	m_SockAddr.sin_addr.s_addr = INADDR_ANY;
 	m_SockAddr.sin_port = htons(wPortIndex);
 
-	if (bind(m_Socket, (PSOCKADDR)&m_SockAddr, sizeof(SOCKADDR_IN)) < 0)
+	if (::bind(m_Socket, (PSOCKADDR)&m_SockAddr, sizeof(SOCKADDR_IN)) < 0)
 	{
 		Tracef("Failed binding socket\n");
 		return FALSE;

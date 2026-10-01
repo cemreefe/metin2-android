@@ -1,7 +1,7 @@
-#include "Stdafx.h"
+#include "StdAfx.h"
 #include "../eterPack/EterPackManager.h"
 
-#include "terrain.h"
+#include "Terrain.h"
 #include <math.h>
 
 //////////////////////////////////////////////////////////////////////////

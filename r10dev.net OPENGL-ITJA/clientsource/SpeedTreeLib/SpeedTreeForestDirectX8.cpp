@@ -39,8 +39,8 @@
 #endif
 
 #include "../EterBase/Timer.h"
-#include "../eterlib/StateManager.h"
-#include "../eterlib/Camera.h"
+#include "../EterLib/StateManager.h"
+#include "../EterLib/Camera.h"
 
 #include "SpeedTreeForestDirectX8.h"
 #include "SpeedTreeConfig.h"

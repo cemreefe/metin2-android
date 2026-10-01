@@ -1,4 +1,4 @@
-#include "Stdafx.h"
+#include "StdAfx.h"
 #include "ModelInstance.h"
 #include "Model.h"
 

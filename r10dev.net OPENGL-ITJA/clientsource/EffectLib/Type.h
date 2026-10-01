@@ -264,7 +264,7 @@ extern BOOL GetTokenTimeEventFloat(CTextFileLoader& rTextFileLoader, const char*
 template <typename T>
 void InsertItemTimeEvent(std::vector<CTimeEvent<T> >* pTable, float fTime, T fValue)
 {
-	typedef std::vector<CTimeEvent<T> >::iterator iterator;
+	typedef typename std::vector<CTimeEvent<T> >::iterator iterator;
 
 	iterator itor = std::lower_bound(pTable->begin(), pTable->end(), fTime);
 

@@ -30,6 +30,8 @@
 
 #endif
 
+#ifndef __ANDROID__
 #pragma comment( lib, "lzo2.lib" )
+#endif
 
 #endif /* !_LZOLIBLINK_H_ */

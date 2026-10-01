@@ -2,10 +2,10 @@
 #include "PythonPlayerEventHandler.h"
 #include "PythonApplication.h"
 #include "PythonItem.h"
-#include "../eterbase/Timer.h"
+#include "../EterBase/Timer.h"
 
 #include "AbstractPlayer.h"
-#include "../gamelib/GameLibDefines.h"
+#include "../GameLib/GameLibDefines.h"
 
 enum
 {
@@ -1682,23 +1682,6 @@ void CPythonPlayer::Clear()
 	m_bMobileFlag = FALSE;
 
 	__ClearAutoAttackTargetActorID();
-}
-
-void CPythonPlayer::NEW_SetSingleDIKKeyState(int eDIKKey, bool isPress)
-{
-	if (isPress)
-		CPythonApplication::Instance().OnKeyDown(eDIKKey);
-	else
-		CPythonApplication::Instance().OnKeyUp(eDIKKey);
-}
-
-void CPythonPlayer::NEW_Attack()
-{
-	CInstanceBase* pkInstMain = NEW_GetMainActorPtr();
-	if (!pkInstMain)
-		return;
-
-	__OnClickSmart(*pkInstMain, false);
 }
 
 CPythonPlayer::CPythonPlayer(void)

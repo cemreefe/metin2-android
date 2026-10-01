@@ -16,9 +16,7 @@
 
 //#include <crtdbg.h>
 #include "../UserInterface/Locale_inc.h"
-#ifndef __ANDROID__
 #include <windows.h>
-#endif
 #include <assert.h>
 
 #pragma warning(push, 3)
@@ -37,7 +35,7 @@ inline void _TraceForImage(const char* c_szFormat, ...)
 	OutputDebugString(szBuf);
 #endif
 	va_end(args);
-	printf(szBuf);
+	printf("%s", szBuf);
 }
 
 #pragma warning(default:4018)

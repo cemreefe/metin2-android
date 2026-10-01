@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../eterbase/FileDir.h"
+#include "../EterBase/FileDir.h"
 
 class CPropertyManager;
 

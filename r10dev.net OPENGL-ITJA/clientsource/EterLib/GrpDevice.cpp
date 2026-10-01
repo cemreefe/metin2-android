@@ -762,6 +762,3 @@ void CGraphicDevice::Destroy()
 
 	__Initialize();
 }
-bool CGraphicDevice::__CreateDefaultIndexBufferList() { return true; }
-void CGraphicDevice::__InitializeDefaultIndexBufferList() {}
-#endif

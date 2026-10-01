@@ -8,7 +8,7 @@
  * "Portions Copyright (C) John W. Ratcliff, 2001"
  */
 
-#include "Stdafx.h"
+#include "StdAfx.h"
 #include "sphere.h"
 
 #include <stdio.h>

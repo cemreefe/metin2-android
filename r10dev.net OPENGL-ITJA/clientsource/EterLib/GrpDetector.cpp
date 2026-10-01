@@ -271,7 +271,7 @@ BOOL D3D_CDeviceInfo::Build(IDirect3D8& rkD3D, UINT iD3DAdapterInfo, UINT iDevTy
 	assert(pfnConfirmDevice != NULL && "D3D_CDeviceInfo::Build");
 
 	const D3DDEVTYPE	c_eD3DDevType = msc_aeD3DDevType[iDevType];
-	const TCHAR* c_szD3DDevDesc = msc_aszD3DDevDesc[iDevType];
+	const CHAR* c_szD3DDevDesc = msc_aszD3DDevDesc[iDevType];
 
 	m_eD3DDevType = c_eD3DDevType;
 	rkD3D.GetDeviceCaps(iD3DAdapterInfo, c_eD3DDevType, &m_kD3DCaps);
@@ -638,4 +638,4 @@ VOID D3D_CDisplayModeAutoDetector::GetString(std::string* pstEnumList)
 		rkAdapterInfo.GetString(pstEnumList);
 	}
 }
-#endif
+

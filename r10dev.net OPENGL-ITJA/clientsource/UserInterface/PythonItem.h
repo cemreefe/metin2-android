@@ -97,7 +97,7 @@ public:
 	void	Update(const POINT& c_rkPtMouse);
 
 #ifdef ENABLE_EXTENDED_ITEMNAME
-	void	CreateItem(DWORD dwVirtualID, DWORD dwVirtualNumber, float x, float y, float z, bool bDrop = true, long alSockets[ITEM_SOCKET_SLOT_MAX_NUM] = {}, TPlayerItemAttribute aAttrs[ITEM_ATTRIBUTE_SLOT_MAX_NUM] = {});
+	void	CreateItem(DWORD dwVirtualID, DWORD dwVirtualNumber, float x, float y, float z, bool bDrop = true, LONG alSockets[ITEM_SOCKET_SLOT_MAX_NUM] = {}, TPlayerItemAttribute aAttrs[ITEM_ATTRIBUTE_SLOT_MAX_NUM] = {});
 #else
 	void	CreateItem(DWORD dwVirtualID, DWORD dwVirtualNumber, float x, float y, float z, bool bDrop = true);
 #endif

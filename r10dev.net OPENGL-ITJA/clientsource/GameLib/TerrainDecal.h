@@ -9,7 +9,7 @@
 #pragma once
 #endif // _MSC_VER > 1000
 
-#include "../eterlib/Decal.h"
+#include "../EterLib/Decal.h"
 
 class CMapOutdoor;
 

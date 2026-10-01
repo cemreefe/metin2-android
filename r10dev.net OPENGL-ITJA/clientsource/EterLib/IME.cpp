@@ -1,3 +1,4 @@
+#ifndef __ANDROID__
 #include "StdAfx.h"
 #include "IME.h"
 #include "TextTag.h"
@@ -2311,3 +2312,4 @@ LRESULT CIME::WMChar(HWND /*hWnd*/, UINT /*uiMsg*/, WPARAM wParam, LPARAM lParam
 
 	return 0;
 }
+#endif

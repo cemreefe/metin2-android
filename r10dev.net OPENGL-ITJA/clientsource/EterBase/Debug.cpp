@@ -12,9 +12,7 @@
 const DWORD DEBUG_STRING_MAX_LEN = 1024;
 
 static int isLogFile = false;
-#ifndef __ANDROID__
 HWND g_PopupHwnd = NULL;
-#endif
 
 class CLogFile : public CSingleton<CLogFile>
 {

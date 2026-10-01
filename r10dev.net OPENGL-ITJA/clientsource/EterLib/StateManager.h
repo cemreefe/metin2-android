@@ -340,5 +340,3 @@ private:
 #define STATEMANAGER (CStateManager::Instance())
 
 #endif __CSTATEMANAGER_H
-
-#endif __CSTATEMANAGER_H

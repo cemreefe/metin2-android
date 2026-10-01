@@ -1,7 +1,7 @@
 #include "StdAfx.h"
 #include "NetPacketHeaderMap.h"
 
-void CNetworkPacketHeaderMap::Set(int header, TPacketType& rPacketType)
+void CNetworkPacketHeaderMap::Set(int header, const TPacketType& rPacketType)
 {
 	m_headerMap[header] = rPacketType;
 }

@@ -70,7 +70,11 @@ bool CGraphicFontTexture::Create(const char* c_szFontName, int fontSize, bool bI
 {
 	Destroy();
 
+	#ifdef _UNICODE
+	mbstowcs(m_fontName, c_szFontName, sizeof(m_fontName)/sizeof(TCHAR) - 1);
+#else
 	strncpy(m_fontName, c_szFontName, sizeof(m_fontName) - 1);
+#endif
 	m_fontSize = fontSize;
 	m_bItalic = bItalic;
 
@@ -129,7 +133,12 @@ HFONT CGraphicFontTexture::GetFont(WORD codePage)
 		logFont.lfQuality = ANTIALIASED_QUALITY;
 		logFont.lfPitchAndFamily = DEFAULT_PITCH;
 		//Tracenf("font: %s", GetFontFaceFromCodePage(codePage));
-		strcpy(logFont.lfFaceName, m_fontName); //GetFontFaceFromCodePage(codePage));
+		//GetFontFaceFromCodePage(codePage));
+#ifdef _UNICODE
+		wcstombs(logFont.lfFaceName, m_fontName, 31);
+#else
+		strcpy(logFont.lfFaceName, m_fontName);
+#endif
 		//strcpy(logFont.lfFaceName, GetFontFaceFromCodePage(codePage));
 
 		hFont = CreateFontIndirect(&logFont);

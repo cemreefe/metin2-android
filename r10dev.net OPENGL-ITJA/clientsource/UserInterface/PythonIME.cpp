@@ -70,7 +70,7 @@ void CPythonIME::OnEscape()
 
 bool CPythonIME::OnWM_CHAR(WPARAM wParam, LPARAM lParam)
 {
-	unsigned char c = unsigned char(wParam & 0xff);
+	unsigned char c = (unsigned char)(wParam & 0xff);
 
 	switch (c)
 	{

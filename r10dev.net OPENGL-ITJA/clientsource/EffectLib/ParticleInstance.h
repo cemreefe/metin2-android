@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../eterlib/GrpBase.h"
+#include "../EterLib/GrpBase.h"
 #include "../EterLib/Pool.h"
 #include "EffectUpdateDecorator.h"
 class CParticleProperty;

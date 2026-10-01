@@ -14,90 +14,9 @@
 #include "../UserInterface/Locale_inc.h"
 
 #ifdef __ANDROID__
-    #include <stdlib.h>
-    #include <string.h>
-    #include <stdint.h>
-    
-    // Win32 stub types for Android
-    typedef uint32_t DWORD;
-    typedef uint16_t WORD;
-    typedef uint8_t BYTE;
-    typedef int32_t LONG;
-    typedef uint32_t UINT;
-    typedef void* HWND;
-    typedef void* HINSTANCE;
-    typedef void* HDC;
-    typedef void* HGLRC;
-    typedef void* HICON;
-    typedef void* HCURSOR;
-    typedef void* HMENU;
-    typedef void* HANDLE;
-    typedef struct {
-        DWORD dwFileAttributes;
-        uint64_t ftCreationTime;
-        uint64_t ftLastAccessTime;
-        uint64_t ftLastWriteTime;
-        DWORD nFileSizeHigh;
-        DWORD nFileSizeLow;
-        DWORD dwReserved0;
-        DWORD dwReserved1;
-        char cFileName[260];
-        char cAlternateFileName[14];
-    } WIN32_FIND_DATA;
-    #define FILE_ATTRIBUTE_DIRECTORY 0x00000010
-    typedef struct { int dummy; } CRITICAL_SECTION;
-    inline void InitializeCriticalSection(CRITICAL_SECTION* lp) {}
-    inline void DeleteCriticalSection(CRITICAL_SECTION* lp) {}
-    inline void EnterCriticalSection(CRITICAL_SECTION* lp) {}
-    inline void LeaveCriticalSection(CRITICAL_SECTION* lp) {}
-    #ifndef _POINT_DEFINED
-    #define _POINT_DEFINED
-    typedef struct tagPOINT { LONG x; LONG y; } POINT;
-    #endif
-    #ifndef _RECT_DEFINED
-    #define _RECT_DEFINED
-    typedef struct tagRECT { LONG left; LONG top; LONG right; LONG bottom; } RECT;
-    #endif
-    typedef const char* LPCSTR;
-    typedef char* LPSTR;
-    typedef int BOOL;
-    #ifndef TRUE
-    #define TRUE 1
-    #define FALSE 0
-    #endif
-    #define CALLBACK
-    #define WINAPI
-    #define APIENTRY
-    #define stricmp strcasecmp
-    #define strnicmp strncasecmp
-    #define _vsnprintf vsnprintf
-    #define _snprintf snprintf
-    typedef const void* LPCVOID;
-    typedef void* LPVOID;
-    #ifndef MAX_PATH
-    #define MAX_PATH 260
-    #endif
-
-    // Socket stubs for Android
-    #include <sys/socket.h>
-    #include <netinet/in.h>
-    #include <arpa/inet.h>
-    #include <netdb.h>
-    #include <errno.h>
-    #include <sys/ioctl.h>
-    #include <unistd.h>
-    #define INVALID_SOCKET (SOCKET)(~0)
-    #define SOCKET_ERROR (-1)
-    #define closesocket close
-    #define ioctlsocket ioctl
-    #define WSAGetLastError() errno
-    #define WSAEWOULDBLOCK EWOULDBLOCK
-    #define WSAEINPROGRESS EINPROGRESS
-    #define WSAETIMEDOUT ETIMEDOUT
-    typedef int SOCKET;
-    typedef struct sockaddr_in SOCKADDR_IN;
-    typedef struct sockaddr SOCKADDR;
-    typedef struct sockaddr* PSOCKADDR;
+    // Resolves to clientsource/android_compat/windows.h via the include path.
+    #include <windows.h>
+    #include <io.h>
 #else
     #include <windows.h>
     #include <mmsystem.h>

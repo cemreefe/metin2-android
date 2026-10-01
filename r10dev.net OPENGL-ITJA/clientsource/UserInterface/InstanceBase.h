@@ -1,11 +1,11 @@
 #pragma once
 
-#include "../gamelib/RaceData.h"
-#include "../gamelib/ActorInstance.h"
-#include "../gamelib/GameLibDefines.h"
+#include "../GameLib/RaceData.h"
+#include "../GameLib/ActorInstance.h"
+#include "../GameLib/GameLibDefines.h"
 
 #ifdef ENABLE_ACCE_SYSTEM
-#include "../eterlib/GrpObjectInstance.h"
+#include "../EterLib/GrpObjectInstance.h"
 #endif
 
 #include "AffectFlagContainer.h"
@@ -690,7 +690,7 @@ public:
 	bool					NEW_GetInstanceVectorInCircleRange(float fSkillDistance, std::vector<CInstanceBase*>* pkVct_pkInst);
 
 	void					NEW_SetOwner(DWORD dwOwnerVID);
-	void					NEW_SyncPixelPosition(long& nPPosX, long& nPPosY);
+	void					NEW_SyncPixelPosition(LONG& nPPosX, LONG& nPPosY);
 	void					NEW_SyncCurrentPixelPosition();
 
 	void					NEW_SetPixelPosition(const TPixelPosition& c_rkPPosDst);

@@ -69,7 +69,9 @@
 #endif
 
 #ifdef __BORLANDC__
+#ifndef __ANDROID__
 #pragma comment(lib, "cryptlib_bds.lib")
+#endif
 #endif
 
 // Aggressive stack checking with VS2005 SP1 and above.

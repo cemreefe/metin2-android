@@ -1,6 +1,6 @@
 #include "StdAfx.h"
-#include "../eterbase/Debug.h"
-#include "../eterlib/Camera.h"
+#include "../EterBase/Debug.h"
+#include "../EterLib/Camera.h"
 #include "../EterBase/Timer.h"
 #include "ThingInstance.h"
 #include "Thing.h"

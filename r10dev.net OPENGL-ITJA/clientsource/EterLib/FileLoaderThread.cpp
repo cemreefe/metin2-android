@@ -1,5 +1,5 @@
 #include "StdAfx.h"
-#include "../EterPack/EterPackManager.h"
+#include "../eterPack/EterPackManager.h"
 #include "FileLoaderThread.h"
 #include "ResourceManager.h"
 

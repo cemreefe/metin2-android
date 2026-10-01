@@ -5,9 +5,7 @@
 #pragma once
 #endif // _MSC_VER > 1000
 
-#ifndef __ANDROID__
 #include <windows.h>
-#endif
 
 #pragma warning(disable:4786)
 #pragma warning(disable:4100)

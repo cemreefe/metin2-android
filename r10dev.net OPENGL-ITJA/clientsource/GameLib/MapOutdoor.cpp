@@ -1,6 +1,6 @@
 #include "StdAfx.h"
-#include "../eterlib/StateManager.h"
-#include "../eterlib/Camera.h"
+#include "../EterLib/StateManager.h"
+#include "../EterLib/Camera.h"
 #include "../PRTerrainLib/StdAfx.h"
 #include "../EffectLib/EffectManager.h"
 
@@ -522,10 +522,13 @@ bool CMapOutdoor::GetPickingPointWithRay(const CRay& rRay, D3DXVECTOR3* v3Inters
 
 	if (bObjectPick && bTerrainPick)
 	{
-		if (D3DXVec3Length(&(v3ObjectPick - v3Start)) >= D3DXVec3Length(&(v3TerrainPick - v3Start)))
-			*v3IntersectPt = v3TerrainPick;
-		else
-			*v3IntersectPt = v3ObjectPick;
+		{
+			D3DXVECTOR3 v3Obj = v3ObjectPick - v3Start, v3Terr = v3TerrainPick - v3Start;
+			if (D3DXVec3Length(&v3Obj) >= D3DXVec3Length(&v3Terr))
+				*v3IntersectPt = v3TerrainPick;
+			else
+				*v3IntersectPt = v3ObjectPick;
+		}
 		return true;
 	}
 	else if (bObjectPick)
@@ -709,7 +712,7 @@ bool CMapOutdoor::GetTerrainNumFromCoord(WORD wCoordX, WORD wCoordY, BYTE* pbyTe
 	return true;
 }
 
-void CMapOutdoor::BuildViewFrustum(D3DXMATRIX& mat)
+void CMapOutdoor::BuildViewFrustum(const D3DXMATRIX& mat)
 {
 	//m_plane[0] = D3DXPLANE(mat._14 + mat._13, mat._24 + mat._23, mat._34 + mat._33, mat._44 + mat._43);
 	m_plane[0] = D3DXPLANE(mat._13, mat._23, mat._33, mat._43);		// Near

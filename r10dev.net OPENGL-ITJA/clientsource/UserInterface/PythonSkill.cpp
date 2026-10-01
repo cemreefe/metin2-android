@@ -5,7 +5,7 @@
 #include "../eterPack/EterPackManager.h"
 #include "InstanceBase.h"
 #include "PythonPlayer.h"
-#include "../gamelib/GameLibDefines.h"
+#include "../GameLib/GameLibDefines.h"
 
 std::map<std::string, DWORD> CPythonSkill::SSkillData::ms_StatusNameMap;
 std::map<std::string, DWORD> CPythonSkill::SSkillData::ms_NewMinStatusNameMap;
@@ -2124,7 +2124,7 @@ PyObject* skillGetGradeData(PyObject* poSelf, PyObject* poArgs)
 	if (iGradeIndex < 0 || iGradeIndex >= CPythonSkill::SKILL_GRADE_COUNT)
 		return Py_BuildException("Strange grade index [%d]", iSkillIndex, iGradeIndex);
 
-	return Py_BuildValue("i", c_pSkillData->GradeData[iGradeIndex]);
+	return Py_BuildValue("i", c_pSkillData->GradeData[iGradeIndex].wMotionIndex);
 }
 
 PyObject* skillGetNewAffectDataCount(PyObject* poSelf, PyObject* poArgs)

@@ -1,7 +1,7 @@
 #include "StdAfx.h"
 #include "RaceManager.h"
 #include "RaceMotionData.h"
-#include "../EterPack/EterPackManager.h"
+#include "../eterPack/EterPackManager.h"
 
 bool __IsGuildRace(unsigned race)
 {

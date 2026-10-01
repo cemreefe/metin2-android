@@ -1,6 +1,6 @@
 #pragma once
 
-#include "GrpDib.h"
+#include "GrpDIB.h"
 
 class CBlockTexture;
 

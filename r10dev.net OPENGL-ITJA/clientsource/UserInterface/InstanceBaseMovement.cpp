@@ -43,7 +43,7 @@ void CInstanceBase::NEW_Stop()
 	m_GraphicThingInstance.__OnStop();
 }
 
-void CInstanceBase::NEW_SyncPixelPosition(long& nPPosX, long& nPPosY)
+void CInstanceBase::NEW_SyncPixelPosition(LONG& nPPosX, LONG& nPPosY)
 {
 	m_GraphicThingInstance.TEMP_Push(nPPosX, nPPosY);
 }

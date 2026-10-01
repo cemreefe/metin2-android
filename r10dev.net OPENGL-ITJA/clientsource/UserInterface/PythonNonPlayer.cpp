@@ -1,6 +1,6 @@
-#include "stdafx.h"
+#include "StdAfx.h"
 #include "../eterPack/EterPackManager.h"
-#include "pythonnonplayer.h"
+#include "PythonNonPlayer.h"
 #include "InstanceBase.h"
 #include "PythonCharacterManager.h"
 

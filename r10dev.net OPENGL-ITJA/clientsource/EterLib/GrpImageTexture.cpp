@@ -260,11 +260,11 @@ bool CGraphicImageTexture::CreateFromMemoryFile(UINT bufSize, const void* c_pvBu
 	return false;
 #endif
 
-	static CDXTCImage image;
+	static CDXTCImage image2;
 
-	if (image.LoadHeaderFromMemory((const BYTE*)c_pvBuf))	// DDS�ΰ� Ȯ��
+	if (image2.LoadHeaderFromMemory((const BYTE*)c_pvBuf))	// DDS�ΰ� Ȯ��
 	{
-		return (CreateDDSTexture(image, (const BYTE*)c_pvBuf));
+		return (CreateDDSTexture(image2, (const BYTE*)c_pvBuf));
 	}
 	else
 	{

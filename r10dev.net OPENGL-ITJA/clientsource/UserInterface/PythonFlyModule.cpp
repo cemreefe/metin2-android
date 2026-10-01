@@ -1,5 +1,5 @@
-#include "stdafx.h"
-#include "../gamelib/FlyingObjectManager.h"
+#include "StdAfx.h"
+#include "../GameLib/FlyingObjectManager.h"
 PyObject* flyUpdate(PyObject* poSelf, PyObject* poArgs)
 {
 	CFlyingManager::Instance().Update();

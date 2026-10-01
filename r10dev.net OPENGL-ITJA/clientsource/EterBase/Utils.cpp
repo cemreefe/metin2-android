@@ -9,7 +9,7 @@
 #include <assert.h>
 #include <sys/stat.h>
 #include "Utils.h"
-#include "filedir.h"
+#include "FileDir.h"
 
 char korean_tolower(const char c);
 

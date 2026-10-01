@@ -6,6 +6,9 @@
 
 CPythonLauncher::CPythonLauncher()
 {
+#ifdef __ANDROID__
+	Py_NoSiteFlag = 1;
+#endif
 	Py_Initialize();
 }
 
@@ -24,6 +27,11 @@ int	g_nCurTraceN = 0;
 
 void Traceback()
 {
+#ifdef __ANDROID__
+	PyErr_Print();
+	fflush(stderr);
+	return;
+#endif
 	std::string str;
 
 	for (int i = 0; i < g_nCurTraceN; ++i)
@@ -92,7 +100,7 @@ int TraceFunc(PyObject* obj, PyFrameObject* f, int what, PyObject* arg)
 		PyTuple_GetObject(arg, 1, &exc_value);
 		PyTuple_GetObject(arg, 2, &exc_traceback);
 
-		int len;
+		Py_ssize_t len;
 		const char* exc_str;
 		PyObject_AsCharBuffer(exc_type, &exc_str, &len);
 
@@ -237,7 +245,10 @@ bool CPythonLauncher::RunFile(const char* c_szFileName)
 
 		dwBufSize = file.Size();
 		if (dwBufSize == 0)
+		{
+			TraceError("CPythonLauncher::RunFile: cannot read %s", c_szFileName);
 			return false;
+		}
 
 		acBufData = new char[dwBufSize];
 		memcpy(acBufData, pvData, dwBufSize);

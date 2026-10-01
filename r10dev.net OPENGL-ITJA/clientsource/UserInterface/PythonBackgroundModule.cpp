@@ -1,8 +1,8 @@
 #include "StdAfx.h"
 #include "PythonSystem.h"
 #include "PythonBackground.h"
-#include "../eterlib/StateManager.h"
-#include "../gamelib/MapOutDoor.h"
+#include "../EterLib/StateManager.h"
+#include "../GameLib/MapOutdoor.h"
 
 PyObject* backgroundIsSoftwareTiling(PyObject* poSelf, PyObject* poArgs)
 {

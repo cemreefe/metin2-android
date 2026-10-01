@@ -1,11 +1,11 @@
 #include "StdAfx.h"
-#include "../eterlib/StateManager.h"
+#include "../EterLib/StateManager.h"
 #include "ModelInstance.h"
 #include "Model.h"
 
 #ifdef _TEST
 
-#include "../eterlib/GrpScreen.h"
+#include "../EterLib/GrpScreen.h"
 
 void Granny_RenderBoxBones(const granny_skeleton* pkGrnSkeleton, const granny_world_pose* pkGrnWorldPose, const D3DXMATRIX& matBase)
 {

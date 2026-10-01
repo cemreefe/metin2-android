@@ -1,5 +1,18 @@
 #pragma once
 
+#ifdef __ANDROID__
+
+class CMovieMan : public CSingleton<CMovieMan>
+{
+public:
+	void				ClearToBlack() {}
+	void				PlayLogo(const char*) {}
+	void				PlayIntro() {}
+	BOOL                PlayTutorial(LONG) { return TRUE; }
+};
+
+#else
+
 // ���̵�ƿ� ����(��)
 #define		MOVIEMAN_FADE_DURATION		1300
 #define		MOVIEMAN_SKIPPABLE_YES		true
@@ -76,3 +89,5 @@ private:
 	//	void				RemoveFromRot(DWORD pdwRegister);
 	//#endif
 };
+
+#endif /* __ANDROID__ */

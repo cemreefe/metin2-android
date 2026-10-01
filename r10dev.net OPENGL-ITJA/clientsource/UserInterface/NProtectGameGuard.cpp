@@ -15,19 +15,25 @@ static struct GameGuard
 
 #ifdef LOCALE_SERVICE_HONGKONG
 #include "NProtect/NPGameLibHK.h"
+#ifndef __ANDROID__
 #pragma comment(lib, "NPGameLibHK_MT.lib")
+#endif
 CNPGameLib npgl("Metin2HK");
 #endif
 
 #ifdef LOCALE_SERVICE_TAIWAN
 #include "NProtect/NPGameLibTW.h"
+#ifndef __ANDROID__
 #pragma comment(lib, "NPGameLibTW_MT.lib")
+#endif
 CNPGameLib npgl("Metin2TW");
 #endif
 
 #ifdef LOCALE_SERVICE_EUROPE
 #include "NProtect/NPGameLibEU.h"
+#ifndef __ANDROID__
 #pragma comment(lib, "NPGameLibEU_MT.lib")
+#endif
 CNPGameLib npgl("Metin2EU");
 #endif
 

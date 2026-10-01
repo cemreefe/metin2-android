@@ -1,7 +1,7 @@
 #include "StdAfx.h"
 #include "MapOutdoor.h"
 
-#include "../eterlib/StateManager.h"
+#include "../EterLib/StateManager.h"
 
 void CMapOutdoor::__RenderTerrain_RenderHardwareTransformPatch()
 {

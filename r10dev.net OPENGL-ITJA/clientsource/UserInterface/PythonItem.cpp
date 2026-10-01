@@ -1,10 +1,10 @@
-#include "stdafx.h"
-#include "../eterlib/GrpMath.h"
-#include "../gamelib/ItemManager.h"
+#include "StdAfx.h"
+#include "../EterLib/GrpMath.h"
+#include "../GameLib/ItemManager.h"
 #include "../EffectLib/EffectManager.h"
 #include "PythonBackground.h"
 
-#include "pythonitem.h"
+#include "PythonItem.h"
 #include "PythonTextTail.h"
 #ifdef ENABLE_EXTENDED_ITEMNAME
 #include "PythonSkill.h"
@@ -290,7 +290,7 @@ DWORD	CPythonItem::__GetUseSoundType(const CItemData& c_rkItemData)
 }
 
 #ifdef ENABLE_EXTENDED_ITEMNAME
-void CPythonItem::CreateItem(DWORD dwVirtualID, DWORD dwVirtualNumber, float x, float y, float z, bool bDrop, long alSockets[ITEM_SOCKET_SLOT_MAX_NUM], TPlayerItemAttribute aAttrs[ITEM_ATTRIBUTE_SLOT_MAX_NUM])
+void CPythonItem::CreateItem(DWORD dwVirtualID, DWORD dwVirtualNumber, float x, float y, float z, bool bDrop, LONG alSockets[ITEM_SOCKET_SLOT_MAX_NUM], TPlayerItemAttribute aAttrs[ITEM_ATTRIBUTE_SLOT_MAX_NUM])
 #else
 void CPythonItem::CreateItem(DWORD dwVirtualID, DWORD dwVirtualNumber, float x, float y, float z, bool bDrop)
 #endif

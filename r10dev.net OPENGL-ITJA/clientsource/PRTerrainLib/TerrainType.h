@@ -1,8 +1,8 @@
 #ifndef __TERRAIn_TYPES__
 #define __TERRAIn_TYPES__
 
-#include "../eterlib/GrpVertexBuffer.h"
-#include "../eterlib/GrpIndexBuffer.h"
+#include "../EterLib/GrpVertexBuffer.h"
+#include "../EterLib/GrpIndexBuffer.h"
 
 #define TERRAIN_PATCHSIZE	16
 #define TERRAIN_SIZE		128
@@ -65,11 +65,18 @@ typedef struct
 
 /* Converts a floating point number to an integer by truncation, using
    the FISTP instruction */
+#ifndef __ANDROID__
 #define PR_FLOAT_TO_INTASM __asm	\
 {									\
 	__asm fld PR_FCNV				\
 	__asm fistp PR_ICNV				\
 }
+#else
+#define PR_FLOAT_TO_INTASM \
+{									\
+	PR_ICNV = (long)PR_FCNV;		\
+}
+#endif
 
 #define PR_FLOAT_TO_FIXED(inreal, outint)	\
 {											\

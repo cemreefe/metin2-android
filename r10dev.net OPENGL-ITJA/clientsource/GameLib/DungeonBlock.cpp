@@ -1,7 +1,7 @@
 #include "StdAfx.h"
 #include "DungeonBlock.h"
 
-#include "../eterlib/StateManager.h"
+#include "../EterLib/StateManager.h"
 
 class CDungeonModelInstance : public CGrannyModelInstance
 {

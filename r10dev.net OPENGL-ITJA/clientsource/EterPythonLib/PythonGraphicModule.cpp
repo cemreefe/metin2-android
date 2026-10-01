@@ -1,8 +1,10 @@
 #include "StdAfx.h"
-#include "../eterlib/Camera.h"
+#include "../EterLib/Camera.h"
 #include "../EterLib/TextBar.h"
 
+#ifndef __ANDROID__
 #include <shlobj.h>
+#endif
 
 PyObject* grpCreateTextBar(PyObject* poSelf, PyObject* poArgs)
 {

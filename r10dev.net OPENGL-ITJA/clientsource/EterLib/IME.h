@@ -1,10 +1,14 @@
 #pragma once
 
+#ifndef __ANDROID__
 #include <imm.h>
 
+#ifndef __ANDROID__
 #pragma comment(lib, "imm32.lib")
+#endif
 
-#include "DIMM.h"
+#include "Dimm.h"
+#endif
 
 class IIMEEventSink
 {

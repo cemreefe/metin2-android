@@ -1,6 +1,6 @@
 #include "StdAfx.h"
 #include "ParticleProperty.h"
-#include "../eterlib/ResourceManager.h"
+#include "../EterLib/ResourceManager.h"
 
 void CParticleProperty::InsertTexture(const char* c_szFileName)
 {

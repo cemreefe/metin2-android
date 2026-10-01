@@ -1,8 +1,8 @@
 #pragma once
 
-#include "../eterbase/Stl.h"
-#include "../eterlib/GrpObjectInstance.h"
-#include "../eterlib/GrpShadowTexture.h"
+#include "../EterBase/Stl.h"
+#include "../EterLib/GrpObjectInstance.h"
+#include "../EterLib/GrpShadowTexture.h"
 
 #include "LODController.h"
 

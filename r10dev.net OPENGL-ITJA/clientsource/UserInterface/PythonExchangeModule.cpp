@@ -1,4 +1,4 @@
-#include "stdafx.h"
+#include "StdAfx.h"
 #include "PythonExchange.h"
 
 PyObject* exchangeInitTrading(PyObject* poSelf, PyObject* poArgs)

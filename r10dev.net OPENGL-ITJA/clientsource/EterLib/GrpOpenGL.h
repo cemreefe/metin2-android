@@ -84,14 +84,16 @@ typedef struct tagPOINT {
 #endif
 #endif
 
-#ifndef SIZE
+#ifndef _SIZE_DEFINED
+#define _SIZE_DEFINED
 typedef struct tagSIZE {
     LONG cx;
     LONG cy;
 } SIZE, *PSIZE, *LPSIZE;
 #endif
 
-#ifndef PALETTEENTRY
+#ifndef _PALETTEENTRY_DEFINED
+#define _PALETTEENTRY_DEFINED
 typedef struct tagPALETTEENTRY {
     BYTE peRed;
     BYTE peGreen;
@@ -111,7 +113,7 @@ typedef int D3DBLEND;
 typedef int D3DCMPFUNC;
 typedef int D3DCULL;
 typedef int D3DLIGHTSTATETYPE;
-typedef int D3DCOLORVALUE;
+
 typedef int D3DFILLMODE;
 typedef int D3DMULTISAMPLE_TYPE;
 typedef int D3DTRANSFORMSTATETYPE;
@@ -163,6 +165,13 @@ typedef int D3DPOOL;
 #define D3DFVF_SPECULAR 0x080
 #define D3DFVF_TEX1 0x100
 #define D3DFVF_TEX2 0x200
+#define D3DFVF_TEX3 0x300
+#define D3DFVF_TEX4 0x400
+#define D3DFVF_TEXCOORDSIZE1(i) (1 << (i*2 + 16))
+#define D3DFVF_TEXCOORDSIZE2(i) (2 << (i*2 + 16))
+#define D3DFVF_TEXCOORDSIZE3(i) (3 << (i*2 + 16))
+#define D3DFVF_TEXCOORDSIZE4(i) (0 << (i*2 + 16))
+#define D3DFVF_TEXCOORDSIZEMASK(i) (3 << (i*2 + 16))
 #define D3DFVF_TEXCOUNT_MASK 0xf00
 #define D3DFVF_TEXCOUNT_SHIFT 8
 
@@ -199,6 +208,7 @@ typedef int D3DPOOL;
 #define D3DPT_TRIANGLESTRIP 5
 #define D3DPT_TRIANGLEFAN 6
 
+typedef RECT D3DRECT;
 typedef struct _D3DLOCKED_RECT {
     int Pitch;
     void* pBits;
@@ -233,12 +243,174 @@ typedef struct _D3DLOCKED_RECT {
 
 #define D3DCMP_LESSEQUAL 1
 
+#define D3DTEXF_NONE 0
 #define D3DTEXF_POINT 1
+#define D3DTEXF_LINEAR 2
+#define D3DTEXF_ANISOTROPIC 3
+#define D3DTEXF_FLATCUBIC 4
+#define D3DTEXF_GAUSSIANCUBIC 5
+#define D3DTADDRESS_WRAP 1
+#define D3DTADDRESS_MIRROR 2
+#define D3DTADDRESS_CLAMP 3
+#define D3DTADDRESS_BORDER 4
+#define D3DTADDRESS_MIRRORONCE 5
+#define D3DTTFF_DISABLE 0
+#define D3DTTFF_COUNT1 1
+#define D3DTTFF_COUNT2 2
+#define D3DTTFF_COUNT3 3
+#define D3DTTFF_COUNT4 4
+#define D3DTSS_TCI_CAMERASPACENORMAL 1
+#define D3DTSS_TCI_CAMERASPACEPOSITION 2
+#define D3DTSS_TCI_CAMERASPACEREFLECTIONVECTOR 3
+#define D3DTOP_DISABLE 1
+#define D3DTOP_SELECTARG1 2
+#define D3DTOP_SELECTARG2 3
+#define D3DTOP_MODULATE 4
+#define D3DTOP_MODULATE2X 5
+#define D3DTOP_MODULATE4X 6
+#define D3DTOP_ADD 7
+#define D3DTOP_ADDSIGNED 8
+#define D3DTOP_ADDSIGNED2X 9
+#define D3DTOP_SUBTRACT 10
+#define D3DTOP_ADDSMOOTH 11
+#define D3DTOP_BLENDDIFFUSEALPHA 12
+#define D3DTOP_BLENDTEXTUREALPHA 13
+#define D3DTOP_BLENDFACTORALPHA 14
+#define D3DTOP_BLENDTEXTUREALPHAPM 15
+#define D3DTOP_BLENDCURRENTALPHA 16
+#define D3DTOP_PREMODULATE 17
+#define D3DTOP_MODULATEALPHA_ADDCOLOR 18
+#define D3DTOP_MODULATECOLOR_ADDALPHA 19
+#define D3DTOP_MODULATEINVALPHA_ADDCOLOR 20
+#define D3DTOP_MODULATEINVCOLOR_ADDALPHA 21
+#define D3DTOP_BUMPENVMAP 22
+#define D3DTOP_BUMPENVMAPLUMINANCE 23
+#define D3DTOP_DOTPRODUCT3 24
+#define D3DTOP_MULTIPLYADD 25
+#define D3DTOP_LERP 26
+#define D3DTA_DIFFUSE 0
+#define D3DTA_CURRENT 1
+#define D3DTA_TEXTURE 2
+#define D3DTA_TFACTOR 3
+#define D3DTA_SPECULAR 4
+#define D3DTA_TEMP 5
+#define D3DTA_CONSTANT 6
+#define D3DTA_COMPLEMENT 0x10
+#define D3DTA_ALPHAREPLICATE 0x20
+#define D3DFILL_POINT 1
+#define D3DFILL_WIREFRAME 2
+#define D3DFILL_SOLID 3
+#define D3DSHADE_FLAT 1
+#define D3DSHADE_GOURAUD 2
+#define D3DSHADE_PHONG 3
+#define D3DCMP_NEVER 1
+#define D3DCMP_LESS 2
+#define D3DCMP_EQUAL 3
+#define D3DCMP_LESSEQUAL 4
+#define D3DCMP_GREATER 5
+#define D3DCMP_NOTEQUAL 6
+#define D3DCMP_GREATEREQUAL 7
+#define D3DCMP_ALWAYS 8
+#define D3DBLEND_ZERO 1
+#define D3DBLEND_ONE 2
+#define D3DBLEND_SRCCOLOR 3
+#define D3DBLEND_INVSRCCOLOR 4
+#define D3DBLEND_SRCALPHA 5
+#define D3DBLEND_INVSRCALPHA 6
+#define D3DBLEND_DESTALPHA 7
+#define D3DBLEND_INVDESTALPHA 8
+#define D3DBLEND_DESTCOLOR 9
+#define D3DBLEND_INVDESTCOLOR 10
+#define D3DBLEND_SRCALPHASAT 11
+#define D3DBLEND_BOTHSRCALPHA 12
+#define D3DBLEND_BOTHINVSRCALPHA 13
+#define D3DTSS_COLOROP 1
+#define D3DTSS_COLORARG1 2
+#define D3DTSS_COLORARG2 3
+#define D3DTSS_ALPHAOP 4
+#define D3DTSS_ALPHAARG1 5
+#define D3DTSS_ALPHAARG2 6
+#define D3DTSS_BUMPENVMAT00 7
+#define D3DTSS_BUMPENVMAT01 8
+#define D3DTSS_BUMPENVMAT10 9
+#define D3DTSS_BUMPENVMAT11 10
+#define D3DTSS_TEXCOORDINDEX 11
+#define D3DTSS_ADDRESS 16
+#define D3DTSS_MAGFILTER 17
+#define D3DTSS_MINFILTER 18
+#define D3DTSS_MIPFILTER 19
+#define D3DTSS_MIPMAPLODBIAS 20
+#define D3DTSS_MAXMIPLEVEL 21
+#define D3DTSS_MAXANISOTROPY 22
+#define D3DTSS_ADDRESSU 24
+#define D3DTSS_ADDRESSV 25
+#define D3DTSS_BORDERCOLOR 26
+#define D3DTSS_TCI_CAMERASPACENORMAL_X 0
+#define D3DTS_WORLD 256
+#define D3DTS_VIEW 2
+#define D3DTS_PROJECTION 3
+#define D3DTS_TEXTURE0 16
+#define D3DTS_TEXTURE1 17
+#define D3DTS_TEXTURE2 18
+#define D3DTS_TEXTURE3 19
+#define D3DTS_TEXTURE4 20
+#define D3DTS_TEXTURE5 21
+#define D3DTS_TEXTURE6 22
+#define D3DTS_TEXTURE7 23
+#define D3DCAPS2_CANRENDERWINDOWED 0x1
+#define D3DCAPS2_FULLSCREENGAMMA 0x2
+
 #define D3DTADDRESS_CLAMP 1
 
 #define D3DLOCK_READONLY 1
 #define D3DLOCK_NO_DIRTY_UPDATE 2
 #define D3DLOCK_DISCARD 3
+#define D3DLOCK_NOSYSLOCK 4
+#define D3DFMT_R3G3B2 27
+#define D3DFMT_A8R3G3B2 28
+#define D3DFMT_X4R4G4B4 29
+#define D3DFMT_A2B10G10R10 30
+#define D3DLIGHT_POINT 1
+#define D3DLIGHT_SPOT 2
+#define D3DLIGHT_DIRECTIONAL 3
+#define D3DFOG_NONE 0
+#define D3DFOG_EXP 1
+#define D3DFOG_EXP2 2
+#define D3DFOG_LINEAR 3
+#define D3DBACKBUFFER_TYPE_MONO 0
+#define D3DSGR_NO_CALIBRATION 0
+#define D3DSGR_CALIBRATE 1
+typedef struct _D3DGAMMARAMP {
+    WORD red[256];
+    WORD green[256];
+    WORD blue[256];
+} D3DGAMMARAMP;
+typedef struct _D3DSURFACE_DESC {
+    int Format;
+    int Type;
+    DWORD Usage;
+    int Pool;
+    UINT Size;
+    DWORD MultiSampleType;
+    UINT Width, Height;
+} D3DSURFACE_DESC;
+#define D3DVSDE_POSITION 0
+#define D3DVSDE_BLENDWEIGHT 1
+#define D3DVSDE_BLENDINDICES 2
+#define D3DVSDE_NORMAL 3
+#define D3DVSDE_PSIZE 4
+#define D3DVSDE_DIFFUSE 5
+#define D3DVSDE_SPECULAR 6
+#define D3DVSDE_TEXCOORD0 7
+#define D3DVSDE_TEXCOORD1 8
+#define D3DVSDE_TEXCOORD2 9
+#define D3DVSDE_TEXCOORD3 10
+#define D3DVSDE_TEXCOORD4 11
+#define D3DVSDE_TEXCOORD5 12
+#define D3DVSDE_TEXCOORD6 13
+#define D3DVSDE_TEXCOORD7 14
+#define D3DVSDE_POSITION2 15
+#define D3DVSDE_NORMAL2 16
 #define D3DUSAGE_WRITEONLY 1
 #define D3DUSAGE_DYNAMIC 2
 #define D3DUSAGE_DEPTHSTENCIL 3
@@ -333,6 +505,22 @@ typedef struct _D3DLOCKED_RECT {
 #define D3DRS_DEPTHBIAS 0
 #define D3DRS_WRAP8 0
 #define D3DRS_WRAP9 0
+
+#define D3DPTFILTERCAPS_MINFANISOTROPIC 0x0400
+#define D3DPTFILTERCAPS_MAGFANISOTROPIC 0x4000000
+#define D3DMCS_MATERIAL 1
+#define D3DMCS_COLOR1   2
+#define D3DMCS_COLOR2   3
+#define D3DMCS_DISABLE  0
+#define D3DVBF_DISABLE  0
+#define D3DBLENDOP_ADD      1
+#define D3DBLENDOP_SUBTRACT 2
+#define D3DBLENDOP_REVSUBTRACT 3
+#define D3DBLENDOP_MIN      4
+#define D3DBLENDOP_MAX      5
+#ifndef D3DRS_WRAP1
+#define D3DRS_WRAP1   27
+#endif
 #define D3DRS_WRAP10 0
 #define D3DRS_WRAP11 0
 #define D3DRS_WRAP12 0
@@ -383,6 +571,18 @@ struct D3DVIEWPORT8 {
 };
 
 struct D3DCAPS8 {
+        DWORD TextureFilterCaps;
+        DWORD MaxAnisotropy;
+        DWORD MaxPrimitiveCount;
+        DWORD MaxVertexIndex;
+        DWORD MaxStreams;
+        DWORD MaxStreamStride;
+        DWORD MaxActiveLights;
+        DWORD MaxUserClipPlanes;
+        DWORD MaxVertexBlendMatrices;
+        DWORD MaxPointSize;
+        DWORD PixelShaderVersion;
+        DWORD MaxSimultaneousTextures;
     DWORD TextureCaps;
     DWORD MaxTextureWidth, MaxTextureHeight;
     DWORD DevCaps;
@@ -390,16 +590,31 @@ struct D3DCAPS8 {
     DWORD VertexProcessingCaps;
     DWORD PrimitiveMiscCaps;
     DWORD TextureAddressCaps;
+    DWORD VertexShaderVersion;
 };
 
 struct D3DPRESENT_PARAMETERS {
     UINT BackBufferWidth, BackBufferHeight;
     int Windowed;
+    D3DFORMAT BackBufferFormat;
+    UINT BackBufferCount;
+    int MultiSampleType;
+    int SwapEffect;
+    HWND hDeviceWindow;
+    UINT FullScreen_RefreshRateInHz;
+    UINT FullScreen_PresentationInterval;
+    DWORD Flags;
+    BOOL EnableAutoDepthStencil;
+    D3DFORMAT AutoDepthStencilFormat;
 };
 
 struct D3DADAPTER_IDENTIFIER8 {
     char Driver[512];
     char Description[512];
+    LARGE_INTEGER DriverVersion;
+    DWORD VendorId, DeviceId, SubSysId, Revision;
+    GUID DeviceIdentifier;
+    DWORD WHQLLevel;
 };
 
 struct D3DDISPLAYMODE {
@@ -419,22 +634,62 @@ struct D3DXIMAGE_INFO {
 
 // Simple D3DX Math simulation for OpenGL
 struct GLMATRIX {
-    float m[4][4];
+    // MSVC compat: allow &(temporary) and uniform &x usage
+    GLMATRIX* operator&() { return this; }
+    const GLMATRIX* operator&() const { return this; }
+
+    union {
+        struct {
+            float _11, _12, _13, _14;
+            float _21, _22, _23, _24;
+            float _31, _32, _33, _34;
+            float _41, _42, _43, _44;
+        };
+        float m[4][4];
+    };
     
     GLMATRIX() {
         memset(m, 0, sizeof(m));
         m[0][0] = m[1][1] = m[2][2] = m[3][3] = 1.0f;
     }
+
+    GLMATRIX operator*(const GLMATRIX& rhs) const {
+        GLMATRIX o;
+        for (int r = 0; r < 4; ++r)
+            for (int c = 0; c < 4; ++c)
+                o.m[r][c] = m[r][0]*rhs.m[0][c] + m[r][1]*rhs.m[1][c] + m[r][2]*rhs.m[2][c] + m[r][3]*rhs.m[3][c];
+        return o;
+    }
+    GLMATRIX& operator*=(const GLMATRIX& rhs) { *this = *this * rhs; return *this; }
+    GLMATRIX& operator+=(const GLMATRIX& rhs) {
+        for (int r = 0; r < 4; ++r)
+            for (int c = 0; c < 4; ++c)
+                m[r][c] += rhs.m[r][c];
+        return *this;
+    }
 };
 
 struct GLVECTOR3 {
+    // MSVC compat: allow &(temporary) and uniform &x usage
+    GLVECTOR3* operator&() { return this; }
+    const GLVECTOR3* operator&() const { return this; }
+
     float x, y, z;
     
     GLVECTOR3() : x(0), y(0), z(0) {}
     GLVECTOR3(float _x, float _y, float _z) : x(_x), y(_y), z(_z) {}
     
     GLVECTOR3 operator+(const GLVECTOR3& rhs) const { return GLVECTOR3(x+rhs.x, y+rhs.y, z+rhs.z); }
+    GLVECTOR3 operator-(const GLVECTOR3& rhs) const { return GLVECTOR3(x-rhs.x, y-rhs.y, z-rhs.z); }
+    GLVECTOR3 operator-() const { return GLVECTOR3(-x, -y, -z); }
     GLVECTOR3 operator*(float s) const { return GLVECTOR3(x*s, y*s, z*s); }
+    GLVECTOR3 operator/(float s) const { return GLVECTOR3(x/s, y/s, z/s); }
+    GLVECTOR3& operator+=(const GLVECTOR3& rhs) { x+=rhs.x; y+=rhs.y; z+=rhs.z; return *this; }
+    GLVECTOR3& operator-=(const GLVECTOR3& rhs) { x-=rhs.x; y-=rhs.y; z-=rhs.z; return *this; }
+    GLVECTOR3& operator*=(float s) { x*=s; y*=s; z*=s; return *this; }
+    GLVECTOR3& operator/=(float s) { x/=s; y/=s; z/=s; return *this; }
+    bool operator==(const GLVECTOR3& rhs) const { return x==rhs.x && y==rhs.y && z==rhs.z; }
+    bool operator!=(const GLVECTOR3& rhs) const { return !(*this == rhs); }
 };
 
 inline GLVECTOR3 operator*(float s, const GLVECTOR3& v) {
@@ -454,16 +709,74 @@ inline GLVECTOR3* D3DXVec3Normalize(GLVECTOR3* pOut, const GLVECTOR3* pV) {
 }
 
 struct GLVECTOR2 {
+    // MSVC compat: allow &(temporary) and uniform &x usage
+    GLVECTOR2* operator&() { return this; }
+    const GLVECTOR2* operator&() const { return this; }
+
     float x, y;
+    GLVECTOR2() : x(0), y(0) {}
+    GLVECTOR2(float _x, float _y) : x(_x), y(_y) {}
 };
 
 struct GLCOLOR {
+    // MSVC compat: allow &(temporary) and uniform &x usage
+    GLCOLOR* operator&() { return this; }
+    const GLCOLOR* operator&() const { return this; }
+
     float r, g, b, a;
+    GLCOLOR() : r(0), g(0), b(0), a(0) {}
+    GLCOLOR(float _r, float _g, float _b, float _a) : r(_r), g(_g), b(_b), a(_a) {}
+    GLCOLOR(unsigned int dw) {
+        a = ((dw >> 24) & 0xff) / 255.0f;
+        r = ((dw >> 16) & 0xff) / 255.0f;
+        g = ((dw >> 8)  & 0xff) / 255.0f;
+        b = ( dw        & 0xff) / 255.0f;
+    }
+    operator unsigned int() const {
+        unsigned int A = (unsigned int)(a * 255.0f + 0.5f) & 0xff;
+        unsigned int R = (unsigned int)(r * 255.0f + 0.5f) & 0xff;
+        unsigned int G = (unsigned int)(g * 255.0f + 0.5f) & 0xff;
+        unsigned int B = (unsigned int)(b * 255.0f + 0.5f) & 0xff;
+        return (A << 24) | (R << 16) | (G << 8) | B;
+    }
+    bool operator==(const GLCOLOR& o) const { return r==o.r && g==o.g && b==o.b && a==o.a; }
+    bool operator!=(const GLCOLOR& o) const { return !(*this == o); }
 };
 
-struct GLVECTOR4 { float x, y, z, w; };
-struct GLQUATERNION { float x, y, z, w; };
-struct GLPLANE { float a, b, c, d; };
+typedef GLCOLOR D3DCOLORVALUE;
+typedef struct _D3DMATERIAL8 {
+    GLCOLOR Diffuse, Ambient, Specular, Emissive;
+    float Power;
+} D3DMATERIAL8;
+
+
+struct GLVECTOR4 {
+    // MSVC compat: allow &(temporary) and uniform &x usage
+    GLVECTOR4* operator&() { return this; }
+    const GLVECTOR4* operator&() const { return this; }
+
+    float x, y, z, w;
+    GLVECTOR4() : x(0), y(0), z(0), w(0) {}
+    GLVECTOR4(float _x, float _y, float _z, float _w) : x(_x), y(_y), z(_z), w(_w) {}
+};
+struct GLQUATERNION {
+    // MSVC compat: allow &(temporary) and uniform &x usage
+    GLQUATERNION* operator&() { return this; }
+    const GLQUATERNION* operator&() const { return this; }
+
+    float x, y, z, w;
+    GLQUATERNION() : x(0), y(0), z(0), w(1) {}
+    GLQUATERNION(float _x, float _y, float _z, float _w) : x(_x), y(_y), z(_z), w(_w) {}
+};
+struct GLPLANE {
+    // MSVC compat: allow &(temporary) and uniform &x usage
+    GLPLANE* operator&() { return this; }
+    const GLPLANE* operator&() const { return this; }
+
+    float a, b, c, d;
+    GLPLANE() : a(0), b(0), c(0), d(0) {}
+    GLPLANE(float _a, float _b, float _c, float _d) : a(_a), b(_b), c(_c), d(_d) {}
+};
 
 inline float D3DXVec3Dot(const GLVECTOR3* pV1, const GLVECTOR3* pV2) {
     return pV1->x*pV2->x + pV1->y*pV2->y + pV1->z*pV2->z;
@@ -490,6 +803,14 @@ inline GLVECTOR2* D3DXVec2Normalize(GLVECTOR2* pOut, const GLVECTOR2* pV) {
     float len = D3DXVec2Length(pV);
     if (len > 0) { pOut->x = pV->x/len; pOut->y = pV->y/len; }
     else { pOut->x = pOut->y = 0; }
+    return pOut;
+}
+inline GLVECTOR4* D3DXVec3Transform(GLVECTOR4* pOut, const GLVECTOR3* pV, const GLMATRIX* pM) {
+    float x = pV->x*pM->m[0][0] + pV->y*pM->m[1][0] + pV->z*pM->m[2][0] + pM->m[3][0];
+    float y = pV->x*pM->m[0][1] + pV->y*pM->m[1][1] + pV->z*pM->m[2][1] + pM->m[3][1];
+    float z = pV->x*pM->m[0][2] + pV->y*pM->m[1][2] + pV->z*pM->m[2][2] + pM->m[3][2];
+    float w = pV->x*pM->m[0][3] + pV->y*pM->m[1][3] + pV->z*pM->m[2][3] + pM->m[3][3];
+    pOut->x=x; pOut->y=y; pOut->z=z; pOut->w=w;
     return pOut;
 }
 inline GLVECTOR3* D3DXVec3TransformCoord(GLVECTOR3* pOut, const GLVECTOR3* pV, const GLMATRIX* pM) {
@@ -547,11 +868,60 @@ inline GLMATRIX* D3DXMatrixRotationZ(GLMATRIX* pOut, float angle) {
     pOut->m[1][0] = -s; pOut->m[1][1] = c;
     return pOut;
 }
-inline GLMATRIX* D3DXMatrixRotationQuaternion(GLMATRIX* pOut, const GLQUATERNION* pQ) { return D3DXMatrixIdentity(pOut); }
-inline GLQUATERNION* D3DXQuaternionMultiply(GLQUATERNION* pOut, const GLQUATERNION* pQ1, const GLQUATERNION* pQ2) { *pOut = *pQ1; return pOut; }
-inline GLQUATERNION* D3DXQuaternionConjugate(GLQUATERNION* pOut, const GLQUATERNION* pQ) { *pOut = *pQ; return pOut; }
-inline GLVECTOR3* D3DXVec3Rotation(GLVECTOR3* pOut, const GLVECTOR3* pV, const GLQUATERNION* pQ) { *pOut = *pV; return pOut; }
+inline GLMATRIX* D3DXMatrixRotationQuaternion(GLMATRIX* pOut, const GLQUATERNION* pQ) {
+    float x2 = pQ->x + pQ->x, y2 = pQ->y + pQ->y, z2 = pQ->z + pQ->z;
+    float xx = pQ->x * x2, xy = pQ->x * y2, xz = pQ->x * z2;
+    float yy = pQ->y * y2, yz = pQ->y * z2, zz = pQ->z * z2;
+    float wx = pQ->w * x2, wy = pQ->w * y2, wz = pQ->w * z2;
+    D3DXMatrixIdentity(pOut);
+    pOut->_11 = 1.0f - (yy + zz); pOut->_12 = xy + wz;        pOut->_13 = xz - wy;
+    pOut->_21 = xy - wz;          pOut->_22 = 1.0f - (xx + zz); pOut->_23 = yz + wx;
+    pOut->_31 = xz + wy;          pOut->_32 = yz - wx;        pOut->_33 = 1.0f - (xx + yy);
+    return pOut;
+}
+inline GLQUATERNION* D3DXQuaternionMultiply(GLQUATERNION* pOut, const GLQUATERNION* pQ1, const GLQUATERNION* pQ2) {
+    GLQUATERNION o;
+    o.x = pQ1->w*pQ2->x + pQ1->x*pQ2->w + pQ1->y*pQ2->z - pQ1->z*pQ2->y;
+    o.y = pQ1->w*pQ2->y - pQ1->x*pQ2->z + pQ1->y*pQ2->w + pQ1->z*pQ2->x;
+    o.z = pQ1->w*pQ2->z + pQ1->x*pQ2->y - pQ1->y*pQ2->x + pQ1->z*pQ2->w;
+    o.w = pQ1->w*pQ2->w - pQ1->x*pQ2->x - pQ1->y*pQ2->y - pQ1->z*pQ2->z;
+    *pOut = o; return pOut;
+}
+inline GLQUATERNION* D3DXQuaternionConjugate(GLQUATERNION* pOut, const GLQUATERNION* pQ) {
+    pOut->x = -pQ->x; pOut->y = -pQ->y; pOut->z = -pQ->z; pOut->w = pQ->w; return pOut;
+}
+inline GLQUATERNION* D3DXQuaternionRotationAxis(GLQUATERNION* pOut, const GLVECTOR3* pV, float angle) {
+    float half = angle * 0.5f, s = sinf(half);
+    pOut->x = pV->x * s; pOut->y = pV->y * s; pOut->z = pV->z * s; pOut->w = cosf(half);
+    return pOut;
+}
+inline GLQUATERNION* D3DXQuaternionRotationYawPitchRoll(GLQUATERNION* pOut, float yaw, float pitch, float roll) {
+    float cy = cosf(yaw*0.5f), sy = sinf(yaw*0.5f);
+    float cp = cosf(pitch*0.5f), sp = sinf(pitch*0.5f);
+    float cr = cosf(roll*0.5f), sr = sinf(roll*0.5f);
+    pOut->x = cy*sp*cr + sy*cp*sr;
+    pOut->y = sy*cp*cr - cy*sp*sr;
+    pOut->z = cy*cp*sr - sy*sp*cr;
+    pOut->w = cy*cp*cr + sy*sp*sr;
+    return pOut;
+}
 inline GLVECTOR3* D3DXVec3Translation(GLVECTOR3* pOut, const GLVECTOR3* pV, const GLMATRIX* pM) { *pOut = *pV; return pOut; }
+inline GLVECTOR3* D3DXVec3TransformNormal(GLVECTOR3* pOut, const GLVECTOR3* pV, const GLMATRIX* pM) {
+    GLVECTOR3 o;
+    o.x = pV->x*pM->_11 + pV->y*pM->_21 + pV->z*pM->_31;
+    o.y = pV->x*pM->_12 + pV->y*pM->_22 + pV->z*pM->_32;
+    o.z = pV->x*pM->_13 + pV->y*pM->_23 + pV->z*pM->_33;
+    *pOut = o; return pOut;
+}
+inline GLVECTOR3* D3DXVec3Scale(GLVECTOR3* pOut, const GLVECTOR3* pV, float s) {
+    pOut->x = pV->x*s; pOut->y = pV->y*s; pOut->z = pV->z*s; return pOut;
+}
+inline GLVECTOR3* D3DXVec3Add(GLVECTOR3* pOut, const GLVECTOR3* pV1, const GLVECTOR3* pV2) {
+    pOut->x = pV1->x+pV2->x; pOut->y = pV1->y+pV2->y; pOut->z = pV1->z+pV2->z; return pOut;
+}
+inline GLVECTOR3* D3DXVec3Subtract(GLVECTOR3* pOut, const GLVECTOR3* pV1, const GLVECTOR3* pV2) {
+    pOut->x = pV1->x-pV2->x; pOut->y = pV1->y-pV2->y; pOut->z = pV1->z-pV2->z; return pOut;
+}
 inline float D3DXPlaneDotCoord(const GLPLANE* pP, const GLVECTOR3* pV) { return 0.0f; }
 inline float D3DXMatrixfDeterminant(const GLMATRIX* pM) { return 1.0f; }
 inline GLMATRIX* D3DXMatrixLookAtRH(GLMATRIX* pOut, const GLVECTOR3* pEye, const GLVECTOR3* pAt, const GLVECTOR3* pUp) {
@@ -630,11 +1000,14 @@ inline GLVECTOR3* D3DXVec3Unproject(GLVECTOR3* pOut, const GLVECTOR3* pV, const 
     *pOut = *pV;
     return pOut;
 }
-inline GLQUATERNION* D3DXQuaternionBlend(GLQUATERNION* pOut, const GLQUATERNION* pQ1, const GLQUATERNION* pQ2, float t) { *pOut = *pQ1; return pOut; }
-inline GLVECTOR3* D3DXVec3Blend(GLVECTOR3* pOut, const GLVECTOR3* pV1, const GLVECTOR3* pV2, float t) { *pOut = *pV1; return pOut; }
-inline GLVECTOR2* D3DXVec2CCW(GLVECTOR2* pOut, const GLVECTOR2* pV) { *pOut = *pV; return pOut; }
+inline float D3DXVec2CCW(const GLVECTOR2* pV1, const GLVECTOR2* pV2) { return pV1->x*pV2->y - pV1->y*pV2->x; }
+inline GLCOLOR* D3DXColorModulate(GLCOLOR* pOut, const GLCOLOR* pC1, const GLCOLOR* pC2) {
+    pOut->r = pC1->r * pC2->r; pOut->g = pC1->g * pC2->g; pOut->b = pC1->b * pC2->b; pOut->a = pC1->a * pC2->a;
+    return pOut;
+}
 
 #ifdef ENABLE_OPENGL
+    #define D3DMATRIX GLMATRIX
     #define D3DXMATRIX GLMATRIX
     #define D3DXVECTOR3 GLVECTOR3
     #define D3DVECTOR GLVECTOR3
@@ -685,13 +1058,15 @@ inline GLVECTOR2* D3DXVec2CCW(GLVECTOR2* pOut, const GLVECTOR2* pV) { *pOut = *p
     typedef IDirect3D8* LPDIRECT3D8;
     typedef IDirect3DDevice8* LPDIRECT3DDEVICE8;
     typedef IDirect3DTexture8* LPDIRECT3DTEXTURE8;
+    typedef IDirect3DBaseTexture8* LPDIRECT3DBASETEXTURE8;
     typedef IDirect3DBaseTexture8* LPDIRECT3DBaseTexture8;
     typedef IDirect3DSurface8* LPDIRECT3DSURFACE8;
     typedef IDirect3DVertexBuffer8* LPDIRECT3DVERTEXBUFFER8; // VBO
     typedef IDirect3DIndexBuffer8* LPDIRECT3DINDEXBUFFER8; // IBO/EBO
     typedef ID3DXMesh* LPD3DXMESH;
     typedef ID3DXBuffer* LPD3DXBUFFER;
-    typedef void* LPD3DXMATRIXSTACK;
+    struct ID3DXMatrixStack;
+    typedef ID3DXMatrixStack* LPD3DXMATRIXSTACK;
 
     #define D3DCOLOR_XRGB(r,g,b) GLCOLOR{ (r)/255.f, (g)/255.f, (b)/255.f, 1.0f }
     #define D3DCOLOR_ARGB(a,r,g,b) GLCOLOR{ (r)/255.f, (g)/255.f, (b)/255.f, (a)/255.f }
@@ -727,11 +1102,17 @@ inline GLVECTOR2* D3DXVec2CCW(GLVECTOR2* pOut, const GLVECTOR2* pV) { *pOut = *p
     };
     extern void* c_dfDIKeyboard;
 
-    struct IDirect3DTexture8 {
+    struct IDirect3DBaseTexture8 {
+        DWORD GetLevelCount() { return 1; }
+        ULONG Release() { return 0; }
+    };
+
+    struct IDirect3DTexture8 : public IDirect3DBaseTexture8 {
         GLuint glId;
         int width, height;
         void* pLockedData;
         IDirect3DTexture8() : glId(0), width(0), height(0), pLockedData(NULL) {}
+        ULONG AddRef() { return 1; }
         HRESULT LockRect(UINT Level,D3DLOCKED_RECT* pLockedRect,const RECT* pRect,DWORD Flags) { 
             if (!pLockedData) pLockedData = malloc(width * height * 4);
             pLockedRect->pBits = pLockedData;
@@ -752,14 +1133,18 @@ inline GLVECTOR2* D3DXVec2CCW(GLVECTOR2* pOut, const GLVECTOR2* pV) { *pOut = *p
             return 0; 
         }
         HRESULT GetSurfaceLevel(UINT,LPDIRECT3DSURFACE8*) { return S_OK; }
+        DWORD GetLevelCount() { return 1; }
+        HRESULT GetLevelDesc(UINT, D3DSURFACE_DESC* pDesc) { if (pDesc) memset(pDesc, 0, sizeof(*pDesc)); return S_OK; }
     };
 
     struct IDirect3DSurface8 {
+        ULONG AddRef() { return 1; }
         ULONG Release() { return 0; }
+        HRESULT LockRect(D3DLOCKED_RECT*, const RECT*, DWORD) { return S_OK; }
+        HRESULT UnlockRect() { return S_OK; }
+        HRESULT GetDesc(D3DSURFACE_DESC* pDesc) { if (pDesc) memset(pDesc, 0, sizeof(*pDesc)); return S_OK; }
     };
-    struct IDirect3DBaseTexture8 {
-        ULONG Release() { return 0; }
-    };
+
     struct IDirect3DVertexBuffer8 {
         GLuint glVbo;
         UINT length;
@@ -768,6 +1153,7 @@ inline GLVECTOR2* D3DXVec2CCW(GLVECTOR2* pOut, const GLVECTOR2* pV) { *pOut = *p
             glGenBuffers(1, &glVbo);
             pData = malloc(len);
         }
+        ULONG AddRef() { return 1; }
         HRESULT Lock(UINT OffsetToLock, UINT SizeToLock, BYTE** ppbData, DWORD Flags) { 
             *ppbData = (BYTE*)pData + OffsetToLock;
             return S_OK; 
@@ -793,6 +1179,7 @@ inline GLVECTOR2* D3DXVec2CCW(GLVECTOR2* pOut, const GLVECTOR2* pV) { *pOut = *p
             glGenBuffers(1, &glIbo);
             pData = malloc(len);
         }
+        ULONG AddRef() { return 1; }
         HRESULT Lock(UINT OffsetToLock, UINT SizeToLock, BYTE** ppbData, DWORD Flags) { 
             *ppbData = (BYTE*)pData + OffsetToLock;
             return S_OK; 
@@ -857,6 +1244,7 @@ inline GLVECTOR2* D3DXVec2CCW(GLVECTOR2* pOut, const GLVECTOR2* pV) { *pOut = *p
     };
 
     struct IDirect3D8 {
+        ULONG AddRef() { return 1; }
         UINT GetAdapterCount() { return 1; }
         HRESULT GetAdapterIdentifier(UINT, DWORD, D3DADAPTER_IDENTIFIER8* pIdentifier) {
             if (pIdentifier) {
@@ -865,9 +1253,12 @@ inline GLVECTOR2* D3DXVec2CCW(GLVECTOR2* pOut, const GLVECTOR2* pV) { *pOut = *p
             }
             return S_OK;
         }
-        UINT GetAdapterModeCount(UINT) { return 1; }
-        HRESULT EnumAdapterModes(UINT, UINT, D3DDISPLAYMODE* pMode) {
-            if (pMode) { pMode->Width = 1024; pMode->Height = 768; pMode->RefreshRate = 60; pMode->Format = D3DFMT_X8R8G8B8; }
+        UINT GetAdapterModeCount(UINT) { return 5; }
+        HRESULT EnumAdapterModes(UINT, UINT iMode, D3DDISPLAYMODE* pMode) {
+            static const UINT s_aauModes[5][2] = { { 800, 600 }, { 1024, 768 }, { 1280, 720 }, { 1600, 900 }, { 1920, 1080 } };
+            if (iMode >= 5)
+                return E_FAIL;
+            if (pMode) { pMode->Width = s_aauModes[iMode][0]; pMode->Height = s_aauModes[iMode][1]; pMode->RefreshRate = 60; pMode->Format = D3DFMT_X8R8G8B8; }
             return S_OK;
         }
         HRESULT GetAdapterDisplayMode(UINT, D3DDISPLAYMODE* pMode) {
@@ -890,7 +1281,7 @@ inline GLVECTOR2* D3DXVec2CCW(GLVECTOR2* pOut, const GLVECTOR2* pV) { *pOut = *p
             }
             return S_OK;
         }
-        HRESULT CreateDevice(UINT, int, HWND hWnd, DWORD, D3DPRESENT_PARAMETERS*, IDirect3DDevice8** ppDevice);
+        HRESULT CreateDevice(UINT Adapter, int DeviceType, HWND hWnd, DWORD BehaviorFlags, D3DPRESENT_PARAMETERS*, IDirect3DDevice8** ppDevice);
         ULONG Release() { delete this; return 0; }
     };
 
@@ -898,6 +1289,8 @@ inline GLVECTOR2* D3DXVec2CCW(GLVECTOR2* pOut, const GLVECTOR2* pV) { *pOut = *p
 #ifndef ANDROID
         HDC m_hDC;
 #endif
+        ULONG AddRef() { return 1; }
+        ULONG Release() { return 0; }
         IDirect3DDevice8() {
 #ifndef ANDROID
             m_hDC = NULL;
@@ -927,12 +1320,9 @@ inline GLVECTOR2* D3DXVec2CCW(GLVECTOR2* pOut, const GLVECTOR2* pV) { *pOut = *p
         HRESULT SetPixelShader(DWORD Handle) { return S_OK; }
         HRESULT SetVertexShaderConstant(DWORD Register, const void* pData, DWORD Count) { return S_OK; }
         HRESULT SetPixelShaderConstant(DWORD Register, const void* pData, DWORD Count) { return S_OK; }
-        HRESULT Clear(DWORD n, const void* pRects, DWORD flags, D3DCOLOR color, float z, DWORD stencil) { 
-            GLbitfield mask = 0;
-            if (flags & 1) { // D3DCLEAR_TARGET
-                glClearColor(color.r, color.g, color.b, color.a);
-                mask |= GL_COLOR_BUFFER_BIT;
-            }
+        HRESULT SetMaterial(const D3DMATERIAL8* mat) { return S_OK; }
+        HRESULT Clear(DWORD n, const void* pRects, DWORD flags, D3DCOLOR color, float z, DWORD stencil); 
+#if 0
             if (flags & 2) { // D3DCLEAR_ZBUFFER
                 #ifndef ANDROID
                     glClearDepth(z);
@@ -941,17 +1331,10 @@ inline GLVECTOR2* D3DXVec2CCW(GLVECTOR2* pOut, const GLVECTOR2* pV) { *pOut = *p
                 #endif
                 mask |= GL_DEPTH_BUFFER_BIT;
             }
-            if (mask) glClear(mask);
-            return S_OK; 
-        }
-        HRESULT TestCooperativeLevel() { return S_OK; }
-        HRESULT Reset(D3DPRESENT_PARAMETERS*) { return S_OK; }
-        HRESULT Present(const RECT*,const RECT*,HWND,const void*) { 
-#ifndef ANDROID
-            if (m_hDC) SwapBuffers(m_hDC);
 #endif
-            return S_OK; 
-        }
+        HRESULT TestCooperativeLevel() { return S_OK; }
+        HRESULT Reset(D3DPRESENT_PARAMETERS*);
+        HRESULT Present(const RECT*,const RECT*,HWND,const void*);
         HRESULT CreateDepthStencilSurface(UINT,UINT,D3DFORMAT,D3DMULTISAMPLE_TYPE,LPDIRECT3DSURFACE8*) { return S_OK; }
         HRESULT GetRenderTarget(LPDIRECT3DSURFACE8*) { return S_OK; }
         HRESULT GetDepthStencilSurface(LPDIRECT3DSURFACE8*) { return S_OK; }
@@ -961,21 +1344,15 @@ inline GLVECTOR2* D3DXVec2CCW(GLVECTOR2* pOut, const GLVECTOR2* pV) { *pOut = *p
             glViewport(v->X, v->Y, v->Width, v->Height);
             return S_OK; 
         }
-        HRESULT BeginScene() { return S_OK; }
-        HRESULT EndScene() { return S_OK; }
+        HRESULT BeginScene();
+        HRESULT EndScene();
         HRESULT GetDeviceCaps(D3DCAPS8*) { return S_OK; }
-        void SetGammaRamp(DWORD,DWORD,const void*) {}
+        void SetGammaRamp(DWORD,const D3DGAMMARAMP*) {}
         HRESULT GetBackBuffer(UINT,D3DBACKBUFFER_TYPE,LPDIRECT3DSURFACE8*) { return S_OK; }
         UINT GetAvailableTextureMem() { return 128 * 1024 * 1024; }
         LPDIRECT3DVERTEXBUFFER8 m_pStreamSource;
         UINT m_StreamStride;
-        HRESULT SetStreamSource(UINT StreamNumber, LPDIRECT3DVERTEXBUFFER8 pStreamData, UINT Stride) { 
-            m_pStreamSource = pStreamData;
-            m_StreamStride = Stride;
-            if (pStreamData) glBindBuffer(GL_ARRAY_BUFFER, pStreamData->glVbo);
-            else glBindBuffer(GL_ARRAY_BUFFER, 0);
-            return S_OK; 
-        }
+        HRESULT SetStreamSource(UINT StreamNumber, LPDIRECT3DVERTEXBUFFER8 pStreamData, UINT Stride);
         HRESULT CreateVertexBuffer(UINT Length, DWORD Usage, DWORD FVF, D3DPOOL Pool, LPDIRECT3DVERTEXBUFFER8* ppVertexBuffer) { 
             *ppVertexBuffer = new IDirect3DVertexBuffer8(Length);
             return S_OK; 
@@ -985,78 +1362,9 @@ inline GLVECTOR2* D3DXVec2CCW(GLVECTOR2* pOut, const GLVECTOR2* pV) { *pOut = *p
             return S_OK; 
         }
         LPDIRECT3DINDEXBUFFER8 m_pIndexBuffer;
-        HRESULT SetIndices(LPDIRECT3DINDEXBUFFER8 pIndexBuffer, UINT BaseVertexIndex) {
-            m_pIndexBuffer = pIndexBuffer;
-            if (pIndexBuffer) glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, pIndexBuffer->glIbo);
-            else glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-            return S_OK;
-        }
-        HRESULT DrawIndexedPrimitive(D3DPRIMITIVETYPE PrimitiveType, UINT minIndex, UINT NumVertices, UINT startIndex, UINT primCount) {
-            GLenum mode = GL_TRIANGLES;
-            GLsizei count = 0;
-            switch(PrimitiveType) {
-                case 1: mode = GL_POINTS; count = (GLsizei)primCount; break;
-                case 2: mode = GL_LINES; count = (GLsizei)primCount * 2; break;
-                case 3: mode = GL_LINE_STRIP; count = (GLsizei)primCount + 1; break;
-                case 4: mode = GL_TRIANGLES; count = (GLsizei)primCount * 3; break;
-                case 5: mode = GL_TRIANGLE_STRIP; count = (GLsizei)primCount + 2; break;
-                case 6: mode = GL_TRIANGLE_FAN; count = (GLsizei)primCount + 2; break;
-            }
-            
-            #ifndef ANDROID
-            glEnableClientState(GL_VERTEX_ARRAY);
-            
-            int offset = 0;
-            // Position (XYZ)
-            glVertexPointer(3, GL_FLOAT, (GLsizei)m_StreamStride, (void*)(size_t)offset);
-            offset += 12; 
-
-            if (m_dwFVF & D3DFVF_XYZRHW) {
-            }
-
-            if (m_dwFVF & D3DFVF_NORMAL) {
-                glEnableClientState(GL_NORMAL_ARRAY);
-                glNormalPointer(GL_FLOAT, (GLsizei)m_StreamStride, (void*)(size_t)offset);
-                offset += 12;
-            } else {
-                glDisableClientState(GL_NORMAL_ARRAY);
-            }
-
-            if (m_dwFVF & D3DFVF_DIFFUSE) {
-                glEnableClientState(GL_COLOR_ARRAY);
-                glColorPointer(4, GL_UNSIGNED_BYTE, (GLsizei)m_StreamStride, (void*)(size_t)offset);
-                offset += 4;
-            } else {
-                glDisableClientState(GL_COLOR_ARRAY);
-            }
-
-            if (m_dwFVF & D3DFVF_SPECULAR) {
-                offset += 4;
-            }
-
-            // Texture Coordinates
-            int numTex = (m_dwFVF & D3DFVF_TEXCOUNT_MASK) >> D3DFVF_TEXCOUNT_SHIFT;
-            if (numTex > 0) {
-                glEnableClientState(GL_TEXTURE_COORD_ARRAY);
-                glTexCoordPointer(2, GL_FLOAT, (GLsizei)m_StreamStride, (void*)(size_t)offset);
-                offset += 8 * numTex;
-            } else if (m_dwFVF & D3DFVF_TEX1) {
-                glEnableClientState(GL_TEXTURE_COORD_ARRAY);
-                glTexCoordPointer(2, GL_FLOAT, (GLsizei)m_StreamStride, (void*)(size_t)offset);
-                offset += 8;
-            } else {
-                glDisableClientState(GL_TEXTURE_COORD_ARRAY);
-            }
-            
-            glDrawElements(mode, count, GL_UNSIGNED_SHORT, (void*)(size_t)(startIndex * 2));
-            
-            glDisableClientState(GL_VERTEX_ARRAY);
-            glDisableClientState(GL_NORMAL_ARRAY);
-            glDisableClientState(GL_COLOR_ARRAY);
-            glDisableClientState(GL_TEXTURE_COORD_ARRAY);
-            #endif
-            return S_OK;
-        }
+        GLMATRIX m_matWorld, m_matProj;
+        HRESULT SetIndices(LPDIRECT3DINDEXBUFFER8 pIndexBuffer, UINT BaseVertexIndex);
+        HRESULT DrawIndexedPrimitive(D3DPRIMITIVETYPE PrimitiveType, UINT minIndex, UINT NumVertices, UINT startIndex, UINT primCount);
         HRESULT DrawIndexedPrimitiveUP(D3DPRIMITIVETYPE PrimitiveType, UINT MinVertexIndex, UINT NumVertexIndices, UINT PrimitiveCount, const void* pIndexData, D3DFORMAT IndexDataFormat, const void* pVertexStreamZeroData, UINT VertexStreamZeroStride) {
             #ifndef ANDROID
             glEnableClientState(GL_VERTEX_ARRAY);
@@ -1193,20 +1501,7 @@ inline GLVECTOR2* D3DXVec2CCW(GLVECTOR2* pOut, const GLVECTOR2* pV) { *pOut = *p
             }
             return S_OK;
         }
-        HRESULT SetTexture(DWORD stage, LPDIRECT3DBaseTexture8 tex) { 
-            #ifndef ANDROID
-            glActiveTexture(GL_TEXTURE0 + stage);
-            if (tex) {
-                IDirect3DTexture8* gtex = (IDirect3DTexture8*)tex;
-                glBindTexture(GL_TEXTURE_2D, gtex->glId);
-                glEnable(GL_TEXTURE_2D);
-            } else {
-                glBindTexture(GL_TEXTURE_2D, 0);
-                glDisable(GL_TEXTURE_2D);
-            }
-            #endif
-            return S_OK; 
-        }
+        HRESULT SetTexture(DWORD stage, LPDIRECT3DBaseTexture8 tex);
         HRESULT SetTransform(DWORD type, const GLMATRIX* mat) { 
             #ifndef ANDROID
             if (type == 3) glMatrixMode(GL_PROJECTION);
@@ -1218,7 +1513,9 @@ inline GLVECTOR2* D3DXVec2CCW(GLVECTOR2* pOut, const GLVECTOR2* pV) { *pOut = *p
         HRESULT GetTransform(DWORD type, GLMATRIX* mat) { return S_OK; }
     };
 
+#ifndef ANDROID
     inline HRESULT IDirect3D8::CreateDevice(UINT, int, HWND hWnd, DWORD, D3DPRESENT_PARAMETERS*, IDirect3DDevice8** ppDevice) {
+
 #ifndef ANDROID
         HDC hDC = GetDC(hWnd);
         static PIXELFORMATDESCRIPTOR pfd = {
@@ -1234,13 +1531,43 @@ inline GLVECTOR2* D3DXVec2CCW(GLVECTOR2* pOut, const GLVECTOR2* pV) { *pOut = *p
 
         *ppDevice = new IDirect3DDevice8();
         (*ppDevice)->m_hDC = hDC;
-#else
-        *ppDevice = new IDirect3DDevice8();
-#endif
         return S_OK;
     }
+#endif
+#endif
 
-    inline IDirect3D8* Direct3DCreate8(UINT) { return new IDirect3D8(); }
+    IDirect3D8* Direct3DCreate8(UINT SDKVersion);
+
+    inline D3DXPLANE* D3DXPlaneNormalize(D3DXPLANE* pOut, const D3DXPLANE* pP) {
+        float len = sqrtf(pP->a*pP->a + pP->b*pP->b + pP->c*pP->c);
+        if (len > 0.0f) { pOut->a=pP->a/len; pOut->b=pP->b/len; pOut->c=pP->c/len; pOut->d=pP->d/len; }
+        else { pOut->a=pOut->b=pOut->c=pOut->d=0.0f; }
+        return pOut;
+    }
+    inline GLVECTOR3* D3DXVec3Lerp(GLVECTOR3* pOut, const GLVECTOR3* pV1, const GLVECTOR3* pV2, float s) {
+        pOut->x = pV1->x + s*(pV2->x-pV1->x);
+        pOut->y = pV1->y + s*(pV2->y-pV1->y);
+        pOut->z = pV1->z + s*(pV2->z-pV1->z);
+        return pOut;
+    }
+    inline GLVECTOR4* D3DXVec4Transform(GLVECTOR4* pOut, const GLVECTOR4* pV, const GLMATRIX* pM) {
+        pOut->x = pV->x*pM->m[0][0]+pV->y*pM->m[1][0]+pV->z*pM->m[2][0]+pV->w*pM->m[3][0];
+        pOut->y = pV->x*pM->m[0][1]+pV->y*pM->m[1][1]+pV->z*pM->m[2][1]+pV->w*pM->m[3][1];
+        pOut->z = pV->x*pM->m[0][2]+pV->y*pM->m[1][2]+pV->z*pM->m[2][2]+pV->w*pM->m[3][2];
+        pOut->w = pV->x*pM->m[0][3]+pV->y*pM->m[1][3]+pV->z*pM->m[2][3]+pV->w*pM->m[3][3];
+        return pOut;
+    }
+    inline UINT D3DXGetFVFVertexSize(DWORD fvf) {
+        UINT size = 0;
+        if (fvf & D3DFVF_XYZRHW) size += 16;
+        else if (fvf & D3DFVF_XYZ) size += 12;
+        if (fvf & D3DFVF_NORMAL) size += 12;
+        if (fvf & D3DFVF_DIFFUSE) size += 4;
+        if (fvf & D3DFVF_SPECULAR) size += 4;
+        int texCount = (fvf & D3DFVF_TEXCOUNT_MASK) >> D3DFVF_TEXCOUNT_SHIFT;
+        size += texCount * 8;
+        return size;
+    }
 
     inline HRESULT D3DXCreateTexture(LPDIRECT3DDEVICE8 pDevice, UINT Width, UINT Height, UINT MipLevels, DWORD Usage, D3DFORMAT Format, D3DPOOL Pool, LPDIRECT3DTEXTURE8* ppTexture) {
         if (!pDevice) return S_OK;
@@ -1279,4 +1606,4 @@ inline GLVECTOR2* D3DXVec2CCW(GLVECTOR2* pOut, const GLVECTOR2* pV) { *pOut = *p
         if (ppCompilationErrors) *ppCompilationErrors = new ID3DXBuffer();
         return S_OK; 
     }
-#endif
+#endif // ENABLE_OPENGL

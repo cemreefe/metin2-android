@@ -1,9 +1,7 @@
 #ifndef __INC_ETER2_ETERBASE_UTILS_H__
 #define __INC_ETER2_ETERBASE_UTILS_H__
 
-#ifndef __ANDROID__
 #include <windows.h>
-#endif
 #include <vector>
 #include <string>
 
@@ -129,17 +127,17 @@ void string_join(const std::string& sep, const C& container, std::string* ret)
 
 	// calculate string sequence
 	{
-		for (C::const_iterator i = container.begin(); i != container.end(); ++i)
+		for (typename C::const_iterator i = container.begin(); i != container.end(); ++i)
 			capacity += (*i).length();
 	}
 
-	string buf;
+	std::string buf;
 	buf.reserve(capacity);
 
 	// join strings
 	{
-		C::const_iterator cur = container.begin();
-		C::const_iterator end = container.end();
+		typename C::const_iterator cur = container.begin();
+		typename C::const_iterator end = container.end();
 		--end;
 
 		while (cur != end)
@@ -150,7 +148,7 @@ void string_join(const std::string& sep, const C& container, std::string* ret)
 		buf.append(*cur);
 	}
 
-	swap(*ret, buf);
+	std::swap(*ret, buf);
 }
 
 __forceinline int htoi(const wchar_t* s, int size)

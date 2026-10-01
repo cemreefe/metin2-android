@@ -1,8 +1,8 @@
 #include "StdAfx.h"
 #include "PythonApplication.h"
 
-#include "../eterbase/timer.h"
-#include "../eterlib/Camera.h"
+#include "../EterBase/Timer.h"
+#include "../EterLib/Camera.h"
 
 float BlendValueByLinear(float fElapsedTime, float fDuration, float fBeginValue, float fEndValue)
 {

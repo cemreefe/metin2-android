@@ -110,7 +110,9 @@ extern "C" {
 	// PARTICULAR PURPOSE.
 	//=--------------------------------------------------------------------------=
 
+#ifndef __ANDROID__
 #pragma comment(lib,"uuid.lib")
+#endif
 
 //--------------------------------------------------------------------------
 // IActiveIMM Interfaces.

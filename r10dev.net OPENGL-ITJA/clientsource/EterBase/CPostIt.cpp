@@ -1,6 +1,6 @@
 #include "StdAfx.h"
 #include "CPostIt.h"
-#include "../EterBase/utils.h"
+#include "Utils.h"
 
 class _CPostItMemoryBlock
 {

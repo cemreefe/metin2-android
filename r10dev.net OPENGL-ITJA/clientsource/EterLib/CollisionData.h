@@ -1,5 +1,9 @@
 #pragma once
 
+#ifdef ENABLE_OPENGL
+#include "GrpOpenGL.h"
+#endif
+
 // Collision Detection
 typedef struct SSphereData
 {

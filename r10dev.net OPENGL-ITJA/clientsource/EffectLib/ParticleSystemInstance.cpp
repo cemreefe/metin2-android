@@ -169,7 +169,7 @@ void CParticleSystemInstance::CreateParticles(float fElapsedTime)
 
 		if (CEmitterProperty::EMITTER_ADVANCED_TYPE_INNER == m_pEmitterProperty->GetEmitterAdvancedType())
 		{
-			D3DXVec3Normalize(&pInstance->m_v3Velocity, &(pInstance->m_v3Position - v3TimePosition));
+			{ D3DXVECTOR3 v3Diff = pInstance->m_v3Position - v3TimePosition; D3DXVec3Normalize(&pInstance->m_v3Velocity, &v3Diff); }
 			pInstance->m_v3Velocity *= -100.0f;
 		}
 		else if (CEmitterProperty::EMITTER_ADVANCED_TYPE_OUTER == m_pEmitterProperty->GetEmitterAdvancedType())
@@ -182,7 +182,7 @@ void CParticleSystemInstance::CreateParticles(float fElapsedTime)
 			}
 			else
 			{
-				D3DXVec3Normalize(&pInstance->m_v3Velocity, &(pInstance->m_v3Position - v3TimePosition));
+				{ D3DXVECTOR3 v3Diff = pInstance->m_v3Position - v3TimePosition; D3DXVec3Normalize(&pInstance->m_v3Velocity, &v3Diff); }
 				pInstance->m_v3Velocity *= 100.0f;
 			}
 		}
@@ -305,7 +305,7 @@ bool CParticleSystemInstance::OnUpdate(float fElapsedTime)
 
 	if (fAngularVelocity && !m_pParticleProperty->m_bAttachFlag)
 	{
-		D3DXVec3TransformNormal(&m_pParticleProperty->m_v3ZAxis, &D3DXVECTOR3(0.0f, 0.0f, 1.0f), mc_pmatLocal);
+		{ D3DXVECTOR3 v3ZAxis(0.0f, 0.0f, 1.0f); D3DXVec3TransformNormal(&m_pParticleProperty->m_v3ZAxis, &v3ZAxis, mc_pmatLocal); }
 	}
 
 	for (dwFrameIndex = 0; dwFrameIndex < dwFrameCount; dwFrameIndex++)

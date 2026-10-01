@@ -1,6 +1,6 @@
 #include "StdAfx.h"
 #include "../EterBase/Random.h"
-#include "../eterlib/StateManager.h"
+#include "../EterLib/StateManager.h"
 #include "EffectManager.h"
 
 void CEffectManager::GetInfo(std::string* pstInfo)

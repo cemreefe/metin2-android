@@ -1,5 +1,6 @@
+#ifndef __ANDROID__
 #include "StdAfx.h"
-#include "MsWindow.h"
+#include "MSWindow.h"
 
 #include <windowsx.h>
 
@@ -246,3 +247,4 @@ CMSWindow::CMSWindow()
 CMSWindow::~CMSWindow()
 {
 }
+#endif

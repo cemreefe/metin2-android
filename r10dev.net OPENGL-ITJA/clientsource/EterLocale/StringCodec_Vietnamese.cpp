@@ -1,4 +1,4 @@
-#include "stdafx.h"
+#include "StdAfx.h"
 #include "StringCodec_Vietnamese.h"
 
 #pragma warning(disable: 4310) // char 짤림 경고 무시

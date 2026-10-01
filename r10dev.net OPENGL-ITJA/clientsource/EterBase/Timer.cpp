@@ -14,7 +14,9 @@ static DWORD gs_dwFrameTime = 0;
 #endif
 
 #ifndef __ANDROID__
+#ifndef __ANDROID__
 #pragma comment(lib, "winmm.lib")
+#endif
 #endif
 
 #ifdef __ANDROID__

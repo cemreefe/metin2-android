@@ -31,7 +31,9 @@ extern "C" {
 #ifdef _WIN32
 	#if (defined(IL_USE_PRAGMA_LIBS)) && (!defined(_IL_BUILD_LIBRARY))
 		#if defined(_MSC_VER) || defined(__BORLANDC__)
+#ifndef __ANDROID__
 			#pragma comment(lib, "ILU.lib")
+#endif
 		#endif
 	#endif
 #endif

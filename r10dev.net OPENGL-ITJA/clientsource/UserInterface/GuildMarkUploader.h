@@ -29,7 +29,7 @@ public:
 
 #else
 
-#include <il/il.h>
+#include <IL/il.h>
 
 class CGuildMarkUploader : public CNetworkStream, public CSingleton<CGuildMarkUploader>
 {

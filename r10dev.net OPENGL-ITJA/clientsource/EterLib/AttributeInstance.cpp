@@ -25,19 +25,23 @@ bool CAttributeInstance::Picking(const D3DXVECTOR3& v, const D3DXVECTOR3& dir, f
 			const D3DXVECTOR3& cv1 = m_v3HeightDataVector[i][j + 2];
 
 			D3DXVECTOR3 n;
-			D3DXVec3Cross(&n, &(cv1 - cv0), &(cv2 - cv0));
+			D3DXVECTOR3 e1 = cv1 - cv0, e2 = cv2 - cv0;
+			D3DXVec3Cross(&n, &e1, &e2);
 			D3DXVECTOR3 x;
 			float t;
-			t = -D3DXVec3Dot(&(v - cv0), &n) / D3DXVec3Dot(&dir, &n);
+			D3DXVECTOR3 vOff = v - cv0;
+			t = -D3DXVec3Dot(&vOff, &n) / D3DXVec3Dot(&dir, &n);
 
 			x = v + t * dir;
 
-			D3DXVECTOR3 temp;
-			D3DXVec3Cross(&temp, &(cv1 - cv0), &(x - cv0));
+			D3DXVECTOR3 temp, xOff = x - cv0, xOff1 = x - cv1, xOff2 = x - cv2;
+			D3DXVec3Cross(&temp, &e1, &xOff);
 			if (D3DXVec3Dot(&temp, &n) < 0) continue;
-			D3DXVec3Cross(&temp, &(cv2 - cv1), &(x - cv1));
+			D3DXVECTOR3 e12 = cv2 - cv1;
+			D3DXVec3Cross(&temp, &e12, &xOff1);
 			if (D3DXVec3Dot(&temp, &n) < 0) continue;
-			D3DXVec3Cross(&temp, &(cv0 - cv2), &(x - cv2));
+			D3DXVECTOR3 e20 = cv0 - cv2;
+			D3DXVec3Cross(&temp, &e20, &xOff2);
 			if (D3DXVec3Dot(&temp, &n) < 0) continue;
 
 			if (bPicked)

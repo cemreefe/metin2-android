@@ -7,9 +7,7 @@
 
 #define WIN32_LEAN_AND_MEAN		// Exclude rarely-used stuff from Windows headers
 
-#ifndef __ANDROID__
 #include <windows.h>
-#endif
 #include <assert.h>
 
 #include "CodePageId.h"

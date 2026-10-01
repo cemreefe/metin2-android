@@ -458,12 +458,12 @@ public:
 
 		static void Process(void* obj, DWORD structSize, DWORD i, CPythonNonPlayer::TMobTable& t)
 		{
-#define MTABLE_COPY_STR(x) strncpy_s(t.##x##, sizeof(t.##x##), r.##x##, _TRUNCATE)
-#define MTABLE_COPY_INT(x) t.##x## = r.##x
-#define MTABLE_COPY_FLT(x) t.##x## = r.##x
-#define MTABLE_COUNT(x) _countof(t.##x##)
+#define MTABLE_COPY_STR(x) strncpy_s(t.x, sizeof(t.x), r.x, _TRUNCATE)
+#define MTABLE_COPY_INT(x) t.x = r.x
+#define MTABLE_COPY_FLT(x) t.x = r.x
+#define MTABLE_COUNT(x) _countof(t.x)
 #define MTABLE_PROCESS(len)\
-					CPythonNonPlayer::TMobTable_r##len## & r = *((CPythonNonPlayer::TMobTable_r##len## *) obj + i);\
+					CPythonNonPlayer::TMobTable_r##len & r = *((CPythonNonPlayer::TMobTable_r##len *) obj + i);\
 					MTABLE_COPY_INT(dwVnum);\
 					MTABLE_COPY_STR(szName);\
 					MTABLE_COPY_STR(szLocaleName);\

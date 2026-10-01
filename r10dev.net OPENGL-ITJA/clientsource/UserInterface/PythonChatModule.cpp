@@ -1,7 +1,7 @@
 #include "StdAfx.h"
 #include "PythonChat.h"
 #include "PythonItem.h"
-#include "../gamelib/ItemManager.h"
+#include "../GameLib/ItemManager.h"
 #ifdef ENABLE_EXTENDED_ITEMNAME
 	#include "PythonSkill.h"
 	#include "PythonNonPlayer.h"

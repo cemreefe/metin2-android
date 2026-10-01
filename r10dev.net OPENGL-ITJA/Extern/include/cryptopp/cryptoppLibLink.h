@@ -12,9 +12,13 @@
 #else
 	#ifdef _WIN32
 		#ifdef _DEBUG
+#ifndef __ANDROID__
 			#pragma comment( lib, "cryptlib-Debug.lib" )
+#endif
 		#else
+#ifndef __ANDROID__
 			#pragma comment( lib, "cryptlib-Release.lib" )
+#endif
 		#endif
 	#endif
 #endif

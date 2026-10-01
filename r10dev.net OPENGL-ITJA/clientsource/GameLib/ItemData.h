@@ -596,13 +596,13 @@ public:
 
 		static void Process(void* obj, DWORD structSize, DWORD i, CItemData::TItemTable& t)
 		{
-#define ITABLE_COPY_STR(x) strncpy_s(t.##x##, sizeof(t.##x##), r.##x##, _TRUNCATE)
-#define ITABLE_COPY_INT(x) t.##x## = r.##x
-#define ITABLE_ZERO_STR(x) memset(t.##x##, 0, sizeof(t.##x##));
-#define ITABLE_ZERO_INT(x) t.##x## = 0
-#define ITABLE_COUNT(x) _countof(t.##x##)
+#define ITABLE_COPY_STR(x) strncpy_s(t.x, sizeof(t.x), r.x, _TRUNCATE)
+#define ITABLE_COPY_INT(x) t.x = r.x
+#define ITABLE_ZERO_STR(x) memset(t.x, 0, sizeof(t.x));
+#define ITABLE_ZERO_INT(x) t.x = 0
+#define ITABLE_COUNT(x) _countof(t.x)
 #define ITABLE_PROCESS(len)\
-					CItemData::TItemTable_r##len## & r = *((CItemData::TItemTable_r##len## *) obj + i);\
+					CItemData::TItemTable_r##len & r = *((CItemData::TItemTable_r##len *) obj + i);\
 					ITABLE_COPY_INT(dwVnum);\
 					ITABLE_COPY_STR(szName);\
 					ITABLE_COPY_STR(szLocaleName);\

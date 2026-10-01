@@ -1,8 +1,8 @@
 #pragma once
 
 #include "../EffectLib/StdAfx.h"
-#include "../eterlib/Resource.h"
-#include "../eterlib/ResourceManager.h"
+#include "../EterLib/Resource.h"
+#include "../EterLib/ResourceManager.h"
 
 enum EResourceTypes
 {

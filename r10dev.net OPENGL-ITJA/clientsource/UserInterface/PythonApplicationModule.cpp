@@ -31,10 +31,12 @@ PyObject* appShowWebPage(PyObject* poSelf, PyObject* poArgs)
 	rcWebPage.right = PyInt_AsLong(PyTuple_GetItem(poRect, 2));
 	rcWebPage.bottom = PyInt_AsLong(PyTuple_GetItem(poRect, 3));
 
+#ifndef __ANDROID__
 	CPythonApplication::Instance().ShowWebPage(
 		szWebPage,
 		rcWebPage
 	);
+#endif
 	return Py_BuildNone();
 }
 
@@ -50,19 +52,27 @@ PyObject* appMoveWebPage(PyObject* poSelf, PyObject* poArgs)
 	rcWebPage.right = PyInt_AsLong(PyTuple_GetItem(poRect, 2));
 	rcWebPage.bottom = PyInt_AsLong(PyTuple_GetItem(poRect, 3));
 
+#ifndef __ANDROID__
 	CPythonApplication::Instance().MoveWebPage(rcWebPage);
+#endif
 	return Py_BuildNone();
 }
 
 PyObject* appHideWebPage(PyObject* poSelf, PyObject* poArgs)
 {
+#ifndef __ANDROID__
 	CPythonApplication::Instance().HideWebPage();
+#endif
 	return Py_BuildNone();
 }
 
 PyObject* appIsWebPageMode(PyObject* poSelf, PyObject* poArgs)
 {
+#ifdef __ANDROID__
+	return Py_BuildValue("i", 0);
+#else
 	return Py_BuildValue("i", CPythonApplication::Instance().IsWebPageMode());
+#endif
 }
 
 PyObject* appEnablePerformanceTime(PyObject* poSelf, PyObject* poArgs)
@@ -289,7 +299,7 @@ PyObject* appLoadLocaleAddr(PyObject* poSelf, PyObject* poArgs)
 
 	char* buf = (char*)_alloca(size);
 	//int decSize =
-	tea_decrypt((unsigned long*)buf, (const unsigned long*)enc, (const unsigned long*)key, size);
+	tea_decrypt((DWORD*)buf, (const DWORD*)enc, (const DWORD*)key, size);
 	unsigned int retSize = *(unsigned int*)buf;
 	char* ret = buf + sizeof(unsigned int);
 	return Py_BuildValue("s#", ret, retSize);
@@ -333,7 +343,7 @@ PyObject* appGetImageInfo(PyObject* poSelf, PyObject* poArgs)
 
 #else
 
-#include <il/il.h>
+#include <IL/il.h>
 
 PyObject* appGetImageInfo(PyObject* poSelf, PyObject* poArgs)
 {
@@ -348,7 +358,15 @@ PyObject* appGetImageInfo(PyObject* poSelf, PyObject* poArgs)
 	ILuint uImg;
 	ilGenImages(1, &uImg);
 	ilBindImage(uImg);
-	if (ilLoad(IL_TYPE_UNKNOWN, szFileName))
+#ifdef _UNICODE
+	wchar_t wszFileName[256];
+	mbstowcs(wszFileName, szFileName, 255);
+	wszFileName[255] = 0;
+	#define ilLoad_ ilLoad
+#else
+	const wchar_t* wszFileName = szFileName;
+#endif
+	if (ilLoad(IL_TYPE_UNKNOWN, wszFileName))
 	{
 		canLoad = TRUE;
 		uWidth = ilGetInteger(IL_IMAGE_WIDTH);
@@ -361,7 +379,7 @@ PyObject* appGetImageInfo(PyObject* poSelf, PyObject* poArgs)
 }
 #endif
 
-#include "../EterPack/EterPackManager.h"
+#include "../eterPack/EterPackManager.h"
 
 PyObject* appIsExistFile(PyObject* poSelf, PyObject* poArgs)
 {
@@ -1071,7 +1089,7 @@ PyObject* appOpenTextFile(PyObject* poSelf, PyObject* poArgs)
 
 	CTextLineLoader* pTextLineLoader = new CTextLineLoader(szFileName);
 
-	return Py_BuildValue("i", (int)pTextLineLoader);
+	return Py_BuildValue("i", (int)(intptr_t)pTextLineLoader);
 }
 
 PyObject* appCloseTextFile(PyObject* poSelf, PyObject* poArgs)

@@ -1,9 +1,9 @@
-#include "stdafx.h"
-#include "pythoncharactermanager.h"
+#include "StdAfx.h"
+#include "PythonCharacterManager.h"
 #include "PythonBackground.h"
 #include "PythonNonPlayer.h"
 #include "AbstractPlayer.h"
-#include "packet.h"
+#include "Packet.h"
 
 #include "../EterLib/Camera.h"
 

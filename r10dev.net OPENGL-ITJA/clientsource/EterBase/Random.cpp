@@ -4,7 +4,7 @@
 
 static unsigned long randseed = 1;
 
-void srandom(unsigned long seed)
+void srandom(unsigned int seed)
 {
 	randseed = seed;
 }
@@ -14,7 +14,7 @@ void srandom(unsigned long seed)
  * and whatever else we might use it for.  The result is uniform on
  * [0, 2^31 - 1].
  */
-unsigned long random()
+long random()
 {
 	register long x, hi, lo, t;
 

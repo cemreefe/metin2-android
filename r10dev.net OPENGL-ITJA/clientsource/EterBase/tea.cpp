@@ -12,13 +12,13 @@
 * TEA Encryption Module Instruction
 *					Edited by ������ aka. ��, Cronan
 *
-* void tea_code(const unsigned long sz, const unsigned long sy, const unsigned long *key, unsigned long *dest)
-* void tea_decode(const unsigned long sz, const unsigned long sy, const unsigned long *key, unsigned long *dest)
+* void tea_code(const DWORD sz, const DWORD sy, const DWORD *key, DWORD *dest)
+* void tea_decode(const DWORD sz, const DWORD sy, const DWORD *key, DWORD *dest)
 *   8����Ʈ�� ��ȣ/��ȣȭ �Ҷ� ���ȴ�. key �� 16 ����Ʈ���� �Ѵ�.
 *   sz, sy �� 8����Ʈ�� �������� �����Ѵ�.
 *
-* int tea_decrypt(unsigned long *dest, const unsigned long *src, const unsigned long *key, int size);
-* int tea_encrypt(unsigned long *dest, const unsigned long *src, const unsigned long *key, int size);
+* int tea_decrypt(DWORD *dest, const DWORD *src, const DWORD *key, int size);
+* int tea_encrypt(DWORD *dest, const DWORD *src, const DWORD *key, int size);
 *   �Ѳ����� 8 ����Ʈ �̻��� ��ȣ/��ȣȭ �Ҷ� ����Ѵ�. ���� size ��
 *   8�� ����� �ƴϸ� 8�� ����� ũ�⸦ "�÷���" ��ȣȭ �Ѵ�.
 *
@@ -29,10 +29,10 @@
 #define TEA_ROUND		32		// 32 �� �����ϸ�, ���� ���� ����� ������ ����.
 #define DELTA			0x9E3779B9	// DELTA �� �ٲ��� ����.
 
-void tea_code(const unsigned long sz, const unsigned long sy, const unsigned long* key, unsigned long* dest)
+void tea_code(const DWORD sz, const DWORD sy, const DWORD* key, DWORD* dest)
 {
-	register unsigned long y = sy, z = sz, sum = 0;
-	unsigned long		n = TEA_ROUND;
+	register DWORD y = sy, z = sz, sum = 0;
+	DWORD		n = TEA_ROUND;
 
 	while (n-- > 0)
 	{
@@ -45,13 +45,13 @@ void tea_code(const unsigned long sz, const unsigned long sy, const unsigned lon
 	*dest = z;
 }
 
-void tea_decode(const unsigned long sz, const unsigned long sy, const unsigned long* key, unsigned long* dest)
+void tea_decode(const DWORD sz, const DWORD sy, const DWORD* key, DWORD* dest)
 {
 #pragma warning(disable:4307)
-	register unsigned long y = sy, z = sz, sum = DELTA * TEA_ROUND;
+	register DWORD y = sy, z = sz, sum = DELTA * TEA_ROUND;
 #pragma warning(default:4307)
 
-	unsigned long		n = TEA_ROUND;
+	DWORD		n = TEA_ROUND;
 
 	while (n-- > 0)
 	{
@@ -64,7 +64,7 @@ void tea_decode(const unsigned long sz, const unsigned long sy, const unsigned l
 	*dest = z;
 }
 
-int tea_encrypt(unsigned long* dest, const unsigned long* src, const unsigned long* key, int size)
+int tea_encrypt(DWORD* dest, const DWORD* src, const DWORD* key, int size)
 {
 	int		i;
 	int		resize;
@@ -83,7 +83,7 @@ int tea_encrypt(unsigned long* dest, const unsigned long* src, const unsigned lo
 	return (resize);
 }
 
-int tea_decrypt(unsigned long* dest, const unsigned long* src, const unsigned long* key, int size)
+int tea_decrypt(DWORD* dest, const DWORD* src, const DWORD* key, int size)
 {
 	int		i;
 	int		resize;

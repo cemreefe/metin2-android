@@ -4,8 +4,8 @@
 #include "ParticleInstance.h"
 #include "ParticleProperty.h"
 
-#include "../eterlib/GrpScreen.h"
-#include "../eterlib/StateManager.h"
+#include "../EterLib/GrpScreen.h"
+#include "../EterLib/StateManager.h"
 #include "../EterLib/GrpImageInstance.h"
 #include "EmitterProperty.h"
 
@@ -21,7 +21,7 @@ public:
 
 public:
 	template <typename T>
-	inline void ForEachParticleRendering(T& FunObj)
+	inline void ForEachParticleRendering(T FunObj)
 	{
 		DWORD dwFrameIndex;
 		for (dwFrameIndex = 0; dwFrameIndex < m_kVct_pkImgInst.size(); dwFrameIndex++)

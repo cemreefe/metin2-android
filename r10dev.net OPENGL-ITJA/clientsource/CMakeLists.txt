@@ -37,6 +37,15 @@ include_directories(
 )
 
 set(ETER_BASE_SOURCES
+    android_compat/win_stub.cpp
+    EterBase/Poly/Poly.cpp
+    EterBase/Poly/SymTable.cpp
+    android_compat/granny_stub.cpp
+    android_compat/devil_stub.cpp
+    android_compat/gdi_font.cpp
+    android_compat/speedtree_stub.cpp
+    android_compat/ime_stub.cpp
+    android_compat/mswindow_stub.cpp
     EterBase/CPostIt.cpp
     EterBase/CRC32.cpp
     EterBase/Debug.cpp
@@ -57,6 +66,9 @@ set(ETER_BASE_SOURCES
 )
 
 set(ETER_LIB_SOURCES
+    EterLib/IME.cpp
+    EterLib/MSWindow.cpp
+    EterLib/DibBar.cpp
     EterLib/Camera.cpp
     EterLib/GrpDevice.cpp
     EterLib/GrpObjectInstance.cpp
@@ -90,6 +102,42 @@ set(ETER_LIB_SOURCES
     EterLib/TargaResource.cpp
     EterLib/TextFileLoader.cpp
     EterLib/Util.cpp
+    EterLib/BlockTexture.cpp
+    EterLib/ColorTransitionHelper.cpp
+    EterLib/CullingManager.cpp
+    EterLib/Decal.cpp
+    EterLib/EnvironmentMap.cpp
+    EterLib/FileLoaderThread.cpp
+    EterLib/GrpCollisionObject.cpp
+    EterLib/GrpD3DXBuffer.cpp
+    EterLib/GrpDIB.cpp
+    EterLib/GrpDetector.cpp
+    EterLib/GrpExpandedImageInstance.cpp
+    EterLib/GrpFontTexture.cpp
+    EterLib/GrpLightManager.cpp
+    EterLib/GrpMarkInstance.cpp
+    EterLib/GrpPixelShader.cpp
+    EterLib/GrpRatioInstance.cpp
+    EterLib/GrpShadowTexture.cpp
+    EterLib/GrpSubImage.cpp
+    EterLib/GrpVertexBufferDynamic.cpp
+    EterLib/GrpVertexBufferStatic.cpp
+    EterLib/GrpVertexShader.cpp
+    EterLib/JpegFile.cpp
+    EterLib/LensFlare.cpp
+    EterLib/Mutex.cpp
+    EterLib/NetDatagram.cpp
+    EterLib/NetPacketHeaderMap.cpp
+    EterLib/PathStack.cpp
+    EterLib/ReferenceObject.cpp
+    EterLib/ScreenFilter.cpp
+    EterLib/SkyBox.cpp
+    EterLib/StateManager.cpp
+    EterLib/TextBar.cpp
+    EterLib/TextTag.cpp
+    EterLib/Thread.cpp
+    EterLib/lineintersect_utils.cpp
+    EterLib/parser.cpp
 )
 
 set(ETER_IMAGE_LIB_SOURCES
@@ -128,9 +176,45 @@ set(GAME_LIB_SOURCES
     GameLib/RaceData.cpp
     GameLib/RaceManager.cpp
     GameLib/StdAfx.cpp
+    GameLib/AreaTerrain.cpp
+    GameLib/DungeonBlock.cpp
+    GameLib/FlyTarget.cpp
+    GameLib/FlyTrace.cpp
+    GameLib/FlyingData.cpp
+    GameLib/FlyingObjectManager.cpp
+    GameLib/GameType.cpp
+    GameLib/GameUtil.cpp
+    GameLib/MapBase.cpp
+    GameLib/MapOutdoorCharacterShadow.cpp
+    GameLib/MapOutdoorIndexBuffer.cpp
+    GameLib/MapOutdoorLoad.cpp
+    GameLib/MapOutdoorQuadtree.cpp
+    GameLib/MapOutdoorRender.cpp
+    GameLib/MapOutdoorRenderHTP.cpp
+    GameLib/MapOutdoorRenderSTP.cpp
+    GameLib/MapOutdoorUpdate.cpp
+    GameLib/MapOutdoorWater.cpp
+    GameLib/MapType.cpp
+    GameLib/MapUtil.cpp
+    GameLib/MonsterAreaInfo.cpp
+    GameLib/PhysicsObject.cpp
+    GameLib/Property.cpp
+    GameLib/PropertyLoader.cpp
+    GameLib/RaceDataFile.cpp
+    GameLib/RaceMotionData.cpp
+    GameLib/SnowEnvironment.cpp
+    GameLib/SnowParticle.cpp
+    GameLib/TerrainDecal.cpp
+    GameLib/TerrainPatch.cpp
+    GameLib/TerrainQuadtree.cpp
+    GameLib/WeaponTrace.cpp
 )
 
 set(USER_INTERFACE_SOURCES
+    UserInterface/ProcessCRC.cpp
+    UserInterface/GuildMarkDownloader.cpp
+    UserInterface/GuildMarkUploader.cpp
+    UserInterface/InsultChecker.cpp
     UserInterface/AndroidMain.cpp
     UserInterface/PythonApplication.cpp
     UserInterface/PythonApplicationModule.cpp
@@ -144,6 +228,80 @@ set(USER_INTERFACE_SOURCES
     UserInterface/PythonNetworkStreamPhaseSelect.cpp
     UserInterface/UserInterface.cpp
     UserInterface/StdAfx.cpp
+    UserInterface/AccountConnector.cpp
+    UserInterface/AffectFlagContainer.cpp
+    UserInterface/CameraProcedure.cpp
+    UserInterface/GameType.cpp
+    UserInterface/InstanceBase.cpp
+    UserInterface/InstanceBaseBattle.cpp
+    UserInterface/InstanceBaseEffect.cpp
+    UserInterface/InstanceBaseEvent.cpp
+    UserInterface/InstanceBaseMotion.cpp
+    UserInterface/InstanceBaseMovement.cpp
+    UserInterface/InstanceBaseTransform.cpp
+    UserInterface/Locale.cpp
+    UserInterface/MarkImage.cpp
+    UserInterface/MarkManager.cpp
+    UserInterface/NetworkActorManager.cpp
+    UserInterface/PythonAcce.cpp
+    UserInterface/PythonApplicationCamera.cpp
+    UserInterface/PythonApplicationCursor.cpp
+    UserInterface/PythonApplicationEvent.cpp
+    UserInterface/PythonApplicationLogo.cpp
+    UserInterface/PythonApplicationProcedure.cpp
+    UserInterface/PythonApplicationWebPage.cpp
+    UserInterface/PythonBackground.cpp
+    UserInterface/PythonBackgroundModule.cpp
+    UserInterface/PythonCharacterManager.cpp
+    UserInterface/PythonCharacterManagerModule.cpp
+    UserInterface/PythonCharacterModule.cpp
+    UserInterface/PythonChat.cpp
+    UserInterface/PythonChatModule.cpp
+    UserInterface/PythonEffectModule.cpp
+    UserInterface/PythonEventManager.cpp
+    UserInterface/PythonEventManagerMoudle.cpp
+    UserInterface/PythonExceptionSender.cpp
+    UserInterface/PythonExchange.cpp
+    UserInterface/PythonExchangeModule.cpp
+    UserInterface/PythonFlyModule.cpp
+    UserInterface/PythonGameEventManagerModule.cpp
+    UserInterface/PythonGuild.cpp
+    UserInterface/PythonIME.cpp
+    UserInterface/PythonIMEModule.cpp
+    UserInterface/PythonItem.cpp
+    UserInterface/PythonItemModule.cpp
+    UserInterface/PythonMessenger.cpp
+    UserInterface/PythonMiniMap.cpp
+    UserInterface/PythonMiniMapModule.cpp
+    UserInterface/PythonNetworkDatagram.cpp
+    UserInterface/PythonNetworkDatagramModule.cpp
+    UserInterface/PythonNetworkStreamCommand.cpp
+    UserInterface/PythonNetworkStreamEvent.cpp
+    UserInterface/PythonNetworkStreamPhaseGameActor.cpp
+    UserInterface/PythonNetworkStreamPhaseGameItem.cpp
+    UserInterface/PythonNetworkStreamPhaseHandShake.cpp
+    UserInterface/PythonNetworkStreamPhaseOffline.cpp
+    UserInterface/PythonNonPlayer.cpp
+    UserInterface/PythonNonPlayerModule.cpp
+    UserInterface/PythonPackModule.cpp
+    UserInterface/PythonPlayerEventHandler.cpp
+    UserInterface/PythonPlayerInput.cpp
+    UserInterface/PythonPlayerInputKeyboard.cpp
+    UserInterface/PythonPlayerInputMouse.cpp
+    UserInterface/PythonPlayerSkill.cpp
+    UserInterface/PythonProfilerModule.cpp
+    UserInterface/PythonQuest.cpp
+    UserInterface/PythonSafeBox.cpp
+    UserInterface/PythonShop.cpp
+    UserInterface/PythonSkill.cpp
+    UserInterface/PythonSoundManagerModule.cpp
+    UserInterface/PythonSystem.cpp
+    UserInterface/PythonSystemModule.cpp
+    UserInterface/PythonTextTail.cpp
+    UserInterface/PythonTextTailModule.cpp
+    UserInterface/ServerStateChecker.cpp
+    UserInterface/ServerStateCheckerModule.cpp
+    UserInterface/WiseLogicXTrap.cpp
 )
 
 set(ETER_PACK_SOURCES
@@ -167,6 +325,9 @@ set(ETER_GRN_LIB_SOURCES
     EterGrnLib/StdAfx.cpp
     EterGrnLib/Thing.cpp
     EterGrnLib/ThingInstance.cpp
+    EterGrnLib/LODController.cpp
+    EterGrnLib/ModelInstanceMotion.cpp
+    EterGrnLib/Motion.cpp
 )
 
 set(EFFECT_LIB_SOURCES
@@ -267,6 +428,7 @@ else()
     set(C_WEB_BROWSER_SOURCES "")
 endif()
 
+link_directories(${CMAKE_CURRENT_SOURCE_DIR}/../Extern/lib/android/${ANDROID_ABI})
 add_library(metin2_mobile SHARED
     ${USER_INTERFACE_SOURCES}
     ${ETER_BASE_SOURCES}
@@ -299,20 +461,19 @@ set(METIN2_EXTERN_LIBS
     python2.7
     cryptopp
     lzo2
-    il
-    ilu
-    ilut
     jpeg
     png
-    speedtree
-    granny2
-    mss
 )
+
+if(ANDROID)
+    target_compile_options(metin2_mobile PRIVATE -include windows.h)
+endif()
 
 target_link_libraries(metin2_mobile
     ${log-lib}
     ${android-lib}
     ${gles3-lib}
+    EGL
     ${METIN2_EXTERN_LIBS}
     z
     m

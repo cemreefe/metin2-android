@@ -1,8 +1,8 @@
 #pragma once
 
-#include "../eterlib/GrpObjectInstance.h"
-#include "../eterlib/Pool.h"
-#include "../mileslib/Type.h"
+#include "../EterLib/GrpObjectInstance.h"
+#include "../EterLib/Pool.h"
+#include "../MilesLib/Type.h"
 
 #include "EffectElementBaseInstance.h"
 #include "EffectData.h"

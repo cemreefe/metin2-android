@@ -1,9 +1,9 @@
-#include "stdafx.h"
+#include "StdAfx.h"
 #include "MarkImage.h"
 
-#if !defined(_MSC_VER)
+#if 0
 #include <IL/il.h>
-#include "crc32.h"
+#include "CRC32.h"
 #include "lzo_manager.h"
 #include "minilzo.h"
 #define CLZO LZOManager

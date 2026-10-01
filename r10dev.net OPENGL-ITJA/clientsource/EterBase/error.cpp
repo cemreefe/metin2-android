@@ -3,12 +3,14 @@
 #include <stdio.h>
 #include <time.h>
 #include <winsock.h>
+#ifndef __ANDROID__
 #include <imagehlp.h>
+#endif
 
 FILE* fException;
 
 
-#ifdef ENABLE_CRASH_MINIDUMP
+#if defined(ENABLE_CRASH_MINIDUMP) && !defined(__ANDROID__)
 #include "../UserInterface/Version.h"
 #include <iomanip>
 #include <sstream>
@@ -59,7 +61,7 @@ void make_minidump(EXCEPTION_POINTERS* e)
 
 LONG __stdcall EterExceptionFilter(_EXCEPTION_POINTERS* pExceptionInfo)
 {
-#ifdef ENABLE_CRASH_MINIDUMP
+#if defined(ENABLE_CRASH_MINIDUMP) && !defined(__ANDROID__)
 	make_minidump(pExceptionInfo);
 #else
 	// eterlog trash

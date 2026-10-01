@@ -163,7 +163,7 @@ void CParticleInstance::Transform(const D3DXMATRIX* c_matLocal)
 			const D3DXVECTOR3& c_rv3View = pCurrentCamera->GetView();
 			if (v3Up.x * c_rv3View.y - v3Up.y * c_rv3View.x < 0)
 				v3Up *= -1;
-			D3DXVec3Cross(&v3Cross, &v3Up, &D3DXVECTOR3(c_rv3View.x, c_rv3View.y, 0));
+			{ D3DXVECTOR3 v3ViewXY(c_rv3View.x, c_rv3View.y, 0); D3DXVec3Cross(&v3Cross, &v3Up, &v3ViewXY); }
 			D3DXVec3Normalize(&v3Cross, &v3Cross);
 
 			if (m_fRotation)
@@ -219,7 +219,7 @@ void CParticleInstance::Transform(const D3DXMATRIX* c_matLocal)
 
 			//D3DXMatrixRotationAxis(&matRotation, &c_rv3View, D3DXToRadian(m_fRotation));
 
-			//D3DXVec3TransformCoord(&v3Up, &(-c_rv3Cross), &matRotation);
+			//{ D3DXVECTOR3 v3NegCross = -c_rv3Cross; D3DXVec3TransformCoord(&v3Up, &v3NegCross, &matRotation); }
 			//D3DXVec3TransformCoord(&v3Cross, &c_rv3Up, &matRotation);
 		}
 		break;
@@ -315,7 +315,7 @@ void CParticleInstance::Transform(const D3DXMATRIX* c_matLocal, const float c_fZ
 			const D3DXVECTOR3& c_rv3View = pCurrentCamera->GetView();
 			if (v3Up.x * c_rv3View.y - v3Up.y * c_rv3View.x < 0)
 				v3Up *= -1;
-			D3DXVec3Cross(&v3Cross, &v3Up, &D3DXVECTOR3(c_rv3View.x, c_rv3View.y, 0));
+			{ D3DXVECTOR3 v3ViewXY(c_rv3View.x, c_rv3View.y, 0); D3DXVec3Cross(&v3Cross, &v3Up, &v3ViewXY); }
 			D3DXVec3Normalize(&v3Cross, &v3Cross);
 
 			if (m_fRotation)
@@ -349,7 +349,7 @@ void CParticleInstance::Transform(const D3DXMATRIX* c_matLocal, const float c_fZ
 				D3DXMATRIX matRotation;
 
 				D3DXMatrixRotationAxis(&matRotation, &c_rv3View, D3DXToRadian(m_fRotation));
-				D3DXVec3TransformCoord(&v3Up, &(-c_rv3Cross), &matRotation);
+				{ D3DXVECTOR3 v3NegCross = -c_rv3Cross; D3DXVec3TransformCoord(&v3Up, &v3NegCross, &matRotation); }
 				D3DXVec3TransformCoord(&v3Cross, &c_rv3Up, &matRotation);
 			}
 		}

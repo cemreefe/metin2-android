@@ -4,9 +4,7 @@
 
 #include "../UserInterface/Locale_inc.h"
 //#include <crtdbg.h>
-#ifndef __ANDROID__
 #include <windows.h>
-#endif
 #define GrannyTypeSizeCheck(expr) 
 #include <granny.h>
 #undef GrannyTypeSizeCheck

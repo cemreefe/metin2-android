@@ -1,5 +1,9 @@
 #include "StdAfx.h"
 #include "MappedFile.h"
+#ifdef __ANDROID__
+#include <android/asset_manager.h>
+struct AAsset;
+#endif
 #include "Debug.h"
 
 #ifdef __ANDROID__

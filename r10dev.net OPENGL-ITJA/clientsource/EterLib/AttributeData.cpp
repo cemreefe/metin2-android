@@ -123,7 +123,7 @@ bool CAttributeData::OnLoad(int /*iSize*/, const void* c_pvBuf)
 			break;
 		}
 
-		memcpy(rCollisionData.quatRotation, c_pbBuf, sizeof(D3DXQUATERNION));
+		memcpy(&rCollisionData.quatRotation, c_pbBuf, sizeof(D3DXQUATERNION));
 		c_pbBuf += sizeof(D3DXQUATERNION);
 	}
 

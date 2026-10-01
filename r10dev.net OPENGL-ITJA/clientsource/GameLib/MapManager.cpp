@@ -1,7 +1,7 @@
 #include "StdAfx.h"
 #include "../EterLib/StateManager.h"
 #include "../EterLib/GrpObjectInstance.h"
-#include "../EterPack/EterPackManager.h"
+#include "../eterPack/EterPackManager.h"
 
 #include "MapManager.h"
 #include "MapOutdoor.h"
@@ -239,7 +239,7 @@ void CMapManager::BeginEnvironment()
 	{
 		ms_lpd3dDevice->LightEnable(0, TRUE);
 
-		rkMap.ApplyLight((DWORD)mc_pcurEnvironmentData, mc_pcurEnvironmentData->DirLights[ENV_DIRLIGHT_BACKGROUND]);
+		rkMap.ApplyLight((uintptr_t)mc_pcurEnvironmentData, mc_pcurEnvironmentData->DirLights[ENV_DIRLIGHT_BACKGROUND]);
 	}
 	else
 		ms_lpd3dDevice->LightEnable(0, FALSE);

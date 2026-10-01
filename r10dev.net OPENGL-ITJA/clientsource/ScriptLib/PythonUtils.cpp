@@ -104,7 +104,7 @@ bool PyTuple_GetByte(PyObject* poArgs, int pos, unsigned char* ret)
 {
 	int val;
 	bool result = PyTuple_GetInteger(poArgs, pos, &val);
-	*ret = unsigned char(val);
+	*ret = (unsigned char)(val);
 	return result;
 }
 
@@ -112,7 +112,7 @@ bool PyTuple_GetInteger(PyObject* poArgs, int pos, unsigned char* ret)
 {
 	int val;
 	bool result = PyTuple_GetInteger(poArgs, pos, &val);
-	*ret = unsigned char(val);
+	*ret = (unsigned char)(val);
 	return result;
 }
 

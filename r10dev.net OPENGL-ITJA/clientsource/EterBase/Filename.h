@@ -232,10 +232,10 @@ public:
 	}
 
 	static string GetName(string& str);           // if filename is "/idv/code/file.cpp", it returns "file"
-	static string GetExtension(string& str);      // if filename is "/idv/code/file.cpp", it returns "cpp"
+	static string GetExtension(const string& str);      // if filename is "/idv/code/file.cpp", it returns "cpp"
 	static string GetPath(string& str);           // if filename is "/idv/code/file.cpp", it returns "/idv/code"
 	static string NoExtension(string& str);       // if filename is "/idv/code/file.cpp", it returns "/idv/code/file"
-	static string NoPath(string& str);            // if filename is "/idv/code/file.cpp", it returns "file.cpp"
+	static string NoPath(const string& str);            // if filename is "/idv/code/file.cpp", it returns "file.cpp"
 };
 
 ///////////////////////////////////////////////////////////////////////
@@ -273,7 +273,7 @@ inline string CFileNameHelper::GetName(string& str)
 ///////////////////////////////////////////////////////////////////////
 //	CFilenameHelper::GetExtension
 
-inline string CFileNameHelper::GetExtension(string& str)
+inline string CFileNameHelper::GetExtension(const string& str)
 {
 	string strExtension;
 
@@ -337,7 +337,7 @@ inline string CFileNameHelper::NoExtension(string& str)
 ///////////////////////////////////////////////////////////////////////
 //	CFilenameHelper::NoPath
 
-inline string CFileNameHelper::NoPath(string& str)
+inline string CFileNameHelper::NoPath(const string& str)
 {
 	char szPath[1024];
 	szPath[0] = '\0';

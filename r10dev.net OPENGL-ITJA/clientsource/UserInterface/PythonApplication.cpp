@@ -1,8 +1,8 @@
 #include "StdAfx.h"
-#include "../EterBase/Error.h"
-#include "../eterlib/Camera.h"
-#include "../eterlib/AttributeInstance.h"
-#include "../gamelib/AreaTerrain.h"
+#include "../EterBase/error.h"
+#include "../EterLib/Camera.h"
+#include "../EterLib/AttributeInstance.h"
+#include "../GameLib/AreaTerrain.h"
 #include "../EterGrnLib/Material.h"
 #include "../CWebBrowser/CWebBrowser.h"
 
@@ -12,7 +12,7 @@
 
 #include "ProcessScanner.h"
 
-#include "HackShield.h"
+#include "Hackshield.h"
 #include "NProtectGameGuard.h"
 #include "WiseLogicXTrap.h"
 #include "CheckLatestFiles.h"
@@ -1101,9 +1101,8 @@ bool CPythonApplication::Create(PyObject* poSelf, const char* c_szName, int widt
 	NANOBEGIN
 		Windowed = CPythonSystem::Instance().IsWindowed() ? 1 : 0;
 
-#ifndef __ANDROID__
 	bool bAnotherWindow = false;
-
+#ifndef __ANDROID__
 	if (FindWindow(NULL, c_szName))
 		bAnotherWindow = true;
 #endif

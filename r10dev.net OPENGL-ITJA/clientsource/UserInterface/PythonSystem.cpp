@@ -36,8 +36,9 @@ void CPythonSystem::GetDisplaySettings()
 	memset(m_ResolutionList, 0, sizeof(TResolution) * RESOLUTION_MAX_NUM);
 	m_ResolutionCount = 0;
 
+	LPDIRECT3D8 lpD3D = NULL;
 #ifndef __ANDROID__
-	LPDIRECT3D8 lpD3D = CPythonGraphic::Instance().GetD3D();
+	lpD3D = CPythonGraphic::Instance().GetD3D();
 #else
     m_ResolutionList[0].width = m_Config.width;
     m_ResolutionList[0].height = m_Config.height;

@@ -1,5 +1,5 @@
 #include "StdAfx.h"
-#include "../eterbase/Debug.h"
+#include "../EterBase/Debug.h"
 #include "Thing.h"
 #include "ThingInstance.h"
 

@@ -1,9 +1,9 @@
 #include "StdAfx.h"
 #include "BlockTexture.h"
 #include "GrpBase.h"
-#include "GrpDib.h"
-#include "../eterbase/Stl.h"
-#include "../eterlib/StateManager.h"
+#include "GrpDIB.h"
+#include "../EterBase/Stl.h"
+#include "StateManager.h"
 
 void CBlockTexture::SetClipRect(const RECT& c_rRect)
 {

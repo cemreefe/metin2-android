@@ -30,6 +30,8 @@
 
 #endif
 
+#ifndef __ANDROID__
 #pragma comment( lib, "libjpeg-" _RUNTIME_LIBRARY ".lib" )
+#endif
 
 #endif /* !_JPEGLIBLINK_H_ */

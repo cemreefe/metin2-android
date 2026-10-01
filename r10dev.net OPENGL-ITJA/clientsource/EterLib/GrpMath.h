@@ -79,20 +79,23 @@ inline D3DXQUATERNION RotationArc(const D3DXVECTOR3& vFrom, const D3DXVECTOR3& v
 
 inline float square_distance_between_linesegment_and_point(const D3DXVECTOR3& p1, const D3DXVECTOR3& p2, const D3DXVECTOR3& x)
 {
-	float l = D3DXVec3LengthSq(&(p2 - p1));
-	float d = D3DXVec3Dot(&(x - p1), &(p2 - p1));
+	D3DXVECTOR3 vDiff = p2 - p1;
+	D3DXVECTOR3 vOff = x - p1;
+	float l = D3DXVec3LengthSq(&vDiff);
+	float d = D3DXVec3Dot(&vOff, &vDiff);
 	if (d <= 0.0f)
 	{
-		return D3DXVec3LengthSq(&(x - p1));
+		return D3DXVec3LengthSq(&vOff);
 	}
 	else if (d >= l)
 	{
-		return D3DXVec3LengthSq(&(x - p2));
+		D3DXVECTOR3 vOff2 = x - p2;
+		return D3DXVec3LengthSq(&vOff2);
 	}
 	else
 	{
 		D3DXVECTOR3 c;
-		return D3DXVec3LengthSq(D3DXVec3Cross(&c, &(x - p1), &(p2 - p1))) / l;
+		return D3DXVec3LengthSq(D3DXVec3Cross(&c, &vOff, &vDiff)) / l;
 	}
 }
 

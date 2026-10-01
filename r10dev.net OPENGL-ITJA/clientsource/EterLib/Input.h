@@ -13,7 +13,11 @@ public:
 	HRESULT CreateDevice(HWND hWnd);
 
 protected:
+#ifdef __ANDROID__
+	static void* ms_lpDI;
+#else
 	static LPDIRECTINPUT8 ms_lpDI;
+#endif
 };
 
 class CInputKeyboard : public CInputDevice
@@ -35,7 +39,11 @@ protected:
 	virtual void	OnKeyUp(int iIndex) = 0;
 
 protected:
+#ifdef __ANDROID__
+	static void*					ms_lpKeyboard;
+#else
 	static LPDIRECTINPUTDEVICE8	ms_lpKeyboard;
+#endif
 	static bool					ms_bPressedKey[256];
 	static char					ms_diks[256];
 };

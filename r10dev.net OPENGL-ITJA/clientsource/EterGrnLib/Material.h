@@ -10,9 +10,9 @@
 #include "../EterLib/GrpOpenGL.h"
 #endif
 
-#include "../eterlib/ReferenceObject.h"
-#include "../eterlib/Ref.h"
-#include "../eterlib/GrpImageInstance.h"
+#include "../EterLib/ReferenceObject.h"
+#include "../EterLib/Ref.h"
+#include "../EterLib/GrpImageInstance.h"
 #include "Util.h"
 
 class CGrannyMaterial : public CReferenceObject

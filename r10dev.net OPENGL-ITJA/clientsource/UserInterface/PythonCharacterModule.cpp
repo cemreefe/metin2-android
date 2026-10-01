@@ -1,7 +1,7 @@
 #include "StdAfx.h"
 #include "PythonCharacterManager.h"
 #include "PythonNonPlayer.h"
-#include "../gamelib/GameLibDefines.h"
+#include "../GameLib/GameLibDefines.h"
 
 PyObject* chrRaceToJob(PyObject* poSelf, PyObject* poArgs)
 {

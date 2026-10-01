@@ -1,9 +1,9 @@
 #pragma once
 
-#include "../eterlib/GrpTextInstance.h"
-#include "../eterlib/GrpMarkInstance.h"
-#include "../eterlib/GrpImageInstance.h"
-#include "../eterlib/GrpExpandedImageInstance.h"
+#include "../EterLib/GrpTextInstance.h"
+#include "../EterLib/GrpMarkInstance.h"
+#include "../EterLib/GrpImageInstance.h"
+#include "../EterLib/GrpExpandedImageInstance.h"
 
 #include "../EterGrnLib/ThingInstance.h"
 

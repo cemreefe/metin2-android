@@ -445,7 +445,7 @@ protected:
 	// View Frustum Culling
 	D3DXPLANE					m_plane[6];
 
-	void BuildViewFrustum(D3DXMATRIX& mat);
+	void BuildViewFrustum(const D3DXMATRIX& mat);
 
 	CTextureSet					m_TextureSet;
 

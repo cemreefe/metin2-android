@@ -1,4 +1,4 @@
-#include "Stdafx.h"
+#include "StdAfx.h"
 #include "CollisionData.h"
 #include "Pool.h"
 #include "GrpScreen.h"

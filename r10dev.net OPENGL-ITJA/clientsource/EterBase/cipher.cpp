@@ -1,4 +1,4 @@
-#include "stdafx.h"
+#include "StdAfx.h"
 
 #include "cipher.h"
 
@@ -93,11 +93,11 @@ struct BlockCipherDetail : public BlockCipherAlgorithm {
 
 	virtual SymmetricCipher* CreateEncoder(const byte* key, size_t keylen,
 		const byte* iv) const {
-		return new CTR_Mode<T>::Encryption(key, keylen, iv);
+		return new typename CTR_Mode<T>::Encryption(key, keylen, iv);
 	}
 	virtual SymmetricCipher* CreateDecoder(const byte* key, size_t keylen,
 		const byte* iv) const {
-		return new CTR_Mode<T>::Decryption(key, keylen, iv);
+		return new typename CTR_Mode<T>::Decryption(key, keylen, iv);
 	}
 };
 

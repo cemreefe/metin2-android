@@ -10,6 +10,7 @@ bool CPythonApplication::IsWebPageMode()
 }
 #endif
 
+#ifndef __ANDROID__
 void CPythonApplication::ShowWebPage(const char* c_szURL, const RECT& c_rcWebPage)
 {
 	if (WebBrowser_IsVisible())
@@ -47,3 +48,4 @@ void CPythonApplication::HideWebPage()
 			SetCursorMode(CURSOR_MODE_HARDWARE);
 	}
 }
+#endif // __ANDROID__

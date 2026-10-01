@@ -7,7 +7,9 @@
 
 #ifdef _MSC_VER
 	#ifndef _IL_WRAP_BUILD_LIB
+#ifndef __ANDROID__
 		#pragma comment(lib, "il_wrap.lib")
+#endif
 	#endif
 #endif
 

@@ -6,9 +6,9 @@
 #include "../EterLib/GrpOpenGL.h"
 #endif
 
-#include "../eterlib/GrpScreen.h"
-#include "../eterlib/Resource.h"
-#include "../eterlib/GrpImageInstance.h"
+#include "../EterLib/GrpScreen.h"
+#include "../EterLib/Resource.h"
+#include "../EterLib/GrpImageInstance.h"
 #include "../EterLib/TextFileLoader.h"
 
 #include "Type.h"

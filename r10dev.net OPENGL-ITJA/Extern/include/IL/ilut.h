@@ -93,7 +93,9 @@
 #if (defined(_WIN32) || defined(_WIN64))
 	#if (defined(IL_USE_PRAGMA_LIBS)) && (!defined(_IL_BUILD_LIBRARY))
 		#if defined(_MSC_VER) || defined(__BORLANDC__)
+#ifndef __ANDROID__
 			#pragma comment(lib, "ILUT.lib")
+#endif
 		#endif
 	#endif
 

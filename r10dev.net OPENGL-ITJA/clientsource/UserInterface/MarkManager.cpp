@@ -1,8 +1,8 @@
-#include "stdafx.h"
+#include "StdAfx.h"
 #include "MarkManager.h"
 
-#if _MSC_VER < 1200
-#include "crc32.h"
+#if 0
+#include "CRC32.h"
 #else
 #define sys_err TraceError
 #define sys_log // (n, format, ...) Tracenf(format, __VA_ARGS__)

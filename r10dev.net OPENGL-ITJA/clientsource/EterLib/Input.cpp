@@ -1,8 +1,69 @@
 #include "StdAfx.h"
 #include "Input.h"
 
+#ifdef __ANDROID__
+
+void*					CInputDevice::ms_lpDI = NULL;
+void*					CInputKeyboard::ms_lpKeyboard = NULL;
+bool					CInputKeyboard::ms_bPressedKey[256];
+char					CInputKeyboard::ms_diks[256];
+
+CInputDevice::CInputDevice() {}
+CInputDevice::~CInputDevice() {}
+
+HRESULT CInputDevice::CreateDevice(HWND /*hWnd*/)
+{
+	return S_OK;
+}
+
+CInputKeyboard::CInputKeyboard()
+{
+	ResetKeyboard();
+}
+
+CInputKeyboard::~CInputKeyboard()
+{
+}
+
+void CInputKeyboard::ResetKeyboard()
+{
+	memset(ms_diks, 0, sizeof(ms_diks));
+	memset(ms_bPressedKey, 0, sizeof(ms_bPressedKey));
+}
+
+bool CInputKeyboard::InitializeKeyboard(HWND hWnd)
+{
+	return true;
+}
+
+void CInputKeyboard::UpdateKeyboard()
+{
+}
+
+void CInputKeyboard::KeyDown(int iIndex)
+{
+	ms_bPressedKey[iIndex] = true;
+	OnKeyDown(iIndex);
+}
+
+void CInputKeyboard::KeyUp(int iIndex)
+{
+	ms_bPressedKey[iIndex] = false;
+	OnKeyUp(iIndex);
+}
+
+bool CInputKeyboard::IsPressed(int iIndex)
+{
+	return ms_bPressedKey[iIndex];
+}
+
+#else
+
+
 LPDIRECTINPUT8			CInputDevice::ms_lpDI = NULL;
 LPDIRECTINPUTDEVICE8	CInputKeyboard::ms_lpKeyboard = NULL;
+void*					CInputDevice::ms_lpDI = NULL;
+void*					CInputKeyboard::ms_lpKeyboard = NULL;
 bool					CInputKeyboard::ms_bPressedKey[256];
 char					CInputKeyboard::ms_diks[256];
 
@@ -131,3 +192,5 @@ bool CInputKeyboard::IsPressed(int iIndex)
 {
 	return ms_bPressedKey[iIndex];
 }
+
+#endif /* __ANDROID__ */

@@ -5,8 +5,8 @@
 
 #include "AbstractApplication.h"
 
-#include "../gamelib/ItemData.h"
-#include "../gamelib/ItemManager.h"
+#include "../GameLib/ItemData.h"
+#include "../GameLib/ItemManager.h"
 
 #include "../eterPack/EterPackManager.h"
 

@@ -19,8 +19,8 @@ typedef struct _AHNHS_TRANS_BUFFER
 #endif /* !USE_AHNLAB_HACKSHIELD */
 
 #include "Locale.h"
-#include "../gamelib/RaceData.h"
-#include "../gamelib/ItemData.h"
+#include "../GameLib/RaceData.h"
+#include "../GameLib/ItemData.h"
 
 typedef BYTE TPacketHeader;
 
@@ -781,8 +781,8 @@ typedef struct command_move
 typedef struct command_sync_position_element
 {
 	DWORD       dwVID;
-	long        lX;
-	long        lY;
+	LONG        lX;
+	LONG        lY;
 } TPacketCGSyncPositionElement;
 
 typedef struct command_sync_position
@@ -795,8 +795,8 @@ typedef struct command_fly_targeting
 {
 	BYTE		bHeader;
 	DWORD		dwTargetVID;
-	long		lX;
-	long		lY;
+	LONG		lX;
+	LONG		lY;
 } TPacketCGFlyTargeting;
 
 typedef struct packet_fly_targeting
@@ -804,8 +804,8 @@ typedef struct packet_fly_targeting
 	BYTE        bHeader;
 	DWORD		dwShooterVID;
 	DWORD		dwTargetVID;
-	long		lX;
-	long		lY;
+	LONG		lX;
+	LONG		lY;
 } TPacketGCFlyTargeting;
 
 typedef struct packet_shoot
@@ -1204,7 +1204,7 @@ typedef struct SSimplePlayerInformation
 	WORD				wAccePart;
 #endif
 	BYTE                bDummy[4];
-	long				x, y;
+	LONG				x, y;
 	LONG				lAddr;
 	WORD				wPort;
 	BYTE				bySkillGroup;
@@ -1345,9 +1345,9 @@ typedef struct packet_add_char
 	//char        name[CHARACTER_NAME_MAX_LEN + 1];
 
 	float       angle;
-	long        x;
-	long        y;
-	long        z;
+	LONG        x;
+	LONG        y;
+	LONG        z;
 
 	BYTE		bType;
 	WORD        wRaceNum;
@@ -1373,9 +1373,9 @@ typedef struct packet_add_char2
 	char        name[CHARACTER_NAME_MAX_LEN + 1];
 
 	float       angle;
-	long        x;
-	long        y;
-	long        z;
+	LONG        x;
+	LONG        y;
+	LONG        z;
 
 	BYTE		bType;
 	WORD        wRaceNum;
@@ -1494,7 +1494,7 @@ typedef struct packet_main_character
 	DWORD       dwVID;
 	WORD		wRaceNum;
 	char        szName[CHARACTER_NAME_MAX_LEN + 1];
-	long        lX, lY, lZ;
+	LONG        lX, lY, lZ;
 	BYTE		bySkillGroup;
 } TPacketGCMainCharacter;
 
@@ -1505,7 +1505,7 @@ typedef struct packet_main_character2_empire
 	DWORD       dwVID;
 	WORD		wRaceNum;
 	char        szName[CHARACTER_NAME_MAX_LEN + 1];
-	long        lX, lY, lZ;
+	LONG        lX, lY, lZ;
 	BYTE		byEmpire;
 	BYTE		bySkillGroup;
 } TPacketGCMainCharacter2_EMPIRE;
@@ -1521,7 +1521,7 @@ typedef struct packet_main_character3_bgm
 	WORD		wRaceNum;
 	char        szUserName[CHARACTER_NAME_MAX_LEN + 1];
 	char        szBGMName[MUSIC_NAME_MAX_LEN + 1];
-	long        lX, lY, lZ;
+	LONG        lX, lY, lZ;
 	BYTE		byEmpire;
 	BYTE		bySkillGroup;
 } TPacketGCMainCharacter3_BGM;
@@ -1538,7 +1538,7 @@ typedef struct packet_main_character4_bgm_vol
 	char        szUserName[CHARACTER_NAME_MAX_LEN + 1];
 	char        szBGMName[MUSIC_NAME_MAX_LEN + 1];
 	float		fBGMVol;
-	long        lX, lY, lZ;
+	LONG        lX, lY, lZ;
 	BYTE		byEmpire;
 	BYTE		bySkillGroup;
 } TPacketGCMainCharacter4_BGM_VOL;
@@ -1715,7 +1715,7 @@ POINT_HIT_RATE,
 typedef struct packet_points
 {
 	BYTE        header;
-	long        points[POINT_MAX_NUM];
+	LONG        points[POINT_MAX_NUM];
 } TPacketGCPoints;
 
 typedef struct packet_point_change
@@ -1725,8 +1725,8 @@ typedef struct packet_point_change
 	DWORD		dwVID;
 	BYTE		Type;
 
-	long        amount; // �ٲ� ��
-	long        value;  // ���� ��
+	LONG        amount; // �ٲ� ��
+	LONG        value;  // ���� ��
 } TPacketGCPointChange;
 
 typedef struct packet_motion
@@ -1754,7 +1754,7 @@ struct TPacketGCItemDelDeprecate
 	BYTE    pos;
 	DWORD   vnum;
 	BYTE    count;
-	long    alSockets[ITEM_SOCKET_SLOT_MAX_NUM];
+	LONG    alSockets[ITEM_SOCKET_SLOT_MAX_NUM];
 	TPlayerItemAttribute aAttr[ITEM_ATTRIBUTE_SLOT_MAX_NUM];
 };
 
@@ -1765,7 +1765,7 @@ typedef struct packet_set_item
 	DWORD		vnum;
 	BYTE		count;
 	DWORD		flags;	// �÷��� �߰�
-	long		alSockets[ITEM_SOCKET_SLOT_MAX_NUM];
+	LONG		alSockets[ITEM_SOCKET_SLOT_MAX_NUM];
 	TPlayerItemAttribute aAttr[ITEM_ATTRIBUTE_SLOT_MAX_NUM];
 } TPacketGCItemSet;
 
@@ -1781,7 +1781,7 @@ typedef struct packet_set_item
 	TItemPos	Cell;
 	DWORD		vnum;
 	BYTE		count;
-	long		alSockets[ITEM_SOCKET_SLOT_MAX_NUM];
+	LONG		alSockets[ITEM_SOCKET_SLOT_MAX_NUM];
 	TPlayerItemAttribute aAttr[ITEM_ATTRIBUTE_SLOT_MAX_NUM];
 } TPacketGCItemSet;
 
@@ -1794,7 +1794,7 @@ typedef struct packet_set_item2
 	DWORD		flags;	// �÷��� �߰�
 	DWORD		anti_flags;	// �÷��� �߰�
 	bool		highlight;
-	long		alSockets[ITEM_SOCKET_SLOT_MAX_NUM];
+	LONG		alSockets[ITEM_SOCKET_SLOT_MAX_NUM];
 	TPlayerItemAttribute aAttr[ITEM_ATTRIBUTE_SLOT_MAX_NUM];
 } TPacketGCItemSet2;
 #endif
@@ -1820,7 +1820,7 @@ typedef struct packet_update_item
 	BYTE		header;
 	TItemPos	Cell;
 	BYTE		count;
-	long		alSockets[ITEM_SOCKET_SLOT_MAX_NUM];
+	LONG		alSockets[ITEM_SOCKET_SLOT_MAX_NUM];
 	TPlayerItemAttribute aAttr[ITEM_ATTRIBUTE_SLOT_MAX_NUM];
 } TPacketGCItemUpdate;
 
@@ -1834,14 +1834,14 @@ typedef struct packet_ground_add_item
 	}
 #endif
 	BYTE        bHeader;
-	long        lX;
-	long		lY;
-	long		lZ;
+	LONG        lX;
+	LONG		lY;
+	LONG		lZ;
 
 	DWORD       dwVID;
 	DWORD       dwVnum;
 #ifdef ENABLE_EXTENDED_ITEMNAME
-	long		alSockets[ITEM_SOCKET_SLOT_MAX_NUM];
+	LONG		alSockets[ITEM_SOCKET_SLOT_MAX_NUM];
 	TPlayerItemAttribute aAttrs[ITEM_ATTRIBUTE_SLOT_MAX_NUM];
 #endif
 } TPacketGCItemGroundAdd;
@@ -1938,7 +1938,7 @@ typedef struct packet_exchange
 	DWORD       arg1;
 	TItemPos       arg2;
 	DWORD       arg3;
-	long		alValues[ITEM_SOCKET_SLOT_MAX_NUM];
+	LONG		alValues[ITEM_SOCKET_SLOT_MAX_NUM];
 	TPlayerItemAttribute aAttr[ITEM_ATTRIBUTE_SLOT_MAX_NUM];
 } TPacketGCExchange;
 
@@ -2068,7 +2068,7 @@ typedef struct packet_quest_confirm
 {
 	BYTE header;
 	char msg[64 + 1];
-	long timeout;
+	LONG timeout;
 	DWORD requestPID;
 } TPacketGCQuestConfirm;
 
@@ -2089,8 +2089,8 @@ typedef struct packet_c2c
 typedef struct packetd_sync_position_element
 {
 	DWORD       dwVID;
-	long        lX;
-	long        lY;
+	LONG        lX;
+	LONG        lY;
 } TPacketGCSyncPositionElement;
 
 typedef struct packetd_sync_position
@@ -2359,7 +2359,7 @@ typedef struct SPacketGuildWarPoint
 {
 	DWORD dwGainGuildID;
 	DWORD dwOpponentGuildID;
-	long lPoint;
+	LONG lPoint;
 } TPacketGuildWarPoint;
 
 // SubHeader - Dungeon
@@ -2492,8 +2492,8 @@ struct TNPCPosition
 {
 	BYTE bType;
 	char name[CHARACTER_NAME_MAX_LEN + 1];
-	long x;
-	long y;
+	LONG x;
+	LONG y;
 };
 
 typedef struct SPacketGCChangeName
@@ -2568,7 +2568,7 @@ typedef struct SEquipmentItemSet
 {
 	DWORD   vnum;
 	BYTE    count;
-	long    alSockets[ITEM_SOCKET_SLOT_MAX_NUM];
+	LONG    alSockets[ITEM_SOCKET_SLOT_MAX_NUM];
 	TPlayerItemAttribute aAttr[ITEM_ATTRIBUTE_SLOT_MAX_NUM];
 } TEquipmentItemSet;
 
@@ -2582,8 +2582,8 @@ typedef struct pakcet_view_equip
 typedef struct
 {
 	DWORD       dwID;
-	long        x, y;
-	long        width, height;
+	LONG        x, y;
+	LONG        width, height;
 	DWORD       dwGuildID;
 } TLandPacketElement;
 
@@ -2596,7 +2596,7 @@ typedef struct packet_land_list
 typedef struct
 {
 	BYTE        bHeader;
-	long        lID;
+	LONG        lID;
 	char        szTargetName[32 + 1];
 } TPacketGCTargetCreate;
 
@@ -2610,7 +2610,7 @@ enum
 typedef struct
 {
 	BYTE		bHeader;
-	long		lID;
+	LONG		lID;
 	char		szTargetName[32 + 1];
 	DWORD		dwVID;
 	BYTE		byType;
@@ -2619,24 +2619,24 @@ typedef struct
 typedef struct
 {
 	BYTE        bHeader;
-	long        lID;
-	long        lX, lY;
+	LONG        lID;
+	LONG        lX, lY;
 } TPacketGCTargetUpdate;
 
 typedef struct
 {
 	BYTE        bHeader;
-	long        lID;
+	LONG        lID;
 } TPacketGCTargetDelete;
 
 typedef struct
 {
 	DWORD       dwType;
 	BYTE        bPointIdxApplyOn;
-	long        lApplyValue;
+	LONG        lApplyValue;
 	DWORD       dwFlag;
-	long        lDuration;
-	long        lSPCost;
+	LONG        lDuration;
+	LONG        lSPCost;
 } TPacketAffectElement;
 
 typedef struct

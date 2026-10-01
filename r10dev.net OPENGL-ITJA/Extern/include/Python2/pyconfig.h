@@ -1,6 +1,275 @@
 #ifndef Py_CONFIG_H
 #define Py_CONFIG_H
 
+
+#if defined(__ANDROID__) || defined(__linux__)
+
+/* Android/Linux LP64 configuration for Python 2.7 (hand-filled). */
+
+#define PLATFORM "linux"
+#define PREFIX ""
+#define EXEC_PREFIX ""
+
+/* Integer/pointer sizes (LP64) */
+#define SIZEOF_SHORT 2
+#define SIZEOF_INT 4
+#define SIZEOF_LONG 8
+#define SIZEOF_LONG_LONG 8
+#define SIZEOF_DOUBLE 8
+#define SIZEOF_FLOAT 4
+#define SIZEOF_VOID_P 8
+#define SIZEOF_SIZE_T 8
+#define SIZEOF_PTRDIFF_T 8
+#define SIZEOF_WCHAR_T 4
+#define SIZEOF_PID_T 4
+#define SIZEOF_TIME_T 8
+#define SIZEOF_OFF_T 8
+#define SIZEOF_FPOS_T 16
+#define SIZEOF__BOOL 1
+#define SIZEOF_UINTPTR_T 8
+#define SIZEOF_PTHREAD_T 8
+#define SIZEOF_PTHREAD_KEY_T 4
+#define LONG_BIT (8 * SIZEOF_LONG)
+#define WORD_BIT 32
+
+/* Exact-width types for Python long integers */
+#define HAVE_UINT32_T 1
+#define PY_UINT32_T unsigned int
+#define HAVE_UINT64_T 1
+#define PY_UINT64_T unsigned long long
+#define HAVE_INT32_T 1
+#define PY_INT32_T int
+#define HAVE_INT64_T 1
+#define PY_INT64_T long long
+#define HAVE_UINTPTR_T 1
+#define HAVE_INTPTR_T 1
+
+/* long long + formatting */
+#define HAVE_LONG_LONG 1
+#define PYLONG_BITS_IN_DIGIT 30
+#define PY_LONG_LONG long long
+#define PY_FORMAT_SIZE_T "z"
+#define PY_FORMAT_LONG_LONG "ll"
+#define HAVE_LARGEFILE_SUPPORT 1
+
+/* libc / POSIX headers */
+#define STDC_HEADERS 1
+#define HAVE_PROTOTYPES 1
+#define HAVE_STDARG_PROTOTYPES 1
+#define HAVE_UNISTD_H 1
+#define HAVE_SYS_TYPES_H 1
+#define HAVE_SYS_STAT_H 1
+#define HAVE_SYS_TIME_H 1
+#define HAVE_SYS_TIMES_H 1
+#define HAVE_SYS_SELECT_H 1
+#define HAVE_SYS_SOCKET_H 1
+#define HAVE_SYS_WAIT_H 1
+#define HAVE_SYS_FILE_H 1
+#define HAVE_SYS_RESOURCE_H 1
+#define HAVE_SYS_IOCTL_H 1
+#define HAVE_SYS_UIO_H 1
+#define HAVE_SYS_PARAM_H 1
+#define HAVE_FCNTL_H 1
+#define HAVE_ERRNO_H 1
+#define HAVE_LIMITS_H 1
+#define HAVE_STDDEF_H 1
+#define HAVE_STDINT_H 1
+#define HAVE_INTTYPES_H 1
+#define HAVE_WCHAR_H 1
+#define HAVE_WCHAR_T 1
+#define HAVE_USABLE_WCHAR_T 1
+#define HAVE_LANGINFO_H 1
+#define HAVE_LOCALE_H 1
+#define HAVE_DIRENT_H 1
+#define HAVE_GRP_H 1
+#define HAVE_PWD_H 1
+#define HAVE_SIGNAL_H 1
+#define HAVE_STRING_H 1
+#define HAVE_STRINGS_H 1
+#define HAVE_DLFCN_H 1
+#define HAVE_CTYPE_H 1
+#define HAVE_MATH_H 1
+#define HAVE_UTIME_H 1
+#define HAVE_UTIME_H 1
+#define HAVE_POLL_H 1
+#define HAVE_NETDB_H 1
+#define HAVE_NETINET_IN_H 1
+#define HAVE_ARPA_INET_H 1
+#define HAVE_TERM_H 1
+#define HAVE_TERMIOS_H 1
+#define HAVE_READLINE_READLINE_H 0
+
+/* libc functions commonly probed */
+#define HAVE_CLOCK 1
+#define HAVE_STRERROR 1
+#define HAVE_TMPFILE 1
+#define HAVE_TMPNAM 1
+#define HAVE_TEMPNAM 1
+#define HAVE_MKTIME 1
+#define HAVE_GMTIME_R 1
+#define HAVE_LOCALTIME_R 1
+#define HAVE_GETTIMEOFDAY 1
+#define HAVE_TIMEGM 1
+#define HAVE_SIGACTION 1
+#define HAVE_SIGINTERRUPT 1
+#define HAVE_WAITPID 1
+#define HAVE_FORK 1
+#define HAVE_EXECV 1
+#define HAVE_PIPE 1
+#define HAVE_DUP2 1
+#define HAVE_KILL 1
+#define HAVE_SELECT 1
+#define HAVE_POLL 1
+#define HAVE_SOCKET 1
+#define HAVE_GETADDRINFO 1
+#define HAVE_GETNAMEINFO 1
+#define HAVE_INET_ATON 1
+#define HAVE_INET_PTON 1
+#define HAVE_INET_NTOA 1
+#define HAVE_SETSOCKOPT 1
+#define HAVE_GETHOSTBYNAME 1
+#define HAVE_GETHOSTBYNAME_R 1
+#define HAVE_GETHOSTBYNAME_R_6_ARG 1
+#define HAVE_GETPAGESIZE 1
+#define HAVE_MMAP 1
+#define HAVE_STATVFS 1
+#define HAVE_FSTATVFS 1
+#define HAVE_SNPRINTF 1
+#define HAVE_VSNPRINTF 1
+#define HAVE_STRCASECMP 1
+#define HAVE_STRDUP 1
+#define HAVE_MEMMOVE 1
+#define HAVE_GETCWD 1
+#define HAVE_REALPATH 1
+#define HAVE_READLINK 1
+#define HAVE_SYMLINK 1
+#define HAVE_LINK 1
+#define HAVE_UNLINK 1
+#define HAVE_RENAME 1
+#define HAVE_TRUNCATE 1
+#define HAVE_FTRUNCATE 1
+#define HAVE_FSYNC 1
+#define HAVE_FDATASYNC 1
+#define HAVE_CHMOD 1
+#define HAVE_CHOWN 1
+#define HAVE_MKDIR 1
+#define HAVE_RMDIR 1
+#define HAVE_ACCESS 1
+#define HAVE_OPENDIR 1
+#define HAVE_CLOSEDIR 1
+#define HAVE_UTIME 1
+#define HAVE_UTIMES 1
+#define HAVE_STRFTIME 1
+#define HAVE_HYPOT 1
+#define HAVE_COPYSIGN 1
+#define HAVE_FINITE 1
+#define HAVE_ISINF 1
+#define HAVE_ISNAN 1
+#define HAVE_ROUND 1
+#define HAVE_LOG1P 1
+#define HAVE_EXPM1 1
+#define HAVE_ACOSH 1
+#define HAVE_ASINH 1
+#define HAVE_ATANH 1
+#define HAVE_ERF 1
+#define HAVE_ERFC 1
+#define HAVE_TGAMMA 1
+#define HAVE_LGAMMA 1
+#define HAVE_DLADDR 1
+#define HAVE_OPENPTY 1
+#define HAVE_GETPRIORITY 1
+#define HAVE_SETPRIORITY 1
+#define HAVE_STRPTIME 1
+#define HAVE_WCSFTIME 1
+#define HAVE_WCSCOLL 1
+#define HAVE_SETLOCALE 1
+#define HAVE_GETLOADAVG 1
+#define HAVE_ALLOCA 1
+#define HAVE_DECL_ISINF 1
+#define HAVE_DECL_ISNAN 1
+#define HAVE_DECL_FINITE 1
+#define HAVE_PTHREAD_H 1
+#define HAVE_PTHREAD_SIGMASK 1
+#define HAVE_SEM_OPEN 1
+#define HAVE_SEM_GETVALUE 1
+#define HAVE_SEM_UNLINK 1
+
+/* Threads */
+#define WITH_THREAD 1
+#define NT_THREADS 1
+#define HAVE_PTHREAD_STUBS 0
+#define USE_SOCKET 1
+#define HAVE_SOCKETS 1
+#define DOUBLE_IS_LITTLE_ENDIAN_IEEE754 1
+
+/* Unicode: UCS4 build */
+#define Py_UNICODE_SIZE 4
+
+#define RETSIGTYPE void
+#define VA_LIST_IS_ARRAY 0
+#define HAVE_BROKEN_PIPE_BUF 0
+
+#define HAVE_GETC_UNLOCKED 1
+#define HAVE_FSEEKO 1
+#define HAVE_FTELLO 1
+#define HAVE_FGETPOS 1
+#define HAVE_FSETPOS 1
+
+/* bionic provides these through sysroot headers */
+#define HAVE_GETHOSTNAME 1
+#define HAVE_GETPROTOBYNAME 1
+#define HAVE_GETSERVBYNAME 1
+#define HAVE_GETSERVBYPORT 1
+#define HAVE_GETPEERNAME 1
+#define HAVE_GETSOCKNAME 1
+#define HAVE_ACCEPT 1
+#define HAVE_BIND 1
+#define HAVE_CONNECT 1
+#define HAVE_LISTEN 1
+#define HAVE_RECV 1
+#define HAVE_RECVFROM 1
+#define HAVE_SEND 1
+#define HAVE_SENDTO 1
+#define HAVE_SETSID 1
+#define HAVE_SETUID 1
+#define HAVE_GETUID 1
+#define HAVE_GETEUID 1
+#define HAVE_GETGID 1
+#define HAVE_GETEGID 1
+#define HAVE_GETGROUPS 1
+#define HAVE_UMASK 1
+#define HAVE_TCGETPGRP 1
+#define HAVE_TCSETPGRP 1
+#define HAVE_CTERMID 1
+#define HAVE_FPATHCONF 1
+#define HAVE_PATHCONF 1
+#define HAVE_CONFSTR 1
+#define HAVE_SYSCONF 1
+#define HAVE_NICE 1
+#define HAVE_PAUSE 1
+#define HAVE_RAND_R 1
+#define HAVE_SRANDDEV 0
+#define HAVE_TIMES 1
+#define HAVE_UNAME 1
+#define HAVE_WAIT3 1
+#define HAVE_WAIT4 1
+#define HAVE_GETITIMER 1
+#define HAVE_SETITIMER 1
+#define HAVE_GETHOSTBYNAME_R_3_ARG 0
+#define HAVE_GETHOSTBYNAME_R_5_ARG 0
+#define HAVE_GETHOSTBYNAME_R_6_ARG 1
+#define GETHOSTBYNAME_R_RETURNS_INT 0
+#define HAVE_KQUEUE 0
+#define HAVE_EPOLL 1
+#define HAVE_DEVICE_MACROS 1
+#define HAVE_STAT_TV_NSEC 1
+#define HAVE_STAT_TV_NSEC2 0
+#define HAVE_LSTAT 1
+#define HAVE_STDARG_H 1
+#define HAVE_CVARARG 1
+#define HAVE_OLD_ICONV 0
+
+#else
 /* pyconfig.h.  NOT Generated automatically by configure.
 
 This is a manually maintained version used for the Watcom,
@@ -310,6 +579,7 @@ typedef int pid_t;
 
 /* 64 bit ints are usually spelt __int64 unless compiler has overridden */
 #define HAVE_LONG_LONG 1
+#define PYLONG_BITS_IN_DIGIT 30
 #ifndef PY_LONG_LONG
 #	define PY_LONG_LONG __int64
 #	define PY_LLONG_MAX _I64_MAX
@@ -773,4 +1043,5 @@ Py_NO_ENABLE_SHARED to find out.  Also support MS_NO_COREDLL for b/w compat */
    least significant byte first */
 #define DOUBLE_IS_LITTLE_ENDIAN_IEEE754 1
 
+#endif /* __ANDROID__ */
 #endif /* !Py_CONFIG_H */

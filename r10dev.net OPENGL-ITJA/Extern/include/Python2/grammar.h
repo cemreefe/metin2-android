@@ -53,7 +53,7 @@ typedef struct {
     int		 d_initial;	/* Initial state */
     int		 d_nstates;
     state	*d_state;	/* Array of states */
-    bitset	 d_first;
+    pybitset	 d_first;
 } dfa;
 
 /* A grammar */

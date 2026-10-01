@@ -1,4 +1,4 @@
-#include "stdafx.h"
+#include "Stdafx.h"
 #include "SoundInstance.h"
 
 CSoundInstanceStream::CSoundInstanceStream() : m_stream(NULL)

@@ -1,8 +1,8 @@
 #pragma once
 
 #include "Type.h"
-#include "../eterbase/Random.h"
-#include "../eterlib/Pool.h"
+#include "../EterBase/Random.h"
+#include "../EterLib/Pool.h"
 class CParticleInstance;
 
 namespace NEffectUpdateDecorator
@@ -124,7 +124,7 @@ namespace NEffectUpdateDecorator
 			it_end(ted.it_end),
 			it_cur(ted.it_cur),
 			it_next(ted.it_next),
-			pData((T*)((unsigned char*)ted.pData - (DWORD)pFirstInstance + (DWORD)pInstance))
+			pData((T*)((unsigned char*)ted.pData - (uintptr_t)pFirstInstance + (uintptr_t)pInstance))
 		{
 			if (it_start == it_end)
 				*pData = T();
@@ -212,7 +212,7 @@ namespace NEffectUpdateDecorator
 				fLastFrameTime += fFrameTime;
 
 				if (--(*pIdx) >= n && n != 0) // Because variable is unsigned..
-					*pIdx = BYTE(n - 1);
+					*pIdx = (BYTE)(n - 1);
 			}
 		}
 		BYTE n;

@@ -100,7 +100,6 @@ public:
 	BOOL GetTokenQuaternion(const std::string& c_rstrKey, D3DXQUATERNION* pQ);
 	BOOL GetTokenDirection(const std::string& c_rstrKey, D3DVECTOR* pVector);
 	BOOL GetTokenColor(const std::string& c_rstrKey, D3DXCOLOR* pColor);
-	BOOL GetTokenColor(const std::string& c_rstrKey, D3DCOLORVALUE* pColor);
 	BOOL GetTokenString(const std::string& c_rstrKey, std::string* pString);
 
 protected:

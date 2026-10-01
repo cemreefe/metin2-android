@@ -2,7 +2,7 @@
 
 #include "GrpScreen.h"
 
-#include "../eterbase/Singleton.h"
+#include "../EterBase/Singleton.h"
 #include "../SphereLib/spherepack.h"
 
 class CGraphicObjectInstance;

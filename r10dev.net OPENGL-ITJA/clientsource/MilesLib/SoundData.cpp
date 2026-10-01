@@ -1,7 +1,7 @@
 #include "StdAfx.h"
 #include "SoundData.h"
 
-#include "../EterPack/EterPackManager.h"
+#include "../eterPack/EterPackManager.h"
 #include "../EterBase/Timer.h"
 
 bool CSoundData::ms_isSoundFile[SOUND_FILE_MAX_NUM];

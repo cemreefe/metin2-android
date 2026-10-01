@@ -1,4 +1,4 @@
-#include "stdafx.h"
+#include "StdAfx.h"
 #include "PythonMessenger.h"
 
 void CPythonMessenger::RemoveFriend(const char* c_szKey)

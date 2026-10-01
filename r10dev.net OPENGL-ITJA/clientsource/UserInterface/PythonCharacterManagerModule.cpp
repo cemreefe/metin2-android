@@ -2,7 +2,7 @@
 #include "PythonCharacterManager.h"
 #include "PythonBackground.h"
 #include "InstanceBase.h"
-#include "../gamelib/RaceManager.h"
+#include "../GameLib/RaceManager.h"
 
 //////////////////////////////////////////////////////////////////////////
 // RaceData ���� ����

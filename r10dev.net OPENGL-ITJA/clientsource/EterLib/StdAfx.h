@@ -54,9 +54,15 @@
 #include <malloc.h>
 
 #ifndef ENABLE_OPENGL
+#ifndef __ANDROID__
 #pragma comment(lib, "winmm.lib")
+#endif
+#ifndef __ANDROID__
 #pragma comment(lib, "d3d8.lib")
+#endif
+#ifndef __ANDROID__
 #pragma comment(lib, "d3dx8.lib")
+#endif
 #endif
 
 #include "../EterBase/StdAfx.h"
@@ -92,7 +98,7 @@ typedef struct sockaddr SOCKADDR;
 
 #include "Util.h"
 #include "TextFileLoader.h"
-#include "Parser.h"
+#include "parser.h"
 
 #include "Resource.h"
 #include "ResourceManager.h"
@@ -104,7 +110,7 @@ typedef struct sockaddr SOCKADDR;
 
 #include "GrpBase.h"
 
-#include "GrpDib.h"
+#include "GrpDIB.h"
 #include "GrpMath.h"
 #include "GrpDevice.h"
 

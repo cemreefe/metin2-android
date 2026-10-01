@@ -49,7 +49,7 @@ void CColorTransitionHelper::SetTransition(const float& c_rfRed,
 void CColorTransitionHelper::StartTransition()
 {
 	m_bTransitionStarted = true;
-	m_dwStartTime = GetCurrentTime();
+	m_dwStartTime = timeGetTime();
 }
 
 bool CColorTransitionHelper::Update()
@@ -57,7 +57,7 @@ bool CColorTransitionHelper::Update()
 	//	if (!m_bTransitionStarted)
 	//		return false;
 
-	DWORD dwCurTime = GetCurrentTime();
+	DWORD dwCurTime = timeGetTime();
 	DWORD dwElapsedTime = dwCurTime - m_dwStartTime;
 
 	float fpercent = (float)(dwElapsedTime) / (float)(m_dwDuration);

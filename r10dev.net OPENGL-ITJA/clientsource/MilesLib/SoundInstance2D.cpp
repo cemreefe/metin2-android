@@ -1,4 +1,4 @@
-#include "stdafx.h"
+#include "Stdafx.h"
 #include "SoundManager2D.h"
 
 CSoundInstance2D::CSoundInstance2D() : m_sample(NULL), m_pSoundData(NULL)

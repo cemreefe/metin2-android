@@ -1,4 +1,4 @@
-#include "stdafx.h"
+#include "StdAfx.h"
 #include "../EterLib/StateManager.h"
 #include "../EterLib/Camera.h"
 

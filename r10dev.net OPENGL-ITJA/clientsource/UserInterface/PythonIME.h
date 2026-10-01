@@ -1,7 +1,7 @@
 #pragma once
 
 #include "../EterBase/Singleton.h"
-#include "../eterlib/IME.h"
+#include "../EterLib/IME.h"
 
 class CPythonIME :
 	public IIMEEventSink,

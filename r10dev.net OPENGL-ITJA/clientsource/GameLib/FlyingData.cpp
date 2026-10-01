@@ -1,4 +1,4 @@
-#include "Stdafx.h"
+#include "StdAfx.h"
 #include "../EffectLib/EffectManager.h"
 
 #include "FlyingData.h"

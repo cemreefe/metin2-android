@@ -24,14 +24,14 @@ class EterPackPolicy_CSHybridCrypt
 public:
 	~EterPackPolicy_CSHybridCrypt();
 
-	bool GenerateCryptKey(std::string& rfileName);
-	bool EncryptMemory(std::string& rfilename, IN const BYTE* pSrcData, IN int iSrcLen, OUT CLZObject& zObj);
-	bool DecryptMemory(std::string& rfilename, IN const BYTE* pSrcData, IN int iSrcLen, OUT CLZObject& zObj);
+	bool GenerateCryptKey(const std::string& rfileName);
+	bool EncryptMemory(const std::string& rfilename, IN const BYTE* pSrcData, IN int iSrcLen, OUT CLZObject& zObj);
+	bool DecryptMemory(const std::string& rfilename, IN const BYTE* pSrcData, IN int iSrcLen, OUT CLZObject& zObj);
 	bool IsContainingCryptKey() const;
 
 	//Supplementary Data Block (SDB)
-	bool GenerateSupplementaryDataBlock(std::string& rfilename, const std::string& strMapName, IN const BYTE* pSrcData, IN int iSrcLen, OUT LPBYTE& pDestData, OUT int& iDestLen);
-	bool GetSupplementaryDataBlock(std::string& rfilename, OUT LPBYTE& pSDB, OUT int& iSDBSize);
+	bool GenerateSupplementaryDataBlock(const std::string& rfilename, const std::string& strMapName, IN const BYTE* pSrcData, IN int iSrcLen, OUT LPBYTE& pDestData, OUT int& iDestLen);
+	bool GetSupplementaryDataBlock(const std::string& rfilename, OUT LPBYTE& pSDB, OUT int& iSDBSize);
 	bool IsContainingSDBFile() const;
 
 	// Read/Write IO
@@ -78,7 +78,7 @@ protected:
 	TSupplementaryDataBlockMap m_mapSDBMap;
 
 private:
-	bool GetPerFileCryptKey(std::string& rfileName, eHybridCipherAlgorithm& eAlgorithm, TEncryptKey& key, TEncryptIV& iv);
+	bool GetPerFileCryptKey(const std::string& rfileName, eHybridCipherAlgorithm& eAlgorithm, TEncryptKey& key, TEncryptIV& iv);
 };
 
 #endif // __INC_ETERPACKLIB_ETERPACKPOLICY_CSHYBRIDCRYPT_H__

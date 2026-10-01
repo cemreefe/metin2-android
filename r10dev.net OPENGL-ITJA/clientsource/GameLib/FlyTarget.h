@@ -1,5 +1,7 @@
 #pragma once
 
+class CFlyTarget;
+
 class IFlyTargetableObject
 {
 	friend class CFlyTarget;

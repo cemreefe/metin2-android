@@ -25,25 +25,57 @@ extern "C" {
 	volatile int _AVOID_FLOATING_POINT_LIBRARY_BUG = _fltused;
 };
 
+#ifndef __ANDROID__
 #pragma comment(linker, "/NODEFAULTLIB:libci.lib")
+#endif
 
+#ifndef __ANDROID__
 #pragma comment( lib, "version.lib" )
+#endif
 
+#ifndef __ANDROID__
 #pragma comment( lib, "imagehlp.lib" )
+#endif
+#ifndef __ANDROID__
 #pragma comment( lib, "devil.lib" )
+#endif
 
+#ifndef __ANDROID__
 #pragma comment( lib, "granny2.11.8.0.lib" )
+#endif
+#ifndef __ANDROID__
 #pragma comment( lib, "mss32.lib" )
+#endif
+#ifndef __ANDROID__
 #pragma comment( lib, "winmm.lib" )
+#endif
+#ifndef __ANDROID__
 #pragma comment( lib, "imm32.lib" )
+#endif
+#ifndef __ANDROID__
 #pragma comment( lib, "oldnames.lib" )
+#endif
+#ifndef __ANDROID__
 #pragma comment( lib, "SpeedTreeRT.lib" )
+#endif
+#ifndef __ANDROID__
 #pragma comment( lib, "dinput8.lib" )
+#endif
+#ifndef __ANDROID__
 #pragma comment( lib, "dxguid.lib" )
+#endif
+#ifndef __ANDROID__
 #pragma comment( lib, "ws2_32.lib" )
+#endif
+#ifndef __ANDROID__
 #pragma comment( lib, "strmiids.lib" )
+#endif
+#ifndef __ANDROID__
 #pragma comment( lib, "ddraw.lib" )
+#endif
+#ifndef __ANDROID__
 #pragma comment( lib, "dmoguids.lib" )
+#endif
 //#pragma comment( lib, "wsock32.lib" )
 #include <stdlib.h>
 #include <cryptopp/cryptoppLibLink.h>
@@ -247,7 +279,7 @@ bool checkPyLibDir(const string szDirName)
 
 bool __CheckPyLibFiles()
 {
-	PRINTME(1, "__CheckPyLibFiles processing "PYFOLD);
+	PRINTME(1, "__CheckPyLibFiles processing " PYFOLD);
 	if (checkPyLibDir(PYFOLD))
 		return false;
 	return true;
@@ -686,7 +718,7 @@ bool Main(HINSTANCE hInstance, LPSTR lpCmdLine)
 	g_isScreenShotKey = true;
 #endif
 
-	DWORD dwRandSeed = time(NULL) + DWORD(GetCurrentProcess());
+	DWORD dwRandSeed = time(NULL) + (DWORD)(uintptr_t)GetCurrentProcess();
 	srandom(dwRandSeed);
 	srand(random());
 
@@ -805,15 +837,15 @@ void __PrintTimeStamp()
 {
 #ifdef	_DEBUG
 	if (__IS_TEST_SERVER_MODE__)
-		LogBoxf("METIN2 BINARY TEST DEBUG VERSION %s  ( MS C++ %d Compiled )", __TIMESTAMP__, _MSC_VER);
+		LogBoxf("METIN2 BINARY TEST DEBUG VERSION %s  ( MS C++ %d Compiled )", __TIMESTAMP__, 0);
 	else
-		LogBoxf("METIN2 BINARY DEBUG VERSION %s ( MS C++ %d Compiled )", __TIMESTAMP__, _MSC_VER);
+		LogBoxf("METIN2 BINARY DEBUG VERSION %s ( MS C++ %d Compiled )", __TIMESTAMP__, 0);
 
 #else
 	if (__IS_TEST_SERVER_MODE__)
-		LogBoxf("METIN2 BINARY TEST VERSION %s  ( MS C++ %d Compiled )", __TIMESTAMP__, _MSC_VER);
+		LogBoxf("METIN2 BINARY TEST VERSION %s  ( MS C++ %d Compiled )", __TIMESTAMP__, 0);
 	else
-		LogBoxf("METIN2 BINARY DISTRIBUTE VERSION %s ( MS C++ %d Compiled )", __TIMESTAMP__, _MSC_VER);
+		LogBoxf("METIN2 BINARY DISTRIBUTE VERSION %s ( MS C++ %d Compiled )", __TIMESTAMP__, 0);
 #endif
 }
 
@@ -847,6 +879,16 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 int AndroidMain(int argc, char** argv)
 #endif
 {
+#ifdef __ANDROID__
+	void* hInstance = NULL;
+	static char szCmdLine[1024] = "";
+	if (argc > 1) {
+		size_t off = 0;
+		for (int i = 1; i < argc && off < sizeof(szCmdLine) - 2; i++)
+			off += snprintf(szCmdLine + off, sizeof(szCmdLine) - off - 1, "%s ", argv[i]);
+	}
+	char* lpCmdLine = szCmdLine;
+#endif
 	if (strstr(lpCmdLine, "--hackshield") != 0)
 		return 0;
 
@@ -996,7 +1038,7 @@ int AndroidMain(int argc, char** argv)
 
 	WebBrowser_Startup(hInstance);
 
-#ifndef ENABLE_PYLIB_CHECK
+#if !defined(ENABLE_PYLIB_CHECK) && !defined(__ANDROID__)
 	if (!CheckPythonLibraryFilenames())
 	{
 		__ErrorPythonLibraryIsNotExist();

@@ -2178,7 +2178,7 @@ PyObject* playerSendDragonSoulRefine(PyObject* poSelf, PyObject* poArgs)
 	{
 		if (!PyTuple_GetObject(poArgs, 1, &pDic))
 			return Py_BuildException();
-		int pos = 0;
+		Py_ssize_t pos = 0;
 		PyObject* key, * value;
 		int size = PyDict_Size(pDic);
 
