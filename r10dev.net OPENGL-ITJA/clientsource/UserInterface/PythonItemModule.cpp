@@ -93,7 +93,7 @@ PyObject* itemGetIconImage(PyObject* poSelf, PyObject* poArgs)
 	//		CGraphicImage * pImage = (CGraphicImage *)CResourceManager::Instance().GetResourcePointer(szItemName);
 	//	}
 
-	return Py_BuildValue("i", pItemData->GetIconImage());
+	return Py_BuildValue("l", (long)(intptr_t)pItemData->GetIconImage());
 }
 
 PyObject* itemGetIconImageFileName(PyObject* poSelf, PyObject* poArgs)
@@ -282,13 +282,13 @@ PyObject* itemGetIconInstance(PyObject* poSelf, PyObject* poArgs)
 	CGraphicImageInstance* pImageInstance = CGraphicImageInstance::New();
 	pImageInstance->SetImagePointer(pImage);
 
-	return Py_BuildValue("i", pImageInstance);
+	return Py_BuildValue("l", (long)(intptr_t)pImageInstance);
 }
 
 PyObject* itemDeleteIconInstance(PyObject* poSelf, PyObject* poArgs)
 {
-	int iHandle;
-	if (!PyTuple_GetInteger(poArgs, 0, &iHandle))
+	long iHandle;
+	if (!PyTuple_GetLong(poArgs, 0, &iHandle))
 		return Py_BadArgument();
 
 	CGraphicImageInstance::Delete((CGraphicImageInstance*)iHandle);

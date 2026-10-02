@@ -2,8 +2,8 @@
 
 bool PyTuple_GetThingInstance(PyObject* poArgs, int pos, CGraphicThingInstance** ppRetThingInstance)
 {
-	int handle;
-	if (!PyTuple_GetInteger(poArgs, pos, &handle))
+	long handle;
+	if (!PyTuple_GetLong(poArgs, pos, &handle))
 		return false;
 
 	if (!handle)
@@ -32,7 +32,7 @@ PyObject* grpThingGenerate(PyObject* poSelf, PyObject* poArgs)
 	pThingInstance->ReserveModelInstance(1);
 	pThingInstance->RegisterModelThing(0, static_cast<CGraphicThing*>(pResource));
 	pThingInstance->SetModelInstance(0, 0, 0);
-	return Py_BuildValue("i", pThingInstance);
+	return Py_BuildValue("l", (long)(intptr_t)pThingInstance);
 }
 
 PyObject* grpThingDelete(PyObject* poSelf, PyObject* poArgs)

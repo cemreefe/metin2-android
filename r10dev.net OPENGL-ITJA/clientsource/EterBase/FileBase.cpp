@@ -80,6 +80,12 @@ BOOL CFileBase::Create(const char* filename, EFileMode mode)
 
 	int flags = (mode == FILEMODE_WRITE) ? (O_RDWR | O_CREAT) : O_RDONLY;
 	int fd = open(filename, flags, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+	if (fd == -1 && mode == FILEMODE_READ)
+	{
+		char szLower[MAX_PATH];
+		android_normalize_path(filename, szLower, sizeof(szLower));
+		fd = open(szLower, flags);
+	}
 	m_hFile = (HANDLE)(intptr_t)fd;
 
 	if (fd != -1)

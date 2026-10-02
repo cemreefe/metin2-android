@@ -764,7 +764,7 @@ bool Main(HINSTANCE hInstance, LPSTR lpCmdLine)
 	if (LocaleService_LoadGlobal(hInstance))
 		SetDefaultCodePage(LocaleService_GetCodePage());
 
-#ifdef ENABLE_PYLIB_CHECK
+#if defined(ENABLE_PYLIB_CHECK) && !defined(__ANDROID__)
 	if (!__CheckPyLibFiles())
 		return false;
 #endif

@@ -2027,7 +2027,7 @@ PyObject* skillGetIconImage(PyObject* poSelf, PyObject* poArgs)
 	if (!CPythonSkill::Instance().GetSkillData(iSkillIndex, &c_pSkillData))
 		return Py_BuildValue("i", 0);	// �ͼ����� ���� ��� 0�� �����Ѵ�.
 
-	return Py_BuildValue("i", c_pSkillData->pImage);
+	return Py_BuildValue("l", (long)(intptr_t)c_pSkillData->pImage);
 }
 
 PyObject* skillGetIconInstance(PyObject* poSelf, PyObject* poArgs)
@@ -2043,7 +2043,7 @@ PyObject* skillGetIconInstance(PyObject* poSelf, PyObject* poArgs)
 	CGraphicImageInstance* pImageInstance = CGraphicImageInstance::New();
 	pImageInstance->SetImagePointer(c_pSkillData->pImage);
 
-	return Py_BuildValue("i", pImageInstance);
+	return Py_BuildValue("l", (long)(intptr_t)pImageInstance);
 }
 
 PyObject* skillGetIconImageNew(PyObject* poSelf, PyObject* poArgs)
@@ -2066,7 +2066,7 @@ PyObject* skillGetIconImageNew(PyObject* poSelf, PyObject* poArgs)
 	if (iGradeIndex >= CPythonSkill::SKILL_GRADE_COUNT)
 		iGradeIndex = CPythonSkill::SKILL_GRADE_COUNT - 1;
 
-	return Py_BuildValue("i", c_pSkillData->GradeData[iGradeIndex].pImage);
+	return Py_BuildValue("l", (long)(intptr_t)c_pSkillData->GradeData[iGradeIndex].pImage);
 }
 
 PyObject* skillGetIconInstanceNew(PyObject* poSelf, PyObject* poArgs)
@@ -2094,13 +2094,13 @@ PyObject* skillGetIconInstanceNew(PyObject* poSelf, PyObject* poArgs)
 	CGraphicImageInstance* pImageInstance = CGraphicImageInstance::New();
 	pImageInstance->SetImagePointer(c_pSkillData->GradeData[iGradeIndex].pImage);
 
-	return Py_BuildValue("i", pImageInstance);
+	return Py_BuildValue("l", (long)(intptr_t)pImageInstance);
 }
 
 PyObject* skillDeleteIconInstance(PyObject* poSelf, PyObject* poArgs)
 {
-	int iHandle;
-	if (!PyTuple_GetInteger(poArgs, 0, &iHandle))
+	long iHandle;
+	if (!PyTuple_GetLong(poArgs, 0, &iHandle))
 		return Py_BadArgument();
 
 	CGraphicImageInstance::Delete((CGraphicImageInstance*)iHandle);

@@ -614,7 +614,7 @@ typedef struct _CRITICAL_SECTION {
 #define _snwprintf  swprintf
 #define _tzset      tzset
 #define _chmod      chmod
-#define _access     access
+#define _access     android_access
 #define _mkdir(p)   mkdir((p), 0777)
 #define _rmdir      rmdir
 #define _unlink     unlink
@@ -910,9 +910,6 @@ intptr_t _beginthreadex(void* security, unsigned stack_size, unsigned (__stdcall
 #ifndef _snprintf
 #define _snprintf snprintf
 #define _vsnprintf vsnprintf
-#endif
-#ifndef _access
-#define _access access
 #endif
 #ifndef _fileno
 #define _fileno fileno
@@ -1295,9 +1292,8 @@ typedef struct _DDPIXELFORMAT {
     union { DWORD dwRGBBitCount; DWORD dwYUVBitCount; DWORD dwZBufferBitDepth; DWORD dwAlphaBitDepth; };
     union { DWORD dwRBitMask; DWORD dwYBitMask; DWORD dwStencilBitDepth; DWORD dwLuminanceBitCount; DWORD dwBumpBitCount; };
     union { DWORD dwGBitMask; DWORD dwUBitMask; DWORD dwZBitMask; DWORD dwBumpDvBitMask; };
-    union { DWORD dwBBitMask; DWORD dwVBitMask; DWORD dwStencilBitMask; DWORD dwBumpLuminanceBitMask; };
+    union { DWORD dwBBitMask; DWORD dwVBitMask; DWORD dwStencilBitMask; DWORD dwBumpLuminanceBitMask; DWORD dwBumpDuBitMask; };
     union { DWORD dwRGBAlphaBitMask; DWORD dwYUVAlphaBitMask; DWORD dwLuminanceAlphaBitMask; DWORD dwRGBZBitMask; };
-    union { DWORD dwRGBBitBitMask; DWORD dwYUVBitBitMask; DWORD dwBumpDuBitMask; };
 } DDPIXELFORMAT;
 typedef struct _DDSURFACEDESC2 {
     DWORD dwSize, dwFlags, dwHeight, dwWidth;
@@ -1306,12 +1302,15 @@ typedef struct _DDSURFACEDESC2 {
     union { DWORD dwMipMapCount; DWORD dwZBufferBitDepth; DWORD dwRefreshRate; };
     DWORD dwAlphaBitDepth;
     DWORD dwReserved;
-    LPVOID lpSurface;
-    DWORD dwColorSpaceLowValue, dwColorSpaceHighValue;
+    DWORD lpSurface; /* 32-bit in the on-disk DDS header */
+    DWORD ddckColorKeys[8];
     DDPIXELFORMAT ddpfPixelFormat;
     DWORD ddsCaps[4];
     DWORD dwTextureStage;
 } DDSURFACEDESC2;
+#ifdef __cplusplus
+static_assert(sizeof(DDSURFACEDESC2) == 124, "DDSURFACEDESC2 must match the DDS file header");
+#endif
 
 
 /* ---- more consts/APIs for extended source set ---- */
@@ -1472,4 +1471,11 @@ DWORD GetCurrentThreadId();
 }
 #endif
 
-
+#ifdef __cplusplus
+extern "C" {
+#endif
+void android_normalize_path(const char* c_szPath, char* szOut, size_t uOutSize);
+int android_access(const char* c_szPath, int iMode);
+#ifdef __cplusplus
+}
+#endif

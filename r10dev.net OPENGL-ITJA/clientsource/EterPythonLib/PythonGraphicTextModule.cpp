@@ -2,8 +2,8 @@
 
 bool PyTuple_GetTextInstance(PyObject* poArgs, int pos, CGraphicTextInstance** ppTextInstance)
 {
-	int handle;
-	if (!PyTuple_GetInteger(poArgs, pos, &handle))
+	long handle;
+	if (!PyTuple_GetLong(poArgs, pos, &handle))
 		return false;
 
 	if (!handle)
@@ -17,7 +17,7 @@ bool PyTuple_GetTextInstance(PyObject* poArgs, int pos, CGraphicTextInstance** p
 PyObject* grpTextGenerate(PyObject* poSelf, PyObject* poArgs)
 {
 	CGraphicTextInstance* pTextInstance = CGraphicTextInstance::New();
-	return Py_BuildValue("i", pTextInstance);
+	return Py_BuildValue("l", (long)(intptr_t)pTextInstance);
 }
 
 PyObject* grpTextDestroy(PyObject* poSelf, PyObject* poArgs)

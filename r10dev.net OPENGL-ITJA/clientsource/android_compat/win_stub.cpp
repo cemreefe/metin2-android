@@ -714,3 +714,26 @@ void WebBrowser_Hide() {}
 void WebBrowser_Move(const void* rc) {}
 int WebBrowser_IsVisible() { return 0; }
 }
+
+extern "C" void android_normalize_path(const char* c_szPath, char* szOut, size_t uOutSize)
+{
+    if (!uOutSize)
+        return;
+    if (c_szPath[0] && c_szPath[1] == ':')
+        c_szPath += 2;
+    while (*c_szPath == '/' || *c_szPath == '\\')
+        ++c_szPath;
+    size_t i = 0;
+    for (; c_szPath[i] && i < uOutSize - 1; ++i)
+        szOut[i] = c_szPath[i] == '\\' ? '/' : (char)tolower((unsigned char)c_szPath[i]);
+    szOut[i] = '\0';
+}
+
+extern "C" int android_access(const char* c_szPath, int iMode)
+{
+    if (access(c_szPath, iMode) == 0)
+        return 0;
+    char szNormalized[MAX_PATH];
+    android_normalize_path(c_szPath, szNormalized, sizeof(szNormalized));
+    return access(szNormalized, iMode);
+}
