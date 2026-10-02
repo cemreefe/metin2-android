@@ -196,9 +196,8 @@ bool CGrannyModel::LoadMeshs()
 		}
 		m_bHaveBlendThing |= rMesh.HaveBlendThing();
 
-		granny_int32x grni32xTypeCount = GrannyGetTotalTypeSize(pgrnMesh->PrimaryVertexData->VertexType) / 32;
 		int i = 0;
-		while (i < grni32xTypeCount)
+		while (pgrnMesh->PrimaryVertexData->VertexType[i].Type != GrannyEndMember)
 		{
 			if (NULL == pgrnMesh->PrimaryVertexData->VertexType[i].Name || 0 == strlen(pgrnMesh->PrimaryVertexData->VertexType[i].Name))
 			{
@@ -242,6 +241,9 @@ bool CGrannyModel::LoadMeshs()
 		if (rMesh.GetTriGroupNodeList(CGrannyMaterial::TYPE_BLEND_PNT))
 			AppendMeshNode(eMeshType, CGrannyMaterial::TYPE_BLEND_PNT, n);
 	}
+
+	// Vertex buffers are filled with TPNTVertex / TPNT2Vertex layouts.
+	m_dwFvF |= D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX1;
 
 	// For Dungeon Block
 	if ((D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX1 | D3DFVF_TEX2) == m_dwFvF)

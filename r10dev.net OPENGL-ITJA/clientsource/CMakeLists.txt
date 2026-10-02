@@ -41,7 +41,8 @@ set(ETER_BASE_SOURCES
     android_compat/win_stub.cpp
     EterBase/Poly/Poly.cpp
     EterBase/Poly/SymTable.cpp
-    android_compat/granny_stub.cpp
+    android_compat/granny_rt.cpp
+    android_compat/opengr2/oodle1.c
     android_compat/devil_stub.cpp
     android_compat/gdi_font.cpp
     android_compat/speedtree_stub.cpp
