@@ -277,6 +277,13 @@ DevIL, SpeedTree, Miles.
     header force-included on the host only. SQLite needs `_GNU_SOURCE` for
     `mremap`.
   - `qc` runs on the host while building the pack (quests are data, not code).
+  - Clients connected but never got `GC_HANDSHAKE` ("handshake session has
+    expired"). libthecore's POSIX backend calls `select(0, ...)` (fine on
+    Winsock, which ignores nfds); Linux then checks no fds and leaves the sets
+    untouched, so every socket looks readable, `fdwatch_check_event` always
+    returns READ and output is never flushed (also a 100% CPU busy loop).
+    `compat/select_nfds.h` is force-included into libthecore only and passes
+    `FD_SETSIZE` when nfds is 0; the pinned source stays unpatched.
 - Server data pack: `server/tools/make-server-pack.sh <m2dev-server>
   <m2dev-server-src> <out>` (share/conf,data,locale,mark + compiled quests +
   seed DBs, ~116 MB), `push-server-pack.sh <out>` puts it at

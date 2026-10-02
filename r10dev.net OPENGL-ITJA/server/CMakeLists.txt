@@ -55,6 +55,7 @@ endif()
 add_subdirectory(${M2_SERVER_SRC}/vendor/spdlog-1.15.3 vendor/spdlog)
 add_subdirectory(${M2_SERVER_SRC}/vendor/libsodium vendor/libsodium)
 add_subdirectory(${M2_SERVER_SRC}/src src)
+target_compile_options(libthecore PRIVATE "SHELL:-include \"${CMAKE_CURRENT_SOURCE_DIR}/compat/select_nfds.h\"")
 
 if(ANDROID)
 	# Packaged as lib<name>.so so the APK installer extracts them into
