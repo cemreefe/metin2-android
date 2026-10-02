@@ -29,7 +29,7 @@ endif()
 
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
-set(GIT_DESCRIBE_VERSION "0cc595b-android")
+set(GIT_DESCRIBE_VERSION "66068c1-android")
 
 include_directories(BEFORE ${CMAKE_CURRENT_SOURCE_DIR}/sqlite-mysql/include ${CMAKE_CURRENT_SOURCE_DIR}/sqlite-mysql/sqlite3)
 include_directories(${M2_SERVER_SRC}/src ${M2_SERVER_SRC}/include)
@@ -53,7 +53,15 @@ if(ANDROID)
 endif()
 
 add_subdirectory(${M2_SERVER_SRC}/vendor/spdlog-1.15.3 vendor/spdlog)
-add_subdirectory(${M2_SERVER_SRC}/vendor/libsodium vendor/libsodium)
+set(CRYPTOPP_BUILD_TESTING OFF CACHE BOOL "")
+set(CRYPTOPP_BUILD_SHARED OFF CACHE BOOL "")
+set(CRYPTOPP_INSTALL OFF CACHE BOOL "")
+# cryptopp passes "${CMAKE_CXX_FLAGS}" to add_compile_options() as one argument,
+# which breaks once the NDK toolchain populates it.
+set(M2_SAVED_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+set(CMAKE_CXX_FLAGS "")
+add_subdirectory(${M2_SERVER_SRC}/vendor/cryptopp vendor/cryptopp EXCLUDE_FROM_ALL)
+set(CMAKE_CXX_FLAGS "${M2_SAVED_CXX_FLAGS}")
 add_subdirectory(${M2_SERVER_SRC}/src src)
 target_compile_options(libthecore PRIVATE "SHELL:-include \"${CMAKE_CURRENT_SOURCE_DIR}/compat/select_nfds.h\"")
 

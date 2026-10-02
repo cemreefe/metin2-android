@@ -248,7 +248,7 @@ DevIL, SpeedTree, Miles.
 
 ## Embedded server (offline profile)
 
-- Layout: `server/` builds the pinned m2dev-server-src (0cc595bf, unpatched,
+- Layout: `server/` builds the pinned m2dev-server-src (66068c1, unpatched,
   cloned by Gradle into `server/.src` or `-Pm2serverSrc=`) with NDK r25 into
   PIE executables `libm2db.so` / `libm2game.so`, packaged as jniLibs so they
   land executable in `nativeLibraryDir` (exec from app data is blocked on
@@ -290,6 +290,16 @@ DevIL, SpeedTree, Miles.
     returns READ and output is never flushed (also a 100% CPU busy loop).
     `compat/select_nfds.h` is force-included into libthecore only and passes
     `FD_SETSIZE` when nfds is 0; the pinned source stays unpatched.
+  - Pin is 66068c1, not 0cc595b: db87d06 (between them) replaced the Crypto++
+    KEY_AGREEMENT (0xfb/0xfa) with a libsodium KEY_CHALLENGE (0xf8/0xf9/0xf7)
+    the client doesn't speak; auth sent the challenge and timed out.
+    66068c1 is what the Linux server the client was tuned against runs.
+  - cryptopp's CMake does `add_compile_options("${CMAKE_CXX_FLAGS}")` (one
+    quoted argument); harmless on the host where it is empty, fatal with the
+    NDK flags. `CMAKE_CXX_FLAGS` is cleared around its `add_subdirectory`.
+  - The Linux setup's `QueryLocaleSet` connect-wait patch isn't needed: the
+    SQLite shim is connected synchronously and `mysql_set_character_set` is
+    a no-op.
 - Server data pack: `server/tools/make-server-pack.sh <m2dev-server>
   <m2dev-server-src> <out>` (share/conf,data,locale,mark + compiled quests +
   seed DBs, ~116 MB), `push-server-pack.sh <out>` puts it at

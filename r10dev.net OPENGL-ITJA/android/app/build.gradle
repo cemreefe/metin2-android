@@ -94,14 +94,15 @@ dependencies {
 
 // Embedded server: cross-compile m2dev-server-src (pinned commit) with the
 // SQLite-backed MySQL shim in ../server into PIE executables per ABI.
-def m2ServerCommit = '0cc595bf097dcf89ddba60615e56fe790823cd22'
+def m2ServerCommit = '66068c1'
 def m2ServerDir = file('../../server')
 def m2ServerSrc = file(project.findProperty('m2serverSrc') ?: System.getenv('M2_SERVER_SRC') ?: "${m2ServerDir}/.src/m2dev-server-src")
 
 task fetchEmbeddedServerSource {
-    onlyIf { !file("${m2ServerSrc}/src/CMakeLists.txt").exists() }
+    onlyIf { !project.hasProperty('m2serverSrc') && System.getenv('M2_SERVER_SRC') == null }
     doLast {
-        exec { commandLine 'git', 'clone', '--quiet', 'https://github.com/d1str4ught/m2dev-server-src.git', m2ServerSrc.path }
+        if (!file("${m2ServerSrc}/src/CMakeLists.txt").exists())
+            exec { commandLine 'git', 'clone', '--quiet', 'https://github.com/d1str4ught/m2dev-server-src.git', m2ServerSrc.path }
         exec { commandLine 'git', '-C', m2ServerSrc.path, 'checkout', '--quiet', m2ServerCommit }
     }
 }
