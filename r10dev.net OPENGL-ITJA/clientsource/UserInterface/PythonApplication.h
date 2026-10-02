@@ -285,6 +285,18 @@ public:
 	void OnMouseLeftButtonUpPublic(int x, int y) { OnMouseLeftButtonUp(x, y); }
 	void OnTouchEvent(int action, int x, int y) override
 	{
+		extern int g_iAndroidSurfaceWidth;
+		extern int g_iAndroidSurfaceHeight;
+		if (g_iAndroidSurfaceWidth > 0 && g_iAndroidSurfaceHeight > 0 && m_dwWidth && m_dwHeight)
+		{
+			x = x * (int)m_dwWidth / g_iAndroidSurfaceWidth;
+			y = y * (int)m_dwHeight / g_iAndroidSurfaceHeight;
+		}
+		extern volatile int g_iAndroidCursorX;
+		extern volatile int g_iAndroidCursorY;
+		g_iAndroidCursorX = x;
+		g_iAndroidCursorY = y;
+		OnMouseMove(x, y);
 		if (action == 0)
 			OnMouseLeftButtonDown(x, y);
 		else if (action == 1)

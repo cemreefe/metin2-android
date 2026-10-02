@@ -133,8 +133,33 @@ DevIL, SpeedTree, Miles.
   with adb). Client log: `syserr.txt` there + `adb logcat -s Metin2Mobile`.
 - Screenshots: `adb exec-out screencap -p > shot.png`.
 
+## Touch input -> movement
+
+- Path: `MainActivity.onTouchEvent` -> JNI `touchEvent` -> queue in
+  `CMSApplication` -> `CPythonApplication::OnTouchEvent` -> `OnMouseMove` +
+  `OnMouseLeftButtonDown/Up` -> `CWindowManager` -> `game.py`
+  `OnMouseLeftButtonDown` -> `player.SetMouseState` -> `__OnPressSmart` ->
+  ground pick -> `SendCharacterStatePacket`.
+- Trap 1: Android hands physical surface pixels (2148x1080 on the emulator);
+  the client works in its logical resolution (1024x768). Unscaled taps fell
+  outside every UI window, so nothing ever reached `game.py`. Scale in
+  `OnTouchEvent` by `m_dwWidth / surfaceWidth`.
+- Trap 2: the main loop polls `GetCursorPos()` every frame and calls
+  `OnMouseMove` with it, and the picking ray is built from that. A stub that
+  returns (0,0) silently overrides each touch. Feed the scaled touch position
+  back through `GetCursorPos`.
+- Granny root motion: `.msa` `Accumulation` and the GR2 track group's
+  `LoopTranslation` + `Flags & 3` carry per-loop displacement (run.gr2:
+  0,-300,0 per 0.667 s). `GrannyUpdateModelMatrix` must apply it scaled by
+  elapsed/duration and control weight; a copy-only stub keeps the actor in place.
+- Verify movement server-side, not by pose: `player.player` x/y only change
+  after the game save event (120 s) plus the db cache flush (up to 7 min), or
+  on logout + flush. Verified: 964548,276496 -> 967275,274106.
+- Unresolved: `SEQUENCE ... mismatch header 254` (PONG) in core syserr; it did
+  not recur in the move session. Do not disable the server check.
+
 ## Open items (as of this entry)
 
 - Terrain/text rendering in GL bridge; Granny `.gr2` loader (models invisible);
   remaining packet layout mismatches (item set/del, shop, target, skill level);
-  touch input and gameplay validation.
+  combat/inventory/shop/chat validation; PONG sequence mismatch.

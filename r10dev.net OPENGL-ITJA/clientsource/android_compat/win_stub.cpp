@@ -749,7 +749,9 @@ char* _ecvt(double value, int count, int* dec, int* sign) {
 }
 
 BOOL SystemParametersInfoA(unsigned, unsigned, void*, unsigned) { return TRUE; }
-BOOL GetCursorPos(POINT* p) { if (p) { p->x = 0; p->y = 0; } return TRUE; }
+volatile int g_iAndroidCursorX = 0;
+volatile int g_iAndroidCursorY = 0;
+BOOL GetCursorPos(POINT* p) { if (p) { p->x = g_iAndroidCursorX; p->y = g_iAndroidCursorY; } return TRUE; }
 void* CreateSemaphoreA(void*, long, long, const char*) { return (void*)1; }
 unsigned timeGetDevCaps(TIMECAPS* p, unsigned) {
     if (p) { p->wPeriodMin = 1; p->wPeriodMax = 1000; }

@@ -13,6 +13,8 @@
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
 
 extern AAssetManager* g_pAssetManager;
+int g_iAndroidSurfaceWidth = 0;
+int g_iAndroidSurfaceHeight = 0;
 int AndroidMain(int argc, char** argv);
 
 extern "C" {
@@ -63,6 +65,8 @@ JNIEXPORT void JNICALL Java_com_metin2_client_NativeLib_init(JNIEnv* env, jobjec
 	if (!pWindow || !CreateEGLContext(pWindow))
 		return;
 
+	g_iAndroidSurfaceWidth = width;
+	g_iAndroidSurfaceHeight = height;
 	g_pAssetManager = AAssetManager_fromJava(env, assetManager);
 
 	const char* c_szDataDir = env->GetStringUTFChars(dataDir, NULL);

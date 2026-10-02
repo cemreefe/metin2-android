@@ -1017,10 +1017,29 @@ GRANNY_DYNLINK(void) GrannySetModelClock(granny_model_instance const* ModelInsta
     if (ModelInstance) ((GrnInstance*)ModelInstance)->clock = NewClock;
 }
 
-GRANNY_DYNLINK(void) GrannyUpdateModelMatrix(granny_model_instance const*, granny_real32, granny_real32 const* ModelMatrix4x4,
-                                             granny_real32* DestMatrix4x4, bool)
+GRANNY_DYNLINK(void) GrannyUpdateModelMatrix(granny_model_instance const* ModelInstance, granny_real32 SecondsElapsed,
+                                             granny_real32 const* ModelMatrix4x4, granny_real32* DestMatrix4x4, bool)
 {
-    if (ModelMatrix4x4 && DestMatrix4x4 && ModelMatrix4x4 != DestMatrix4x4) memmove(DestMatrix4x4, ModelMatrix4x4, 64);
+    if (!ModelMatrix4x4 || !DestMatrix4x4) return;
+    float m[16];
+    memcpy(m, ModelMatrix4x4, 64);
+    float d[3] = {0, 0, 0};
+    const GrnInstance* inst = (const GrnInstance*)ModelInstance;
+    if (inst) {
+        for (const GrnControl* c : inst->controls) {
+            if (!c->tg || !c->anim || !(c->tg->Flags & 3)) continue;
+            float dur = c->anim->Duration;
+            float w = Weight(c);
+            if (dur <= 0 || w <= 0) continue;
+            if (c->loopCount > 0 && LocalClock(c) >= dur * c->loopCount) continue;
+            float k = w * SecondsElapsed * c->speed / dur;
+            for (int i = 0; i < 3; ++i) d[i] += c->tg->LoopTranslation[i] * k;
+        }
+    }
+    float out[16];
+    memcpy(out, m, 64);
+    for (int j = 0; j < 3; ++j) out[12 + j] = m[12 + j] + d[0] * m[j] + d[1] * m[4 + j] + d[2] * m[8 + j];
+    memcpy(DestMatrix4x4, out, 64);
 }
 
 GRANNY_DYNLINK(granny_local_pose*) GrannyNewLocalPose(granny_int32x BoneCount)
