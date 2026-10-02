@@ -497,40 +497,95 @@ int WSAStartup(WORD, LPWSADATA) { return 0; }
 int WSACleanup(void) { return 0; }
 int WSAAsyncSelect(SOCKET, HWND, unsigned int, long) { return 0; }
 
-/* ---- unicode conversion: metin2 uses euc-kr/cp949 mostly; UTF-8 passthrough ---- */
-int WideCharToMultiByte(UINT CodePage, DWORD, LPCWSTR lpWideCharStr, int cchWideChar,
-                        LPSTR lpMultiByteStr, int cbMultiByte, LPCSTR, LPBOOL) {
-    if (CodePage == CP_UTF8 || CodePage == CP_ACP) {
-        int n = (int)wcstombs(NULL, lpWideCharStr, 0);
-        if (n < 0) n = 0;
-        if (cchWideChar != -1) {
-            // count chars needed
-            n = 0;
-            for (int i = 0; lpWideCharStr[i] && (cchWideChar == -1 || i < cchWideChar); ++i) {
-                char tmp[MB_LEN_MAX];
-                n += (int)wcstombs(tmp, lpWideCharStr + i, 1);
+/* ---- unicode conversion: UTF-8 and Windows single-byte code pages ---- */
+namespace {
+    const unsigned short sc_awCp1252High[32] = {
+        0x20AC, 0x0081, 0x201A, 0x0192, 0x201E, 0x2026, 0x2020, 0x2021, 0x02C6, 0x2030, 0x0160, 0x2039, 0x0152, 0x008D, 0x017D, 0x008F,
+        0x0090, 0x2018, 0x2019, 0x201C, 0x201D, 0x2022, 0x2013, 0x2014, 0x02DC, 0x2122, 0x0161, 0x203A, 0x0153, 0x009D, 0x017E, 0x0178,
+    };
+
+    wchar_t SingleByteToWide(UINT codePage, unsigned char c) {
+        if (c < 0x80) return c;
+        if (c < 0xA0) return sc_awCp1252High[c - 0x80];
+        if (codePage == 1254) {
+            switch (c) {
+                case 0xD0: return 0x011E; case 0xDD: return 0x0130; case 0xDE: return 0x015E;
+                case 0xF0: return 0x011F; case 0xFD: return 0x0131; case 0xFE: return 0x015F;
             }
         }
-        if (!lpMultiByteStr || cbMultiByte == 0) return n;
-        int written = (int)wcstombs(lpMultiByteStr, lpWideCharStr, cbMultiByte - 1);
-        if (written < 0) written = 0;
-        if (written < cbMultiByte) lpMultiByteStr[written] = 0;
-        return written;
+        return c;
     }
-    return 0;
+
+    int WideToSingleByte(UINT codePage, wchar_t w) {
+        if (w < 0x80) return (int)w;
+        for (int c = 0x80; c < 0x100; ++c)
+            if (SingleByteToWide(codePage, (unsigned char)c) == w) return c;
+        return '?';
+    }
+
+    bool IsUtf8(UINT codePage) { return codePage == CP_UTF8; }
 }
+
+int WideCharToMultiByte(UINT CodePage, DWORD, LPCWSTR lpWideCharStr, int cchWideChar,
+                        LPSTR lpMultiByteStr, int cbMultiByte, LPCSTR, LPBOOL) {
+    if (!lpWideCharStr) return 0;
+    bool bTerminated = cchWideChar == -1;
+    if (bTerminated) cchWideChar = (int)wcslen(lpWideCharStr) + 1;
+    int n = 0;
+    for (int i = 0; i < cchWideChar; ++i) {
+        unsigned cp = (unsigned)lpWideCharStr[i];
+        char buf[4];
+        int len;
+        if (IsUtf8(CodePage)) {
+            if (cp < 0x80) { buf[0] = (char)cp; len = 1; }
+            else if (cp < 0x800) { buf[0] = (char)(0xC0 | (cp >> 6)); buf[1] = (char)(0x80 | (cp & 0x3F)); len = 2; }
+            else if (cp < 0x10000) { buf[0] = (char)(0xE0 | (cp >> 12)); buf[1] = (char)(0x80 | ((cp >> 6) & 0x3F)); buf[2] = (char)(0x80 | (cp & 0x3F)); len = 3; }
+            else { buf[0] = (char)(0xF0 | (cp >> 18)); buf[1] = (char)(0x80 | ((cp >> 12) & 0x3F)); buf[2] = (char)(0x80 | ((cp >> 6) & 0x3F)); buf[3] = (char)(0x80 | (cp & 0x3F)); len = 4; }
+        } else {
+            buf[0] = (char)WideToSingleByte(CodePage, (wchar_t)cp);
+            len = 1;
+        }
+        if (lpMultiByteStr && cbMultiByte > 0) {
+            if (n + len > cbMultiByte) return 0;
+            memcpy(lpMultiByteStr + n, buf, len);
+        }
+        n += len;
+    }
+    return n;
+}
+
 int MultiByteToWideChar(UINT CodePage, DWORD, LPCSTR lpMultiByteStr, int cbMultiByte,
                         LPWSTR lpWideCharStr, int cchWideChar) {
-    if (CodePage == CP_UTF8 || CodePage == CP_ACP) {
-        if (cbMultiByte == -1) cbMultiByte = (int)strlen(lpMultiByteStr) + 1;
-        if (!lpWideCharStr || cchWideChar == 0)
-            return (int)mbstowcs(NULL, lpMultiByteStr, 0) >= 0 ? (int)mbstowcs(NULL, lpMultiByteStr, 0) : 0;
-        int n = (int)mbstowcs(lpWideCharStr, lpMultiByteStr, cchWideChar - 1);
-        if (n < 0) n = 0;
-        if (n < cchWideChar) lpWideCharStr[n] = 0;
-        return n;
+    if (!lpMultiByteStr) return 0;
+    if (cbMultiByte == -1) cbMultiByte = (int)strlen(lpMultiByteStr) + 1;
+    const unsigned char* s = (const unsigned char*)lpMultiByteStr;
+    int n = 0;
+    for (int i = 0; i < cbMultiByte;) {
+        unsigned cp;
+        if (IsUtf8(CodePage)) {
+            unsigned char c = s[i];
+            int extra = c < 0x80 ? 0 : (c >> 5) == 6 ? 1 : (c >> 4) == 14 ? 2 : (c >> 3) == 30 ? 3 : -1;
+            if (extra < 0 || i + extra >= cbMultiByte + (extra ? 0 : 1)) { cp = 0xFFFD; ++i; }
+            else {
+                cp = extra ? (c & (0x3F >> extra)) : c;
+                bool ok = true;
+                for (int k = 1; k <= extra; ++k) {
+                    if ((s[i + k] & 0xC0) != 0x80) { ok = false; break; }
+                    cp = (cp << 6) | (s[i + k] & 0x3F);
+                }
+                if (ok) i += extra + 1; else { cp = 0xFFFD; ++i; }
+            }
+        } else {
+            cp = SingleByteToWide(CodePage, s[i]);
+            ++i;
+        }
+        if (lpWideCharStr && cchWideChar > 0) {
+            if (n >= cchWideChar) return 0;
+            lpWideCharStr[n] = (wchar_t)cp;
+        }
+        ++n;
     }
-    return 0;
+    return n;
 }
 
 LCID GetSystemDefaultLCID(void) { return 0x0409; }

@@ -69,6 +69,11 @@ DevIL, SpeedTree, Miles.
   each; a big all-at-once shader rewrite produced corrupt geometry that was
   hard to bisect.
 
+- Text: the font atlas path was fine; `MultiByteToWideChar` in the shim only
+  handled CP_UTF8/CP_ACP and returned 0 for the game's code page (1252/1254),
+  so every string became zero glyphs. It also ignored `cbMultiByte` (mbstowcs
+  reads to NUL). Implement real UTF-8 + Windows single-byte code pages.
+
 ## Networking / protocol traps
 
 - POSIX non-blocking connect: `EINPROGRESS` is success; `select()` nfds must be
