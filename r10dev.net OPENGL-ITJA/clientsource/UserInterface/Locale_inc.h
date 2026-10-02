@@ -67,10 +67,10 @@
 */
 #define ENABLE_PRINT_RECV_PACKET_DEBUG
 #define ENABLE_CHAT															// Flag on Chat System
-#define ENABLE_EXTENDED_ITEMNAME											// Extended Item Name System
+// #define ENABLE_EXTENDED_ITEMNAME											// Extended Item Name System
 #define ENABLE_TARGET_INFORMATION_SYSTEM											// Target Information System
 #define ENABLE_HEALTH_BOARD_SYSTEM													// Health Board System
-#define ENABLE_VIEW_TARGET_MONSTER_HP												// Target Hp Percent System
+// #define ENABLE_VIEW_TARGET_MONSTER_HP												// Target Hp Percent System
 #define ENABLE_DAMAGE_BAR															// Damage Bar System
 #define ENABLE_HEALTH_PERCENT_SYSTEM												// Target Hp Percent Sysetm
 #define ENABLE_DS_GRADE_MYTH

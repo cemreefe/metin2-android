@@ -2509,6 +2509,7 @@ typedef struct SPacketGCNPCPosition
 struct TNPCPosition
 {
 	BYTE bType;
+	DWORD dwVnum;
 	char name[CHARACTER_NAME_MAX_LEN + 1];
 	LONG x;
 	LONG y;

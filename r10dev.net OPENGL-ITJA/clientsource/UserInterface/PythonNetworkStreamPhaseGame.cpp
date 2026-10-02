@@ -1143,8 +1143,8 @@ bool CPythonNetworkStream::SendMessengerRemovePacket(const char* c_szKey, const 
 	packet.subheader = MESSENGER_SUBHEADER_CG_REMOVE;
 	if (!Send(sizeof(packet), &packet))
 		return false;
-	char szKey[CHARACTER_NAME_MAX_LEN];
-	strncpy(szKey, c_szKey, CHARACTER_NAME_MAX_LEN - 1);
+	char szKey[ID_MAX_NUM + 1] = {};
+	strncpy(szKey, c_szKey, ID_MAX_NUM);
 	if (!Send(sizeof(szKey), &szKey))
 		return false;
 	__RefreshTargetBoardByName(c_szName);
