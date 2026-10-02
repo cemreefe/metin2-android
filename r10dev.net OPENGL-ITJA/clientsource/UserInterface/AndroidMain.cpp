@@ -21,15 +21,15 @@ static JavaVM* s_pJavaVM = NULL;
 static jclass s_jNativeLib = NULL;
 static jmethodID s_jSetKeyboardVisible = NULL;
 
-void AndroidSetKeyboardVisible(bool bVisible)
+void AndroidSetKeyboardVisible(bool bVisible, float fFocusBottom)
 {
-	LOGI("keyboard visible=%d", (int)bVisible);
+	LOGI("keyboard visible=%d focusBottom=%.2f", (int)bVisible, fFocusBottom);
 	if (!s_pJavaVM || !s_jSetKeyboardVisible)
 		return;
 	JNIEnv* env = NULL;
 	if (s_pJavaVM->GetEnv((void**)&env, JNI_VERSION_1_6) != JNI_OK || !env)
 		return;
-	env->CallStaticVoidMethod(s_jNativeLib, s_jSetKeyboardVisible, (jboolean)bVisible);
+	env->CallStaticVoidMethod(s_jNativeLib, s_jSetKeyboardVisible, (jboolean)bVisible, (jfloat)fFocusBottom);
 }
 
 extern "C" {
@@ -110,7 +110,7 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void*)
 	if (cls)
 	{
 		s_jNativeLib = (jclass)env->NewGlobalRef(cls);
-		s_jSetKeyboardVisible = env->GetStaticMethodID(s_jNativeLib, "setKeyboardVisible", "(Z)V");
+		s_jSetKeyboardVisible = env->GetStaticMethodID(s_jNativeLib, "setKeyboardVisible", "(ZF)V");
 	}
 	return JNI_VERSION_1_6;
 }

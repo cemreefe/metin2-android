@@ -408,17 +408,23 @@ void CPythonApplication::SkipRenderBuffering(DWORD dwSleepMSec)
 }
 
 #ifdef __ANDROID__
-void AndroidSetKeyboardVisible(bool bVisible);
+void AndroidSetKeyboardVisible(bool bVisible, float fFocusBottom);
 
 static void AndroidSyncKeyboardVisibility()
 {
 	static bool s_bVisible = false;
-	UI::CWindow* pFocus = UI::CWindowManager::Instance().GetActivateWindow();
+	static UI::CWindow* s_pFocus = NULL;
+	UI::CWindowManager& rkWndMgr = UI::CWindowManager::Instance();
+	UI::CWindow* pFocus = rkWndMgr.GetActivateWindow();
 	bool bWant = CPythonIME::Instance().IsCaptureEnabled() && pFocus && pFocus->IsRendering();
-	if (bWant == s_bVisible)
+	if (bWant == s_bVisible && (!bWant || pFocus == s_pFocus))
 		return;
 	s_bVisible = bWant;
-	AndroidSetKeyboardVisible(bWant);
+	s_pFocus = bWant ? pFocus : NULL;
+	float fFocusBottom = 1.0f;
+	if (bWant && rkWndMgr.GetScreenHeight() > 0)
+		fFocusBottom = float(pFocus->GetRect().bottom) / float(rkWndMgr.GetScreenHeight());
+	AndroidSetKeyboardVisible(bWant, fFocusBottom);
 }
 #endif
 
