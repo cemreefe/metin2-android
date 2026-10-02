@@ -237,11 +237,27 @@ DevIL, SpeedTree, Miles.
 - Tunnels for phone testing: raw TCP via bore.pub for auth/channel (game traffic
   is tiny), but bore.pub gave ~70 KB/s, too slow for 1 GB of data. A cloudflared
   quick tunnel served it at tens of MB/s; its random URL goes into the pointer file.
-- The client connects to the channel address from `serverinfo.py`, not one the
-  auth server hands out, so one tunnel port per channel core is enough.
+- The client's first channel connection uses the address from `serverinfo.py`, but
+  after `LOGIN_BY_KEY` the core sends the address of the core that hosts the
+  character's map (see "Phone kicked back to server select" below).
 
 ### Bundled-data APKs, pinned tunnel IPs, soft-keyboard shift
 
 - `m2.dataBundled=true` packs the versioned data zip into the APK as `assets/m2data.zip`. `make_bundle.sh` hard-links it into `$M2_BUNDLE_OUT/assets-<ver>/` and passes `-Pm2dataAssets`. aapt `noCompress 'zip'` keeps the asset stored, so `AssetManager.openFd()` gives its length for the progress bar. The engine needs loose files through stdio, so the zip is still extracted to external files on first launch. That took under a minute on the emulator, versus the download. A 1 GB APK installs fine through adb.
 - On a user's network, `bore.pub` resolved to 81.99.162.48, while our tunnels are on 159.223.110.159, and the connection timed out. Profiles therefore pin the bore server by IP. Lesson: never rely on a third-party relay's DNS for test bundles.
 - Soft keyboard: the activity uses `adjustNothing`, so the visible frame never shrinks and `getWindowVisibleDisplayFrame` doesn't see the IME. On API 30+, read `WindowInsets.Type.ime()` from the decor view's insets listener instead. Native passes the focused edit window's bottom (as a fraction of the screen) with `setKeyboardVisible(boolean, float)`. Java then translates the game view up so that bottom, plus a 12% margin to cover the next field (password) and the button, sits above the keyboard. Touch Y is corrected by `getTranslationY()`, because the activity receives window coordinates.
+
+### Phone kicked back to server select after Start; character-select offset
+
+- Symptom: on the phone (tunnel profile), Start on character select returned to the server list. Server logs showed `LOGIN_BY_KEY` on core1, then the socket closed with no `player_select`. The emulator worked because it can reach the LAN address directly.
+- Cause: the login-success packet carries each character's game server address. The character's map (41) is hosted on core3, so core1 advertised `172.16.255.2:11013`. The phone can't reach that, and a failed connect returns to the server list. Warps (`HEADER_GC_WARP`) do the same.
+- Fix: tunnel every core (`4711x -> 1101x`) and add the profile key `m2.gamePortOffset`. When it is nonzero, Java sets `M2_GAME_HOST`/`M2_GAME_PORT_OFFSET` with `Os.setenv`. `CNetworkStream::Connect(DWORD, port)` then swaps in the profile host and shifts the port. A fully tunnelled x86_64 build of the phone profile then reached `ENTERGAME` on core3.
+- Character select: `grp.SetViewport` takes fractions of the screen, and the GLES layer multiplied them by the logical 1024x768 back buffer instead of the real surface. Android now uses `g_iAndroidSurfaceWidth/Height`.
+- Lesson: when a phone-only bug looks like a crash, read the server logs for the session first. "Back to the server list" was a failed connect, not a native crash.
+
+### Iteration loop
+
+- Phone profiles build arm64 only; Gradle passes ccache as the CMake compiler launcher when it exists.
+- `m2.devUrl`/`m2.updateChannel`: `make_bundle.sh` writes `latest-<channel>.txt`. On launch the app offers newer builds and opens the APK URL. It also posts the previous run's `crash.txt`, `syserr.txt`/`stderr.txt` tails and the app's own logcat to `POST /crash`.
+- The native crash handler (`AndroidMain.cpp`) writes signal, fault address and an `_Unwind_Backtrace` with `dladdr` to `crash.txt`. Symbols for each build are copied to `$M2_SYMS/<name>-<build>`.
+- To reproduce phone profiles on the x86_64 emulator, use `-Pm2abi=x86_64`. When moving the install from arm64 to x86_64, `adb install --abi x86_64` an APK that contains both ABIs first, otherwise the install fails with "Error deriving application ABI".

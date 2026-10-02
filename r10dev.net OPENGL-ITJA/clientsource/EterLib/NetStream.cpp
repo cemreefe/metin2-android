@@ -462,6 +462,19 @@ bool CNetworkStream::Connect(DWORD dwAddr, int port, int limitSec)
 		sprintf(szAddr, "%d.%d.%d.%d", ip[0], ip[1], ip[2], ip[3]);
 	}
 
+#ifdef __ANDROID__
+	// Remote test profiles reach the cores through a tunnel: the server advertises its LAN address, so
+	// redirect to the profile host and shift the port into the tunnel's range.
+	const char* c_szGameHost = getenv("M2_GAME_HOST");
+	const char* c_szPortOffset = getenv("M2_GAME_PORT_OFFSET");
+	if (c_szGameHost && c_szPortOffset)
+	{
+		Tracenf("game redirect %s:%d -> %s:%d", szAddr, port, c_szGameHost, port + atoi(c_szPortOffset));
+		snprintf(szAddr, sizeof(szAddr), "%s", c_szGameHost);
+		port += atoi(c_szPortOffset);
+	}
+#endif
+
 	return Connect(szAddr, port, limitSec);
 }
 

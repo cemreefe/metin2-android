@@ -9,6 +9,8 @@ def m2dataBundled = m2('dataBundled', 'false').toBoolean()
 def m2dataAssets = project.hasProperty('m2dataAssets') ? project.property('m2dataAssets') : null
 if (m2dataBundled && m2dataAssets == null)
     throw new GradleException("profile ${m2profileName} bundles client data: pass -Pm2dataAssets=<dir containing m2data.zip> (tools/make_bundle.sh does this)")
+def m2ccacheBin = ['/usr/bin/ccache', '/usr/local/bin/ccache'].find { new File(it).canExecute() }
+def m2ccache = m2ccacheBin ? ["-DCMAKE_C_COMPILER_LAUNCHER=${m2ccacheBin}", "-DCMAKE_CXX_COMPILER_LAUNCHER=${m2ccacheBin}"] : []
 def m2buildNumber = (project.hasProperty('m2build') ? project.property('m2build') : '1') as int
 
 android {
@@ -28,16 +30,20 @@ android {
         buildConfigField "String", "M2_SERVER_HOST", "\"${m2('serverHost')}\""
         buildConfigField "int", "M2_AUTH_PORT", m2('authPort', '11000')
         buildConfigField "int", "M2_CHANNEL_PORT", m2('channelPort', '11011')
+        buildConfigField "int", "M2_GAME_PORT_OFFSET", m2('gamePortOffset', '0')
         buildConfigField "String", "M2_DATA_URL", "\"${m2('dataUrl')}\""
         buildConfigField "int", "M2_DATA_VERSION", m2('dataVersion', '1')
         buildConfigField "boolean", "M2_DATA_BUNDLED", "${m2dataBundled}"
+        buildConfigField "String", "M2_DEV_URL", "\"${m2('devUrl')}\""
+        buildConfigField "String", "M2_UPDATE_CHANNEL", "\"${m2('updateChannel', m2profileName)}\""
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         
         externalNativeBuild {
             cmake {
-                cppFlags "-std=c++11 -frtti -fexceptions -Wno-invalid-source-encoding"
-                arguments "-DANDROID_STL=c++_shared", "-DANDROID_TOOLCHAIN=clang"
+                cppFlags "-std=c++11 -frtti -fexceptions -fsigned-char -Wno-invalid-source-encoding"
+                cFlags "-fsigned-char"
+                arguments(*(["-DANDROID_STL=c++_shared", "-DANDROID_TOOLCHAIN=clang"] + m2ccache))
                 abiFilters(*m2abis.split(','))
             }
         }

@@ -36,5 +36,15 @@ if [ "$BUNDLED" = "true" ]; then
 fi
 "$GRADLE" assembleDebug -Pm2profile="$PROFILE" -Pm2build="$BUILD" "${EXTRA[@]}" -q
 cp app/build/outputs/apk/debug/app-debug.apk "$OUT/metin2-$NAME-$BUILD.apk"
+SYMS=${M2_SYMS:-$HOME/m2syms}/$NAME-$BUILD
+mkdir -p "$SYMS"
+for abi in app/build/intermediates/merged_native_libs/debug/out/lib/*/; do
+  cp "$abi/libmetin2_mobile.so" "$SYMS/libmetin2_mobile-$(basename "$abi").so"
+done
+CHANNEL=$(sed -n 's/^m2.updateChannel=//p' "profiles/$PROFILE.properties")
+DEVURL=$(sed -n 's/^m2.devUrl=//p' "profiles/$PROFILE.properties")
+if [ -n "$CHANNEL" ] && [ -n "$DEVURL" ] && [ "$BUNDLED" != "true" ]; then
+  echo "$BUILD $DEVURL/metin2-$NAME-$BUILD.apk" > "$OUT/latest-$CHANNEL.txt"
+fi
 echo "$OUT/metin2-$NAME-$BUILD.apk"
 echo "$ZIP"
