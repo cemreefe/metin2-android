@@ -17,6 +17,21 @@ int g_iAndroidSurfaceWidth = 0;
 int g_iAndroidSurfaceHeight = 0;
 int AndroidMain(int argc, char** argv);
 
+static JavaVM* s_pJavaVM = NULL;
+static jclass s_jNativeLib = NULL;
+static jmethodID s_jSetKeyboardVisible = NULL;
+
+void AndroidSetKeyboardVisible(bool bVisible)
+{
+	LOGI("keyboard visible=%d", (int)bVisible);
+	if (!s_pJavaVM || !s_jSetKeyboardVisible)
+		return;
+	JNIEnv* env = NULL;
+	if (s_pJavaVM->GetEnv((void**)&env, JNI_VERSION_1_6) != JNI_OK || !env)
+		return;
+	env->CallStaticVoidMethod(s_jNativeLib, s_jSetKeyboardVisible, (jboolean)bVisible);
+}
+
 extern "C" {
 
 static bool CreateEGLContext(ANativeWindow* pWindow)
@@ -83,6 +98,26 @@ JNIEXPORT void JNICALL Java_com_metin2_client_NativeLib_init(JNIEnv* env, jobjec
 	AndroidMain(1, argv);
 
 	LOGI("Metin2 main loop exited");
+}
+
+JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void*)
+{
+	s_pJavaVM = vm;
+	JNIEnv* env = NULL;
+	if (vm->GetEnv((void**)&env, JNI_VERSION_1_6) != JNI_OK)
+		return JNI_VERSION_1_6;
+	jclass cls = env->FindClass("com/metin2/client/NativeLib");
+	if (cls)
+	{
+		s_jNativeLib = (jclass)env->NewGlobalRef(cls);
+		s_jSetKeyboardVisible = env->GetStaticMethodID(s_jNativeLib, "setKeyboardVisible", "(Z)V");
+	}
+	return JNI_VERSION_1_6;
+}
+
+JNIEXPORT void JNICALL Java_com_metin2_client_NativeLib_keyEvent(JNIEnv* env, jobject obj, jint action, jint keyCode, jint unicodeChar)
+{
+	CMSApplication::PushKeyEvent(action, keyCode, unicodeChar);
 }
 
 JNIEXPORT void JNICALL Java_com_metin2_client_NativeLib_touchEvent(JNIEnv* env, jobject obj, jint action, jfloat x, jfloat y)

@@ -25,14 +25,20 @@ void CMSApplication::MessageLoop()
 #include <mutex>
 #include <deque>
 
-struct STouchEvent { int action, x, y; };
+struct STouchEvent { bool key; int action, x, y; };
 static std::mutex s_touchMutex;
 static std::deque<STouchEvent> s_touchQueue;
 
 void CMSApplication::PushTouchEvent(int action, int x, int y)
 {
 	std::lock_guard<std::mutex> lock(s_touchMutex);
-	s_touchQueue.push_back({ action, x, y });
+	s_touchQueue.push_back({ false, action, x, y });
+}
+
+void CMSApplication::PushKeyEvent(int action, int keyCode, int unicodeChar)
+{
+	std::lock_guard<std::mutex> lock(s_touchMutex);
+	s_touchQueue.push_back({ true, action, keyCode, unicodeChar });
 }
 
 bool CMSApplication::IsMessage()
@@ -51,7 +57,10 @@ bool CMSApplication::MessageProcess()
 		ev = s_touchQueue.front();
 		s_touchQueue.pop_front();
 	}
-	OnTouchEvent(ev.action, ev.x, ev.y);
+	if (ev.key)
+		OnAndroidKeyEvent(ev.action, ev.x, ev.y);
+	else
+		OnTouchEvent(ev.action, ev.x, ev.y);
 	return true;
 }
 #else

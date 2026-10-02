@@ -16,6 +16,7 @@
 #include "NProtectGameGuard.h"
 #include "WiseLogicXTrap.h"
 #include "CheckLatestFiles.h"
+#include "../EterPythonLib/PythonWindow.h"
 
 extern void GrannyCreateSharedDeformBuffer();
 extern void GrannyDestroySharedDeformBuffer();
@@ -400,8 +401,26 @@ void CPythonApplication::SkipRenderBuffering(DWORD dwSleepMSec)
 	m_dwBufSleepSkipTime = ELTimer_GetMSec() + dwSleepMSec;
 }
 
+#ifdef __ANDROID__
+void AndroidSetKeyboardVisible(bool bVisible);
+
+static void AndroidSyncKeyboardVisibility()
+{
+	static bool s_bVisible = false;
+	UI::CWindow* pFocus = UI::CWindowManager::Instance().GetActivateWindow();
+	bool bWant = CPythonIME::Instance().IsCaptureEnabled() && pFocus && pFocus->IsRendering();
+	if (bWant == s_bVisible)
+		return;
+	s_bVisible = bWant;
+	AndroidSetKeyboardVisible(bWant);
+}
+#endif
+
 bool CPythonApplication::Process()
 {
+#ifdef __ANDROID__
+	AndroidSyncKeyboardVisibility();
+#endif
 #if defined(CHECK_LATEST_DATA_FILES)
 	if (CheckLatestFiles_PollEvent())
 		return false;

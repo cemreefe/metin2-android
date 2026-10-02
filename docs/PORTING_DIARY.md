@@ -163,3 +163,23 @@ DevIL, SpeedTree, Miles.
 - Terrain/text rendering in GL bridge; Granny `.gr2` loader (models invisible);
   remaining packet layout mismatches (item set/del, shop, target, skill level);
   combat/inventory/shop/chat validation; PONG sequence mismatch.
+
+## UI rendering and Android keyboard
+
+- Upside-down icons, scrambled dock and map tiles had one root cause in
+  `EterImageLib/TGAImage.cpp`. The Android loader decodes TGA with stb_image,
+  which already honours the TGA origin bit and returns rows top-down. It then
+  built a fake header with `desc = 0x08` (no `IMAGEDESC_TOPLEFT`), so
+  `CTGAImage` called `FlipTopToBottom()` again. Every TGA came out mirrored
+  vertically, so sub-rects cut from shared sheets (dock slots, map tiles,
+  potion icons) sampled the wrong region. Fix: `desc = 0x08 | IMAGEDESC_TOPLEFT`.
+  DDS/JPEG paths were already correct.
+- Lesson for other ports: when you swap in a decoder library, check whether it
+  already normalises orientation before keeping the engine's own flip.
+- Soft keyboard: keep one owner for visibility (`PythonApplication::Process`
+  syncs from IME capture state). `GameView.onCheckIsTextEditor` and
+  `onCreateInputConnection` must return false/null while not capturing, or the
+  IME pops up on any hardware key. Gboard composes text and never commits it to
+  a non-full-editor `BaseInputConnection`, so use
+  `TYPE_TEXT_VARIATION_VISIBLE_PASSWORD` to get direct commits and a working
+  Send action. Call `requestFocus` before `restartInput`.

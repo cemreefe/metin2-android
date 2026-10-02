@@ -51,7 +51,7 @@ bool CTGAImage::LoadFromMemory(int iSize, const BYTE* c_pbMem)
 	m_Header.width = (short)x;
 	m_Header.height = (short)y;
 	m_Header.colorBits = 32;
-	m_Header.desc = 0x08;
+	m_Header.desc = 0x08 | IMAGEDESC_TOPLEFT;
 
 	CImage::Create(x, y);
 

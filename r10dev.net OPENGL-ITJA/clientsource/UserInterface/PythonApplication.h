@@ -283,6 +283,7 @@ public:
 	void OnMouseMovePublic(int x, int y) { OnMouseMove(x, y); }
 	void OnMouseLeftButtonDownPublic(int x, int y) { OnMouseLeftButtonDown(x, y); }
 	void OnMouseLeftButtonUpPublic(int x, int y) { OnMouseLeftButtonUp(x, y); }
+	void OnAndroidKeyEvent(int action, int keyCode, int unicodeChar) override;
 	void OnTouchEvent(int action, int x, int y) override
 	{
 		extern int g_iAndroidSurfaceWidth;
