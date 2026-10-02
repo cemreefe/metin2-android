@@ -463,13 +463,13 @@ public:
 	typedef struct SItemLimit
 	{
 		BYTE        bType;
-		long        lValue;
+		LONG        lValue;
 	} TItemLimit;
 
 	typedef struct SItemApply
 	{
 		BYTE        bType;
-		long        lValue;
+		LONG        lValue;
 	} TItemApply;
 
 	typedef struct SItemTable_r152
@@ -493,8 +493,8 @@ public:
 
 		TItemLimit  aLimits[ITEM_LIMIT_MAX_NUM];
 		TItemApply  aApplies[ITEM_APPLY_MAX_NUM];
-		long        alValues[ITEM_VALUES_MAX_NUM];
-		long        alSockets[ITEM_SOCKET_MAX_NUM];
+		LONG        alValues[ITEM_VALUES_MAX_NUM];
+		LONG        alSockets[ITEM_SOCKET_MAX_NUM];
 		DWORD       dwRefinedVnum;
 		WORD		wRefineSet;
 		BYTE        bAlterToMagicItemPct;
@@ -524,14 +524,46 @@ public:
 
 		TItemLimit  aLimits[ITEM_LIMIT_MAX_NUM];
 		TItemApply  aApplies[ITEM_APPLY_MAX_NUM];
-		long        alValues[ITEM_VALUES_MAX_NUM];
-		long        alSockets[ITEM_SOCKET_MAX_NUM];
+		LONG        alValues[ITEM_VALUES_MAX_NUM];
+		LONG        alSockets[ITEM_SOCKET_MAX_NUM];
 		DWORD       dwRefinedVnum;
 		WORD		wRefineSet;
 		BYTE        bAlterToMagicItemPct;
 		BYTE		bSpecular;
 		BYTE        bGainSocketPct;
 	} TItemTable_r156;
+
+	typedef struct SItemTable_r156_a3
+	{
+		DWORD       dwVnum;
+		DWORD       dwVnumRange;
+		char        szName[ITEM_NAME_MAX_LEN + 1];
+		char        szLocaleName[ITEM_NAME_MAX_LEN + 1];
+		BYTE        bType;
+		BYTE        bSubType;
+
+		BYTE        bWeight;
+		BYTE        bSize;
+
+		DWORD       dwAntiFlags;
+		DWORD       dwFlags;
+		DWORD       dwWearFlags;
+		DWORD       dwImmuneFlag;
+
+		DWORD       dwIBuyItemPrice;
+		DWORD		dwISellItemPrice;
+
+		TItemLimit  aLimits[ITEM_LIMIT_MAX_NUM];
+		TItemApply  aApplies[3];
+		LONG        alValues[ITEM_VALUES_MAX_NUM];
+		LONG        alSockets[ITEM_SOCKET_MAX_NUM];
+		DWORD       dwRefinedVnum;
+		WORD		wRefineSet;
+		BYTE        bAlterToMagicItemPct;
+		BYTE		bSpecular;
+		BYTE        bGainSocketPct;
+	} TItemTable_r156_a3;
+	static_assert(sizeof(TItemTable_r156_a3) == 236, "TItemTable_r156_a3 must match the 236-byte item_proto record");
 
 	typedef struct SItemTable_r158
 	{
@@ -555,8 +587,8 @@ public:
 
 		TItemLimit  aLimits[ITEM_LIMIT_MAX_NUM];
 		TItemApply  aApplies[ITEM_APPLY_MAX_NUM];
-		long        alValues[ITEM_VALUES_MAX_NUM];
-		long        alSockets[ITEM_SOCKET_MAX_NUM];
+		LONG        alValues[ITEM_VALUES_MAX_NUM];
+		LONG        alSockets[ITEM_SOCKET_MAX_NUM];
 		DWORD       dwRefinedVnum;
 		WORD		wRefineSet;
 		BYTE        bAlterToMagicItemPct;
@@ -588,6 +620,7 @@ public:
 				case sizeof(TItemTable_r152) :
 					case sizeof(TItemTable_r156) :
 					case sizeof(TItemTable_r158) :
+					case sizeof(TItemTable_r156_a3) :
 					return true;
 					break;
 			}
@@ -621,7 +654,7 @@ public:
 						ITABLE_COPY_INT(aLimits[i].bType);\
 						ITABLE_COPY_INT(aLimits[i].lValue);\
 					}\
-					for (size_t i=0; i<CItemData::ITEM_APPLY_MAX_NUM; ++i)\
+					for (size_t i=0; i<_countof(r.aApplies); ++i)\
 					{\
 						ITABLE_COPY_INT(aApplies[i].bType);\
 						ITABLE_COPY_INT(aApplies[i].lValue);\
@@ -657,6 +690,12 @@ public:
 				case sizeof(TItemTable_r158) :
 				{
 					ITABLE_PROCESS(158);
+					ITABLE_COPY_INT(dwVnumRange);
+				}
+				break;
+				case sizeof(TItemTable_r156_a3) :
+				{
+					ITABLE_PROCESS(156_a3);
 					ITABLE_COPY_INT(dwVnumRange);
 				}
 				break;

@@ -456,7 +456,9 @@ protected:
 	bool RecvDeadPacket();
 	bool RecvCharacterMovePacket();
 
-	bool RecvItemSetPacket();					// Alarm to python
+	bool RecvItemDelPacket();					// Alarm to python
+	bool RecvItemGetPacket();
+	bool RecvMarkUpdatePacket();
 	bool RecvItemSetPacket2();					// Alarm to python
 	bool RecvItemUsePacket();					// Alarm to python
 	bool RecvItemUpdatePacket();				// Alarm to python

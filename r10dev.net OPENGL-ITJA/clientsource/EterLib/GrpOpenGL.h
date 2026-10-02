@@ -460,8 +460,6 @@ typedef struct _D3DSURFACE_DESC {
 #define D3DRS_EMISSIVEMATERIALSOURCE 0
 #define D3DRS_LINEPATTERN 0
 #define D3DRS_LASTPIXEL 0
-#define D3DRS_ALPHAREF 0
-#define D3DRS_ALPHAFUNC 0
 #define D3DRS_ZVISIBLE 0
 #define D3DRS_FOGSTART 0
 #define D3DRS_FOGEND 0
@@ -1110,28 +1108,14 @@ inline GLCOLOR* D3DXColorModulate(GLCOLOR* pOut, const GLCOLOR* pC1, const GLCOL
     struct IDirect3DTexture8 : public IDirect3DBaseTexture8 {
         GLuint glId;
         int width, height;
+        D3DFORMAT format;
         void* pLockedData;
-        IDirect3DTexture8() : glId(0), width(0), height(0), pLockedData(NULL) {}
+        void* pScratch;
+        IDirect3DTexture8() : glId(0), width(0), height(0), format(0), pLockedData(NULL), pScratch(NULL) {}
         ULONG AddRef() { return 1; }
-        HRESULT LockRect(UINT Level,D3DLOCKED_RECT* pLockedRect,const RECT* pRect,DWORD Flags) { 
-            if (!pLockedData) pLockedData = malloc(width * height * 4);
-            pLockedRect->pBits = pLockedData;
-            pLockedRect->Pitch = width * 4;
-            return S_OK; 
-        }
-        HRESULT UnlockRect(UINT Level) { 
-            if (glId && pLockedData) {
-                glBindTexture(GL_TEXTURE_2D, glId);
-                glTexSubImage2D(GL_TEXTURE_2D, Level, 0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, pLockedData);
-            }
-            return S_OK; 
-        }
-        ULONG Release() { 
-            if (glId) glDeleteTextures(1, &glId);
-            if (pLockedData) free(pLockedData);
-            delete this;
-            return 0; 
-        }
+        HRESULT LockRect(UINT Level,D3DLOCKED_RECT* pLockedRect,const RECT* pRect,DWORD Flags);
+        HRESULT UnlockRect(UINT Level);
+        ULONG Release();
         HRESULT GetSurfaceLevel(UINT,LPDIRECT3DSURFACE8*) { return S_OK; }
         DWORD GetLevelCount() { return 1; }
         HRESULT GetLevelDesc(UINT, D3DSURFACE_DESC* pDesc) { if (pDesc) memset(pDesc, 0, sizeof(*pDesc)); return S_OK; }
@@ -1160,7 +1144,7 @@ inline GLCOLOR* D3DXColorModulate(GLCOLOR* pOut, const GLCOLOR* pC1, const GLCOL
         }
         HRESULT Unlock() { 
             glBindBuffer(GL_ARRAY_BUFFER, glVbo);
-            glBufferData(GL_ARRAY_BUFFER, length, pData, GL_STATIC_DRAW);
+            glBufferData(GL_ARRAY_BUFFER, length, pData, GL_DYNAMIC_DRAW);
             glBindBuffer(GL_ARRAY_BUFFER, 0);
             return S_OK; 
         }
@@ -1175,7 +1159,8 @@ inline GLCOLOR* D3DXColorModulate(GLCOLOR* pOut, const GLCOLOR* pC1, const GLCOL
         GLuint glIbo;
         UINT length;
         void* pData;
-        IDirect3DIndexBuffer8(UINT len) : glIbo(0), length(len), pData(NULL) {
+        UINT indexSize;
+        IDirect3DIndexBuffer8(UINT len) : glIbo(0), length(len), pData(NULL), indexSize(2) {
             glGenBuffers(1, &glIbo);
             pData = malloc(len);
         }
@@ -1296,21 +1281,10 @@ inline GLCOLOR* D3DXColorModulate(GLCOLOR* pOut, const GLCOLOR* pC1, const GLCOL
             m_hDC = NULL;
 #endif
         }
-        HRESULT CreateTexture(UINT Width, UINT Height, UINT Levels, DWORD Usage, D3DFORMAT Format, D3DPOOL Pool, LPDIRECT3DTEXTURE8* ppTexture) { 
-            IDirect3DTexture8* tex = new IDirect3DTexture8();
-            tex->width = Width;
-            tex->height = Height;
-            glGenTextures(1, &tex->glId);
-            glBindTexture(GL_TEXTURE_2D, tex->glId);
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, Width, Height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-            *ppTexture = tex;
-            return S_OK; 
-        }
+        HRESULT CreateTexture(UINT Width, UINT Height, UINT Levels, DWORD Usage, D3DFORMAT Format, D3DPOOL Pool, LPDIRECT3DTEXTURE8* ppTexture);
         HRESULT SetLight(DWORD,const void*) { return S_OK; }
         HRESULT LightEnable(DWORD,BOOL) { return S_OK; }
-        DWORD m_dwFVF;
+        DWORD m_dwFVF = 0;
         HRESULT GetVertexShader(DWORD* pShader) { *pShader = m_dwFVF; return S_OK; }
         HRESULT SetVertexShader(DWORD Shader) { m_dwFVF = Shader; return S_OK; }
         HRESULT CreateVertexShader(const DWORD* pDeclaration, const DWORD* pFunction, DWORD* pHandle, DWORD Usage) { *pHandle = 1; return S_OK; }
@@ -1340,18 +1314,15 @@ inline GLCOLOR* D3DXColorModulate(GLCOLOR* pOut, const GLCOLOR* pC1, const GLCOL
         HRESULT GetDepthStencilSurface(LPDIRECT3DSURFACE8*) { return S_OK; }
         HRESULT GetViewport(D3DVIEWPORT8*) { return S_OK; }
         HRESULT SetRenderTarget(LPDIRECT3DSURFACE8,LPDIRECT3DSURFACE8) { return S_OK; }
-        HRESULT SetViewport(const D3DVIEWPORT8* v) { 
-            glViewport(v->X, v->Y, v->Width, v->Height);
-            return S_OK; 
-        }
+        HRESULT SetViewport(const D3DVIEWPORT8* v);
         HRESULT BeginScene();
         HRESULT EndScene();
         HRESULT GetDeviceCaps(D3DCAPS8*) { return S_OK; }
         void SetGammaRamp(DWORD,const D3DGAMMARAMP*) {}
         HRESULT GetBackBuffer(UINT,D3DBACKBUFFER_TYPE,LPDIRECT3DSURFACE8*) { return S_OK; }
         UINT GetAvailableTextureMem() { return 128 * 1024 * 1024; }
-        LPDIRECT3DVERTEXBUFFER8 m_pStreamSource;
-        UINT m_StreamStride;
+        LPDIRECT3DVERTEXBUFFER8 m_pStreamSource = NULL;
+        UINT m_StreamStride = 0;
         HRESULT SetStreamSource(UINT StreamNumber, LPDIRECT3DVERTEXBUFFER8 pStreamData, UINT Stride);
         HRESULT CreateVertexBuffer(UINT Length, DWORD Usage, DWORD FVF, D3DPOOL Pool, LPDIRECT3DVERTEXBUFFER8* ppVertexBuffer) { 
             *ppVertexBuffer = new IDirect3DVertexBuffer8(Length);
@@ -1359,158 +1330,44 @@ inline GLCOLOR* D3DXColorModulate(GLCOLOR* pOut, const GLCOLOR* pC1, const GLCOL
         }
         HRESULT CreateIndexBuffer(UINT Length, DWORD Usage, D3DFORMAT Format, D3DPOOL Pool, LPDIRECT3DINDEXBUFFER8* ppIndexBuffer) { 
             *ppIndexBuffer = new IDirect3DIndexBuffer8(Length);
+            (*ppIndexBuffer)->indexSize = (Format == D3DFMT_INDEX16 || Format == 0) ? 2 : 4;
             return S_OK; 
         }
-        LPDIRECT3DINDEXBUFFER8 m_pIndexBuffer;
-        GLMATRIX m_matWorld, m_matProj;
+        LPDIRECT3DINDEXBUFFER8 m_pIndexBuffer = NULL;
+        UINT m_BaseVertexIndex = 0;
+        GLMATRIX m_matWorld, m_matView, m_matProj;
         HRESULT SetIndices(LPDIRECT3DINDEXBUFFER8 pIndexBuffer, UINT BaseVertexIndex);
         HRESULT DrawIndexedPrimitive(D3DPRIMITIVETYPE PrimitiveType, UINT minIndex, UINT NumVertices, UINT startIndex, UINT primCount);
-        HRESULT DrawIndexedPrimitiveUP(D3DPRIMITIVETYPE PrimitiveType, UINT MinVertexIndex, UINT NumVertexIndices, UINT PrimitiveCount, const void* pIndexData, D3DFORMAT IndexDataFormat, const void* pVertexStreamZeroData, UINT VertexStreamZeroStride) {
-            #ifndef ANDROID
-            glEnableClientState(GL_VERTEX_ARRAY);
-            if (VertexStreamZeroStride >= 20) {
-                glEnableClientState(GL_COLOR_ARRAY);
-                glEnableClientState(GL_TEXTURE_COORD_ARRAY);
-                glVertexPointer(3, GL_FLOAT, VertexStreamZeroStride, pVertexStreamZeroData);
-                glColorPointer(4, GL_UNSIGNED_BYTE, VertexStreamZeroStride, (char*)pVertexStreamZeroData + 12);
-                glTexCoordPointer(2, GL_FLOAT, VertexStreamZeroStride, (char*)pVertexStreamZeroData + 16);
-            } else {
-                glVertexPointer(3, GL_FLOAT, VertexStreamZeroStride, pVertexStreamZeroData);
-            }
-
-            GLenum mode = GL_TRIANGLES;
-            GLsizei count = 0;
-            switch(PrimitiveType) {
-                case 4: mode = GL_TRIANGLES; count = PrimitiveCount * 3; break;
-                case 5: mode = GL_TRIANGLE_STRIP; count = PrimitiveCount + 2; break;
-                case 6: mode = GL_TRIANGLE_FAN; count = PrimitiveCount + 2; break;
-            }
-
-            glDrawElements(mode, count, (IndexDataFormat == 17 ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT), pIndexData);
-
-            glDisableClientState(GL_VERTEX_ARRAY);
-            glDisableClientState(GL_COLOR_ARRAY);
-            glDisableClientState(GL_TEXTURE_COORD_ARRAY);
-            #endif
-            return S_OK;
-        }
-        HRESULT DrawPrimitive(D3DPRIMITIVETYPE PrimitiveType, UINT StartVertex, UINT PrimitiveCount) { 
-            GLenum mode = GL_TRIANGLES;
-            GLsizei count = 0;
-            switch(PrimitiveType) {
-                case 1: mode = GL_POINTS; count = PrimitiveCount; break;
-                case 2: mode = GL_LINES; count = PrimitiveCount * 2; break;
-                case 3: mode = GL_LINE_STRIP; count = PrimitiveCount + 1; break;
-                case 4: mode = GL_TRIANGLES; count = PrimitiveCount * 3; break;
-                case 5: mode = GL_TRIANGLE_STRIP; count = PrimitiveCount + 2; break;
-                case 6: mode = GL_TRIANGLE_FAN; count = PrimitiveCount + 2; break;
-            }
-            glDrawArrays(mode, StartVertex, count);
-            return S_OK; 
-        }
-        HRESULT DrawPrimitiveUP(D3DPRIMITIVETYPE PrimitiveType, UINT PrimitiveCount, const void* pVertexStreamZeroData, UINT VertexStreamZeroStride) {
-            #ifndef ANDROID
-            glEnableClientState(GL_VERTEX_ARRAY);
-            if (VertexStreamZeroStride >= 20) { // XYZ + COLOR + TEX
-                glEnableClientState(GL_COLOR_ARRAY);
-                glEnableClientState(GL_TEXTURE_COORD_ARRAY);
-                glVertexPointer(3, GL_FLOAT, VertexStreamZeroStride, pVertexStreamZeroData);
-                glColorPointer(4, GL_UNSIGNED_BYTE, VertexStreamZeroStride, (char*)pVertexStreamZeroData + 12);
-                glTexCoordPointer(2, GL_FLOAT, VertexStreamZeroStride, (char*)pVertexStreamZeroData + 16);
-            } else {
-                glVertexPointer(3, GL_FLOAT, VertexStreamZeroStride, pVertexStreamZeroData);
-            }
-            DrawPrimitive(PrimitiveType, 0, PrimitiveCount);
-            glDisableClientState(GL_VERTEX_ARRAY);
-            glDisableClientState(GL_COLOR_ARRAY);
-            glDisableClientState(GL_TEXTURE_COORD_ARRAY);
-            #endif
-            return S_OK;
-        }
-        HRESULT SetTextureStageState(DWORD stage, D3DTEXTURESTAGESTATETYPE type, DWORD value) {
-            #ifndef ANDROID
-            glActiveTexture(GL_TEXTURE0 + stage);
-            switch(type) {
-                case 10: // D3DTSS_ADDRESSU
-                    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, (value == 1 ? GL_CLAMP : GL_REPEAT));
-                    break;
-                case 11: // D3DTSS_ADDRESSV
-                    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, (value == 1 ? GL_CLAMP : GL_REPEAT));
-                    break;
-                case 7: // D3DTSS_MINFILTER
-                case 8: // D3DTSS_MAGFILTER
-                    glTexParameteri(GL_TEXTURE_2D, (type == 7 ? GL_TEXTURE_MIN_FILTER : GL_TEXTURE_MAG_FILTER), (value == 2 ? GL_LINEAR : GL_NEAREST));
-                    break;
-                case 3: // D3DTSS_COLOROP (simplified)
-                    if (value == 2) glDisable(GL_TEXTURE_2D); // D3DTOP_DISABLE
-                    else glEnable(GL_TEXTURE_2D);
-                    break;
-            }
-            #endif
-            return S_OK;
-        }
-        HRESULT SetRenderState(DWORD Type, DWORD Value) {
-            switch(Type) {
-                case D3DRS_ZENABLE:
-                    if (Value) glEnable(GL_DEPTH_TEST); else glDisable(GL_DEPTH_TEST);
-                    break;
-                case D3DRS_ZFUNC:
-                    glDepthFunc(GL_LEQUAL); // simplified mapping
-                    break;
-                case D3DRS_ALPHABLENDENABLE:
-                    if (Value) glEnable(GL_BLEND); else glDisable(GL_BLEND);
-                    break;
-                case D3DRS_ZWRITEENABLE:
-                    glDepthMask(Value ? GL_TRUE : GL_FALSE);
-                    break;
-                case D3DRS_ALPHATESTENABLE:
-                    #ifndef ANDROID
-                    if (Value) glEnable(GL_ALPHA_TEST); else glDisable(GL_ALPHA_TEST);
-                    #endif
-                    break;
-                case D3DRS_ALPHAFUNC:
-                    #ifndef ANDROID
-                    glAlphaFunc(GL_GREATER, 0.5f); // simplified mapping
-                    #endif
-                    break;
-                case D3DRS_SRCBLEND:
-                    {
-                        GLenum factor = GL_ONE;
-                        switch(Value) {
-                            case D3DBLEND_ZERO: factor = GL_ZERO; break;
-                            case D3DBLEND_ONE: factor = GL_ONE; break;
-                            case D3DBLEND_SRCCOLOR: factor = GL_SRC_COLOR; break;
-                            case D3DBLEND_SRCALPHA: factor = GL_SRC_ALPHA; break;
-                            case D3DBLEND_INVSRCALPHA: factor = GL_ONE_MINUS_SRC_ALPHA; break;
-                            case D3DBLEND_INVDESTCOLOR: factor = GL_ONE_MINUS_DST_COLOR; break;
-                        }
-                        glBlendFunc(factor, GL_ONE_MINUS_SRC_ALPHA); // partial mapping
-                    }
-                    break;
-                case D3DRS_DESTBLEND:
-                    break;
-                case D3DCULL_CW:
-                case D3DCULL_CCW:
-                case D3DCULL_NONE:
-                    if (Value == D3DCULL_NONE) glDisable(GL_CULL_FACE);
-                    else {
-                        glEnable(GL_CULL_FACE);
-                        glCullFace(Value == D3DCULL_CW ? GL_FRONT : GL_BACK);
-                    }
-                    break;
-            }
-            return S_OK;
-        }
+        HRESULT DrawIndexedPrimitiveUP(D3DPRIMITIVETYPE PrimitiveType, UINT MinVertexIndex, UINT NumVertexIndices, UINT PrimitiveCount, const void* pIndexData, D3DFORMAT IndexDataFormat, const void* pVertexStreamZeroData, UINT VertexStreamZeroStride);
+        HRESULT DrawPrimitive(D3DPRIMITIVETYPE PrimitiveType, UINT StartVertex, UINT PrimitiveCount);
+        HRESULT DrawPrimitiveUP(D3DPRIMITIVETYPE PrimitiveType, UINT PrimitiveCount, const void* pVertexStreamZeroData, UINT VertexStreamZeroStride);
+        HRESULT SetTextureStageState(DWORD stage, D3DTEXTURESTAGESTATETYPE type, DWORD value);
+        HRESULT SetRenderState(DWORD Type, DWORD Value);
         HRESULT SetTexture(DWORD stage, LPDIRECT3DBaseTexture8 tex);
-        HRESULT SetTransform(DWORD type, const GLMATRIX* mat) { 
-            #ifndef ANDROID
-            if (type == 3) glMatrixMode(GL_PROJECTION);
-            else glMatrixMode(GL_MODELVIEW);
-            glLoadMatrixf(&mat->m[0][0]);
-            #endif
-            return S_OK; 
-        }
-        HRESULT GetTransform(DWORD type, GLMATRIX* mat) { return S_OK; }
+        HRESULT SetTransform(DWORD type, const GLMATRIX* mat);
+        HRESULT GetTransform(DWORD type, GLMATRIX* mat);
+
+        enum { MAX_STAGES = 2 };
+        IDirect3DTexture8* m_apTexture[MAX_STAGES] = {};
+        DWORD m_adwColorOp[MAX_STAGES] = { D3DTOP_MODULATE, D3DTOP_DISABLE };
+        DWORD m_adwColorArg1[MAX_STAGES] = { D3DTA_TEXTURE, D3DTA_TEXTURE };
+        DWORD m_adwColorArg2[MAX_STAGES] = { D3DTA_CURRENT, D3DTA_CURRENT };
+        DWORD m_adwAlphaOp[MAX_STAGES] = { D3DTOP_SELECTARG1, D3DTOP_DISABLE };
+        DWORD m_adwAlphaArg1[MAX_STAGES] = { D3DTA_TEXTURE, D3DTA_TEXTURE };
+        DWORD m_adwAlphaArg2[MAX_STAGES] = { D3DTA_CURRENT, D3DTA_CURRENT };
+        DWORD m_adwAddressU[MAX_STAGES] = { D3DTADDRESS_WRAP, D3DTADDRESS_WRAP };
+        DWORD m_adwAddressV[MAX_STAGES] = { D3DTADDRESS_WRAP, D3DTADDRESS_WRAP };
+        DWORD m_adwMagFilter[MAX_STAGES] = { D3DTEXF_LINEAR, D3DTEXF_LINEAR };
+        DWORD m_adwMinFilter[MAX_STAGES] = { D3DTEXF_LINEAR, D3DTEXF_LINEAR };
+        DWORD m_dwTextureFactor = 0xffffffff;
+        DWORD m_dwSrcBlend = D3DBLEND_ONE;
+        DWORD m_dwDestBlend = D3DBLEND_ZERO;
+        BOOL m_bAlphaTest = FALSE;
+        DWORD m_dwAlphaRef = 0;
+        DWORD m_dwAlphaFunc = D3DCMP_ALWAYS;
+        float m_fViewportWidth = 1.0f;
+        float m_fViewportHeight = 1.0f;
+        void ApplyDrawState(const BYTE* pVertexBase, UINT uStride);
     };
 
 #ifndef ANDROID

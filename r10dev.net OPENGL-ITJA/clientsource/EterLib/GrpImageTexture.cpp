@@ -3,6 +3,10 @@
 #include "../eterPack/EterPackManager.h"
 #include "GrpImageTexture.h"
 #include "../EterImageLib/TGAImage.h"
+#ifdef __ANDROID__
+#include <vector>
+#include <libjpeg/jpeglib.h>
+#endif
 
 bool CGraphicImageTexture::Lock(int* pRetPitch, void** ppRetPixels, int level)
 {
@@ -209,6 +213,55 @@ bool CGraphicImageTexture::CreateDDSTexture(CDXTCImage& image, const BYTE* /*c_p
 	return true;
 }
 
+#ifdef __ANDROID__
+bool CGraphicImageTexture::CreateFromJpegMemory(UINT bufSize, const BYTE* c_pbBuf)
+{
+	jpeg_decompress_struct cinfo;
+	jpeg_error_mgr jerr;
+	cinfo.err = jpeg_std_error(&jerr);
+	jpeg_create_decompress(&cinfo);
+	jpeg_mem_src(&cinfo, (unsigned char*)c_pbBuf, bufSize);
+	if (jpeg_read_header(&cinfo, TRUE) != JPEG_HEADER_OK)
+	{
+		jpeg_destroy_decompress(&cinfo);
+		TraceError("CGraphicImageTexture::CreateFromJpegMemory: invalid header");
+		return false;
+	}
+	cinfo.out_color_space = JCS_RGB;
+	jpeg_start_decompress(&cinfo);
+
+	m_width = cinfo.output_width;
+	m_height = cinfo.output_height;
+	if (FAILED(ms_lpd3dDevice->CreateTexture(m_width, m_height, 1, 0, D3DFMT_A8R8G8B8, D3DPOOL_MANAGED, &m_lpd3dTexture)))
+	{
+		jpeg_destroy_decompress(&cinfo);
+		return false;
+	}
+
+	D3DLOCKED_RECT lockedRect;
+	if (SUCCEEDED(m_lpd3dTexture->LockRect(0, &lockedRect, NULL, 0)))
+	{
+		std::vector<BYTE> row(cinfo.output_width * cinfo.output_components);
+		while (cinfo.output_scanline < cinfo.output_height)
+		{
+			DWORD* pdwDst = (DWORD*)((BYTE*)lockedRect.pBits + cinfo.output_scanline * lockedRect.Pitch);
+			JSAMPROW pRow = row.data();
+			jpeg_read_scanlines(&cinfo, &pRow, 1);
+			for (UINT x = 0; x < cinfo.output_width; ++x)
+			{
+				const BYTE* p = &row[x * cinfo.output_components];
+				pdwDst[x] = 0xff000000 | (p[0] << 16) | (p[1] << 8) | p[2];
+			}
+		}
+		m_lpd3dTexture->UnlockRect(0);
+	}
+	jpeg_finish_decompress(&cinfo);
+	jpeg_destroy_decompress(&cinfo);
+	m_bEmpty = false;
+	return true;
+}
+#endif
+
 bool CGraphicImageTexture::CreateFromMemoryFile(UINT bufSize, const void* c_pvBuf, D3DFORMAT d3dFmt, DWORD dwFilter)
 {
 	assert(ms_lpd3dDevice != NULL);
@@ -236,6 +289,10 @@ bool CGraphicImageTexture::CreateFromMemoryFile(UINT bufSize, const void* c_pvBu
 			return true;
 		}
 	}
+
+	const BYTE* c_pbBuf = (const BYTE*)c_pvBuf;
+	if (bufSize > 2 && c_pbBuf[0] == 0xFF && c_pbBuf[1] == 0xD8)
+		return CreateFromJpegMemory(bufSize, c_pbBuf);
 
 	CTGAImage tga;
 	if (tga.LoadFromMemory(bufSize, (const BYTE*)c_pvBuf))

@@ -16,6 +16,7 @@
 #undef NEED_SHORT_EXTERNAL_NAMES
 #undef INCOMPLETE_TYPES_BROKEN
 
+#ifndef __ANDROID__
 /* Define "boolean" as unsigned char, not enum, per Windows custom */
 #ifndef __RPCNDR_H__		/* don't conflict if rpcndr.h already read */
 typedef unsigned char boolean;
@@ -27,6 +28,7 @@ typedef unsigned char boolean;
 #define TRUE	1
 #endif
 #define HAVE_BOOLEAN		/* prevent jmorecfg.h from redefining it */
+#endif
 
 
 #ifdef JPEG_INTERNALS

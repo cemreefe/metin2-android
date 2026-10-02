@@ -64,8 +64,13 @@ CPythonApplication::CPythonApplication() :
 	m_iPort = 0;
 	m_iFPS = 60;
 
+#ifdef ANDROID
+	m_isActivateWnd = true;
+	m_isMinimizedWnd = false;
+#else
 	m_isActivateWnd = false;
 	m_isMinimizedWnd = true;
+#endif
 
 	m_fRotationSpeed = 0.0f;
 	m_fPitchSpeed = 0.0f;
@@ -1080,7 +1085,6 @@ bool LoadLocaleData(const char* localePath)
 	if (!rkItemMgr.LoadItemScale(szItemScale))
 	{
 		Tracenf("LoadLocaleData: error while loading %s.", szItemScale);
-		return false;
 	}
 #endif
 	NANOEND

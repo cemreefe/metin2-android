@@ -1,17 +1,15 @@
 package com.metin2.client;
 
 import android.app.Activity;
-import android.opengl.GLSurfaceView;
 import android.os.Bundle;
 import android.view.MotionEvent;
+import android.view.SurfaceHolder;
+import android.view.SurfaceView;
 import android.view.Window;
 import android.view.WindowManager;
 
-import javax.microedition.khronos.egl.EGLConfig;
-import javax.microedition.khronos.opengles.GL10;
-
-public class MainActivity extends Activity {
-    private GLSurfaceView mGLView;
+public class MainActivity extends Activity implements SurfaceHolder.Callback {
+    private Thread mGameThread;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -21,10 +19,9 @@ public class MainActivity extends Activity {
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
                 WindowManager.LayoutParams.FLAG_FULLSCREEN);
 
-        mGLView = new GLSurfaceView(this);
-        mGLView.setEGLContextClientVersion(3);
-        mGLView.setRenderer(new Renderer());
-        setContentView(mGLView);
+        SurfaceView view = new SurfaceView(this);
+        view.getHolder().addCallback(this);
+        setContentView(view);
     }
 
     @Override
@@ -33,17 +30,24 @@ public class MainActivity extends Activity {
         return true;
     }
 
-    private class Renderer implements GLSurfaceView.Renderer {
-        public void onSurfaceCreated(GL10 gl, EGLConfig config) {
-            // Width and height will be set in onSurfaceChanged
-        }
+    @Override
+    public void surfaceCreated(SurfaceHolder holder) {
+    }
 
-        public void onSurfaceChanged(GL10 gl, int width, int height) {
-            NativeLib.init(MainActivity.this.getAssets(), getExternalFilesDir(null).getAbsolutePath(), width, height);
-        }
+    @Override
+    public void surfaceChanged(final SurfaceHolder holder, int format, final int width, final int height) {
+        if (mGameThread != null)
+            return;
+        final String dataDir = getExternalFilesDir(null).getAbsolutePath();
+        mGameThread = new Thread(new Runnable() {
+            public void run() {
+                NativeLib.init(getAssets(), holder.getSurface(), dataDir, width, height);
+            }
+        }, "Metin2Game");
+        mGameThread.start();
+    }
 
-        public void onDrawFrame(GL10 gl) {
-            NativeLib.render();
-        }
+    @Override
+    public void surfaceDestroyed(SurfaceHolder holder) {
     }
 }

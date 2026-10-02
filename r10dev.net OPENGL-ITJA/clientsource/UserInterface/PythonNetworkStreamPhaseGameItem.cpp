@@ -98,7 +98,7 @@ bool CPythonNetworkStream::RecvSafeBoxDelPacket()
 	if (!Recv(sizeof(kItemDel), &kItemDel))
 		return false;
 
-	CPythonSafeBox::Instance().DelItemData(kItemDel.pos);
+	CPythonSafeBox::Instance().DelItemData(kItemDel.pos.cell);
 
 	__RefreshSafeboxWindow();
 
@@ -199,7 +199,7 @@ bool CPythonNetworkStream::RecvMallItemDelPacket()
 	if (!Recv(sizeof(kItemDel), &kItemDel))
 		return false;
 
-	CPythonSafeBox::Instance().DelMallItemData(kItemDel.pos);
+	CPythonSafeBox::Instance().DelMallItemData(kItemDel.pos.cell);
 
 	__RefreshMallWindow();
 	Tracef(" >> CPythonNetworkStream::RecvMallItemDelPacket\n");
@@ -211,28 +211,33 @@ bool CPythonNetworkStream::RecvMallItemDelPacket()
 
 // Item
 // Recieve
-bool CPythonNetworkStream::RecvItemSetPacket()
+bool CPythonNetworkStream::RecvItemDelPacket()
 {
-	TPacketGCItemSet packet_item_set;
+	TPacketGCItemDel packet_item_del;
 
-	if (!Recv(sizeof(TPacketGCItemSet), &packet_item_set))
+	if (!Recv(sizeof(TPacketGCItemDel), &packet_item_del))
 		return false;
 
 	TItemData kItemData;
-	kItemData.vnum = packet_item_set.vnum;
-	kItemData.count = packet_item_set.count;
-	kItemData.flags = 0;
-	for (int i = 0; i < ITEM_SOCKET_SLOT_MAX_NUM; ++i)
-		kItemData.alSockets[i] = packet_item_set.alSockets[i];
-	for (int j = 0; j < ITEM_ATTRIBUTE_SLOT_MAX_NUM; ++j)
-		kItemData.aAttr[j] = packet_item_set.aAttr[j];
+	memset(&kItemData, 0, sizeof(kItemData));
 
 	IAbstractPlayer& rkPlayer = IAbstractPlayer::GetSingleton();
-
-	rkPlayer.SetItemData(packet_item_set.Cell, kItemData);
+	rkPlayer.SetItemData(packet_item_del.pos, kItemData);
 
 	__RefreshInventoryWindow();
 	return true;
+}
+
+bool CPythonNetworkStream::RecvItemGetPacket()
+{
+	TPacketGCItemGet packet_item_get;
+	return Recv(sizeof(TPacketGCItemGet), &packet_item_get);
+}
+
+bool CPythonNetworkStream::RecvMarkUpdatePacket()
+{
+	TPacketGCMarkUpdate packet_mark_update;
+	return Recv(sizeof(TPacketGCMarkUpdate), &packet_mark_update);
 }
 
 bool CPythonNetworkStream::RecvItemSetPacket2()

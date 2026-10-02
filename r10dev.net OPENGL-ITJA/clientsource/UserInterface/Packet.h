@@ -196,7 +196,7 @@ enum
 	HEADER_GC_ITEM_DEL = 20, // ������ â�� �߰�
 	HEADER_GC_ITEM_SET = 21, // ������ â�� �߰�
 #else
-	HEADER_GC_ITEM_SET = 20, // ������ â�� �߰�
+	HEADER_GC_ITEM_DEL = 20,
 	HEADER_GC_ITEM_SET2 = 21, // ������ â�� �߰�
 #endif
 	HEADER_GC_ITEM_USE = 22, // ������ ��� (���� ����鿡�� �����ֱ� ����)
@@ -275,6 +275,7 @@ enum
 	HEADER_GC_MARK_BLOCK = 100,
 	HEADER_GC_MARK_DIFF_DATA = 101,
 	HEADER_GC_MARK_IDXLIST = 102,
+	HEADER_GC_MARK_UPDATE = 103,
 
 	//HEADER_GC_SLOW_TIMER						= 105,
 	HEADER_GC_TIME = 106,
@@ -372,6 +373,7 @@ enum
 	// @fixme007
 	HEADER_GC_UNK_213 = 213,
 
+	HEADER_GC_ITEM_GET = 211,
 	HEADER_GC_KEY_AGREEMENT_COMPLETED = 0xfa, // _IMPROVED_PACKET_ENCRYPTION_
 	HEADER_GC_KEY_AGREEMENT = 0xfb, // _IMPROVED_PACKET_ENCRYPTION_
 	HEADER_GC_HANDSHAKE_OK = 0xfc, // 252
@@ -1802,8 +1804,24 @@ typedef struct packet_set_item2
 typedef struct packet_item_del
 {
 	BYTE        header;
-	BYTE        pos;
+	TItemPos    pos;
 } TPacketGCItemDel;
+
+typedef struct packet_item_get
+{
+	BYTE		header;
+	DWORD		dwItemVnum;
+	BYTE		bCount;
+	BYTE		bArg;
+	char		szFromName[CHARACTER_NAME_MAX_LEN + 1];
+} TPacketGCItemGet;
+
+typedef struct packet_mark_update
+{
+	BYTE		header;
+	DWORD		guildID;
+	WORD		imgIdx;
+} TPacketGCMarkUpdate;
 
 typedef struct packet_use_item
 {

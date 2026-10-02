@@ -316,8 +316,16 @@ void CPythonNetworkStream::GamePhase()
 			break;
 
 			// item packet.
-		case HEADER_GC_ITEM_SET:
-			ret = RecvItemSetPacket();
+		case HEADER_GC_ITEM_DEL:
+			ret = RecvItemDelPacket();
+			break;
+
+		case HEADER_GC_ITEM_GET:
+			ret = RecvItemGetPacket();
+			break;
+
+		case HEADER_GC_MARK_UPDATE:
+			ret = RecvMarkUpdatePacket();
 			break;
 
 		case HEADER_GC_ITEM_SET2:
