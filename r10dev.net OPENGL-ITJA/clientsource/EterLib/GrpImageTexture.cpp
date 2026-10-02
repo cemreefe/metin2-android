@@ -262,6 +262,75 @@ bool CGraphicImageTexture::CreateFromJpegMemory(UINT bufSize, const BYTE* c_pbBu
 }
 #endif
 
+#ifdef __ANDROID__
+static DWORD ExpandMaskedChannel(DWORD dwPixel, DWORD dwMask, DWORD dwDefault)
+{
+	if (!dwMask)
+		return dwDefault;
+	int shift = 0;
+	while (!((dwMask >> shift) & 1))
+		++shift;
+	DWORD dwMax = dwMask >> shift;
+	return (((dwPixel & dwMask) >> shift) * 255 + dwMax / 2) / dwMax;
+}
+
+bool CGraphicImageTexture::CreateFromUncompressedDDSMemory(UINT bufSize, const BYTE* c_pbBuf)
+{
+	const UINT c_uHeaderSize = 128;
+	if (bufSize < c_uHeaderSize || memcmp(c_pbBuf, "DDS ", 4) != 0)
+		return false;
+
+	DWORD dwHeight, dwWidth, dwPFFlags, dwBitCount, dwRMask, dwGMask, dwBMask, dwAMask;
+	memcpy(&dwHeight, c_pbBuf + 12, 4);
+	memcpy(&dwWidth, c_pbBuf + 16, 4);
+	memcpy(&dwPFFlags, c_pbBuf + 80, 4);
+	memcpy(&dwBitCount, c_pbBuf + 88, 4);
+	memcpy(&dwRMask, c_pbBuf + 92, 4);
+	memcpy(&dwGMask, c_pbBuf + 96, 4);
+	memcpy(&dwBMask, c_pbBuf + 100, 4);
+	memcpy(&dwAMask, c_pbBuf + 104, 4);
+
+	const DWORD c_dwDDPF_ALPHAPIXELS = 0x1, c_dwDDPF_FOURCC = 0x4, c_dwDDPF_RGB = 0x40;
+	if ((dwPFFlags & c_dwDDPF_FOURCC) || !(dwPFFlags & c_dwDDPF_RGB))
+		return false;
+	if (dwBitCount != 16 && dwBitCount != 24 && dwBitCount != 32)
+		return false;
+	if (!(dwPFFlags & c_dwDDPF_ALPHAPIXELS))
+		dwAMask = 0;
+
+	const UINT uBytesPerPixel = dwBitCount / 8;
+	if (!dwWidth || !dwHeight || (unsigned long long)dwWidth * dwHeight * uBytesPerPixel > bufSize - c_uHeaderSize)
+		return false;
+
+	m_width = dwWidth;
+	m_height = dwHeight;
+	if (FAILED(ms_lpd3dDevice->CreateTexture(m_width, m_height, 1, 0, D3DFMT_A8R8G8B8, D3DPOOL_MANAGED, &m_lpd3dTexture)))
+		return false;
+
+	D3DLOCKED_RECT lockedRect;
+	if (SUCCEEDED(m_lpd3dTexture->LockRect(0, &lockedRect, NULL, 0)))
+	{
+		const BYTE* pbSrc = c_pbBuf + c_uHeaderSize;
+		for (DWORD y = 0; y < dwHeight; ++y)
+		{
+			DWORD* pdwDst = (DWORD*)((BYTE*)lockedRect.pBits + y * lockedRect.Pitch);
+			for (DWORD x = 0; x < dwWidth; ++x, pbSrc += uBytesPerPixel)
+			{
+				DWORD dwPixel = 0;
+				memcpy(&dwPixel, pbSrc, uBytesPerPixel);
+				pdwDst[x] = (ExpandMaskedChannel(dwPixel, dwAMask, 255) << 24) |
+					(ExpandMaskedChannel(dwPixel, dwRMask, 0) << 16) |
+					(ExpandMaskedChannel(dwPixel, dwGMask, 0) << 8) |
+					ExpandMaskedChannel(dwPixel, dwBMask, 0);
+			}
+		}
+		m_lpd3dTexture->UnlockRect(0);
+	}
+	m_bEmpty = false;
+	return true;
+}
+#endif
+
 bool CGraphicImageTexture::CreateFromMemoryFile(UINT bufSize, const void* c_pvBuf, D3DFORMAT d3dFmt, DWORD dwFilter)
 {
 	assert(ms_lpd3dDevice != NULL);
@@ -291,6 +360,9 @@ bool CGraphicImageTexture::CreateFromMemoryFile(UINT bufSize, const void* c_pvBu
 	}
 
 	const BYTE* c_pbBuf = (const BYTE*)c_pvBuf;
+	if (CreateFromUncompressedDDSMemory(bufSize, c_pbBuf))
+		return true;
+
 	if (bufSize > 2 && c_pbBuf[0] == 0xFF && c_pbBuf[1] == 0xD8)
 		return CreateFromJpegMemory(bufSize, c_pbBuf);
 

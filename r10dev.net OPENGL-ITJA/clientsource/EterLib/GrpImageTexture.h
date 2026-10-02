@@ -20,6 +20,7 @@ public:
 	bool		CreateDDSTexture(CDXTCImage& image, const BYTE* c_pbBuf);
 #ifdef __ANDROID__
 	bool		CreateFromJpegMemory(UINT bufSize, const BYTE* c_pbBuf);
+	bool		CreateFromUncompressedDDSMemory(UINT bufSize, const BYTE* c_pbBuf);
 #endif
 
 	void		SetFileName(const char* c_szFileName);
