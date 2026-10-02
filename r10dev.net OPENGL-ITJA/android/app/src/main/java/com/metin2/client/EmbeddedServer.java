@@ -55,6 +55,12 @@ final class EmbeddedServer {
     private final File mSqlite;
     private final String mLibDir;
 
+    // m2dev-server channels.py MAP_ALLOW_NORMAL cores 1-3 (one per empire) on a single core.
+    private static final String MAP_ALLOW =
+            "1 4 5 6 3 23 43 112 107 67 68 72 208 302 304 "
+            + "21 24 25 26 108 61 63 69 70 73 216 217 303 352 "
+            + "41 44 45 46 109 62 64 65 66 71 104 301 351";
+
     EmbeddedServer(Context context, int authPort, int channelPort) {
         mRoot = new File(context.getFilesDir(), "m2server");
         mPack = new File(context.getExternalFilesDir(null), "server");
@@ -68,7 +74,7 @@ final class EmbeddedServer {
                         + "\nAUTH_SERVER: master\n"));
         mNodes.add(new Node("channel1_core1", "libm2game.so", channelPort,
                 "HOSTNAME: channel1_1\nCHANNEL: 1\nPORT: " + channelPort + "\nP2P_PORT: " + (channelPort + 1000)
-                        + "\nMAP_ALLOW: 1 4 5 6 3 23 43 112 107 67 68 72 208 302 304\n"));
+                        + "\nMAP_ALLOW: " + MAP_ALLOW + "\n"));
     }
 
     /** Blocks until every process accepts connections. */

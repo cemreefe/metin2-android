@@ -304,7 +304,9 @@ DevIL, SpeedTree, Miles.
   <m2dev-server-src> <out>` (share/conf,data,locale,mark + compiled quests +
   seed DBs, ~116 MB), `push-server-pack.sh <out>` puts it at
   `files/server`. Logs go to `files/server/logs/<process>.{out,syslog.log,syserr.log}`.
-- Process model: `EmbeddedServer` starts db -> auth -> channel1 core (maps
-  1 4 5 6 3 23 43 112 107 67 68 72 208 302 304), waiting until each port
+- Process model: `EmbeddedServer` starts db -> auth -> channel1 core
+  carrying all three empires' normal maps (upstream splits them over cores
+  1-3; with only empire 1's maps the seeded empire-3 character got
+  "cannot find server for mapindex 41"), waiting until each port
   accepts, before the game view is created; stale processes from a killed
   app are found via their `pid` files and terminated.
