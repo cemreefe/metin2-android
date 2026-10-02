@@ -19,6 +19,7 @@ import java.io.File;
 
 public class MainActivity extends Activity implements SurfaceHolder.Callback {
     private static MainActivity sInstance;
+    private static EmbeddedServer sServer;
     private Thread mGameThread;
     private GameView mView;
     private File mDataDir;
@@ -112,6 +113,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
                 } catch (final Exception e) {
                     android.util.Log.e("Metin2Mobile", "server profile: " + e);
                 }
+                startEmbeddedServer();
                 runOnUiThread(new Runnable() {
                     public void run() {
                         mView = new GameView(MainActivity.this);
@@ -182,6 +184,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
         mGameThread = new Thread(new Runnable() {
             public void run() {
                 NativeLib.init(getAssets(), holder.getSurface(), dataDir, width, height);
+                stopEmbeddedServer();
             }
         }, "Metin2Game");
         mGameThread.start();
@@ -189,5 +192,37 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
 
     @Override
     public void surfaceDestroyed(SurfaceHolder holder) {
+    }
+
+    @Override
+    protected void onDestroy() {
+        if (isFinishing()) {
+            new Thread(new Runnable() {
+                public void run() {
+                    stopEmbeddedServer();
+                }
+            }, "M2ServerStop").start();
+        }
+        super.onDestroy();
+    }
+
+    private void startEmbeddedServer() {
+        if (!"embedded".equals(BuildConfig.M2_SERVER_MODE))
+            return;
+        synchronized (MainActivity.class) {
+            if (sServer == null)
+                sServer = new EmbeddedServer(getApplicationContext(), BuildConfig.M2_AUTH_PORT, BuildConfig.M2_CHANNEL_PORT);
+        }
+        if (!sServer.start())
+            android.util.Log.e("Metin2Mobile", "embedded server failed to start; see files/server/logs");
+    }
+
+    private static void stopEmbeddedServer() {
+        EmbeddedServer server;
+        synchronized (MainActivity.class) {
+            server = sServer;
+        }
+        if (server != null)
+            server.stop();
     }
 }

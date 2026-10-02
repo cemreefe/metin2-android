@@ -239,3 +239,49 @@ DevIL, SpeedTree, Miles.
   quick tunnel served it at tens of MB/s; its random URL goes into the pointer file.
 - The client connects to the channel address from `serverinfo.py`, not one the
   auth server hands out, so one tunnel port per channel core is enough.
+
+## Embedded server (offline profile)
+
+- Layout: `server/` builds the pinned m2dev-server-src (0cc595bf, unpatched,
+  cloned by Gradle into `server/.src` or `-Pm2serverSrc=`) with NDK r25 into
+  PIE executables `libm2db.so` / `libm2game.so`, packaged as jniLibs so they
+  land executable in `nativeLibraryDir` (exec from app data is blocked on
+  API 29+). `m2.serverMode=embedded` adds them; `remote` builds are unchanged.
+- Database: no MariaDB on the phone. `server/sqlite-mysql` is a drop-in
+  `libmariadbclient` (same `mysql.h` C API) over SQLite 3.50: one file per
+  logical DB (`account/player/common/log/hotbackup.sqlite3`), all ATTACHed so
+  `player.item` style qualified names work. Queries are rewritten from MySQL:
+  NOW()/UNIX_TIMESTAMP/FROM_UNIXTIME/PASSWORD() as SQL functions, REPLACE /
+  INSERT ... SET / ON DUPLICATE KEY UPDATE / INSERT DELAYED|IGNORE, SHOW
+  TABLES / SHOW CREATE TABLE, DATE_ADD/TIMESTAMPDIFF, ENUM/SET (metadata in
+  `_m2_enum`, numeric index semantics via triggers), backslash escapes.
+  `server/tools/mysql2sqlite.py` converts the exact `m2dev-server/sql` dumps.
+  The DB server boots `hotbackup` too; an empty file is enough.
+- Persistence: seed DBs ship in the external server pack
+  (`files/server/sqlite-seed`); the app copies them once to internal
+  `files/m2server/sqlite` and never overwrites, so accounts/characters/items
+  survive restarts and pack re-pushes. Cache flush cycles are cut to 30 s in
+  the pack so a killed app loses little; the launcher SIGTERMs the cores
+  (they save players) before the db on exit.
+- Test account: `test` / `test123` (MySQL double-SHA1 in `account.account`),
+  created only in generated seed files; nothing credential-like is committed.
+- Bionic/NDK breakage and fixes:
+  - libc++ in r25 has no `<source_location>` (C++20, used by the log macros):
+    tiny builtin-based replacement in `server/compat/android`.
+  - `getifaddrs`/`freeifaddrs` only exist from API 24: resolved via `dlsym`
+    at runtime, otherwise no interfaces; the cores always get `-I 127.0.0.1`.
+  - Lua 5.0 aborted at boot with `FORTIFY: strchr: prevented read past end of
+    buffer` (ltable/lgc reads string bytes past the `TString` header, which
+    FORTIFY's object-size check rejects). FORTIFY is off for `liblua` only.
+  - glibc host builds lack `strlcpy/strlcat` (bionic has them): BSD fallback
+    header force-included on the host only. SQLite needs `_GNU_SOURCE` for
+    `mremap`.
+  - `qc` runs on the host while building the pack (quests are data, not code).
+- Server data pack: `server/tools/make-server-pack.sh <m2dev-server>
+  <m2dev-server-src> <out>` (share/conf,data,locale,mark + compiled quests +
+  seed DBs, ~116 MB), `push-server-pack.sh <out>` puts it at
+  `files/server`. Logs go to `files/server/logs/<process>.{out,syslog.log,syserr.log}`.
+- Process model: `EmbeddedServer` starts db -> auth -> channel1 core (maps
+  1 4 5 6 3 23 43 112 107 67 68 72 208 302 304), waiting until each port
+  accepts, before the game view is created; stale processes from a killed
+  app are found via their `pid` files and terminated.
