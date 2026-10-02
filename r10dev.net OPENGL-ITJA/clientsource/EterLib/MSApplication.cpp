@@ -24,10 +24,23 @@ void CMSApplication::MessageLoop()
 #ifdef __ANDROID__
 #include <mutex>
 #include <deque>
+#include "../EterBase/Timer.h"
 
 struct STouchEvent { bool key; int action, x, y; };
 static std::mutex s_touchMutex;
 static std::deque<STouchEvent> s_touchQueue;
+// A touch has no hover phase, so a press is held back for two rendered frames after
+// moving the cursor; the frame's pick pass then sees what is under the finger.
+static bool s_bPressHovered = false;
+static bool s_bWaitFrame = false;
+static int s_iWaitFrames = 0;
+static DWORD s_dwWaitStart = 0;
+
+void CMSApplication::AndroidFrameDone()
+{
+	if (s_iWaitFrames > 0 && --s_iWaitFrames == 0)
+		s_bWaitFrame = false;
+}
 
 void CMSApplication::PushTouchEvent(int action, int x, int y)
 {
@@ -44,7 +57,9 @@ void CMSApplication::PushKeyEvent(int action, int keyCode, int unicodeChar)
 bool CMSApplication::IsMessage()
 {
 	std::lock_guard<std::mutex> lock(s_touchMutex);
-	return !s_touchQueue.empty();
+	if (s_bWaitFrame && ELTimer_GetMSec() - s_dwWaitStart > 1500)
+		s_bWaitFrame = false;
+	return !s_bWaitFrame && !s_touchQueue.empty();
 }
 
 bool CMSApplication::MessageProcess()
@@ -55,7 +70,21 @@ bool CMSApplication::MessageProcess()
 		if (s_touchQueue.empty())
 			return true;
 		ev = s_touchQueue.front();
-		s_touchQueue.pop_front();
+		bool bPress = !ev.key && ev.action == 0;
+		if (bPress && !s_bPressHovered)
+		{
+			s_bPressHovered = true;
+			s_bWaitFrame = true;
+			s_dwWaitStart = ELTimer_GetMSec();
+			s_iWaitFrames = 2;
+			ev.action = 2;
+		}
+		else
+		{
+			if (bPress)
+				s_bPressHovered = false;
+			s_touchQueue.pop_front();
+		}
 	}
 	if (ev.key)
 		OnAndroidKeyEvent(ev.action, ev.x, ev.y);

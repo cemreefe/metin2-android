@@ -2,6 +2,12 @@
 #include "PythonPlayer.h"
 #include "PythonPlayerEventHandler.h"
 #include "PythonApplication.h"
+#ifdef __ANDROID__
+#include <android/log.h>
+#define M2_INPUT_LOG(...) __android_log_print(ANDROID_LOG_INFO, "M2Input", __VA_ARGS__)
+#else
+#define M2_INPUT_LOG(...)
+#endif
 #include "../EterLib/Camera.h"
 #include "../EterBase/Timer.h"
 
@@ -328,6 +334,7 @@ void CPythonPlayer::__OnPressActor(CInstanceBase& rkInstMain, DWORD dwPickedActo
 		return;
 
 	CInstanceBase& rkInstVictim = *pkInstVictim;
+	M2_INPUT_LOG("press actor vid=%u auto=%d attackable=%d clickable=%d", dwPickedActorID, isAuto, rkInstMain.IsAttackableInstance(rkInstVictim), rkInstMain.NEW_IsClickableDistanceDestInstance(rkInstVictim));
 
 	if (rkInstMain.IsBowMode())
 	{

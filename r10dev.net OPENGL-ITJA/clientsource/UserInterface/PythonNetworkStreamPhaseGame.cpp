@@ -26,6 +26,13 @@
 
 #include "ProcessCRC.h"
 
+#ifdef __ANDROID__
+#include <android/log.h>
+#define M2_COMBAT_LOG(...) __android_log_print(ANDROID_LOG_INFO, "M2Combat", __VA_ARGS__)
+#else
+#define M2_COMBAT_LOG(...)
+#endif
+
 BOOL gs_bEmpireLanuageEnable = TRUE;
 
 void CPythonNetworkStream::__RefreshAlignmentWindow()
@@ -1635,6 +1642,7 @@ bool CPythonNetworkStream::RecvDeadPacket()
 
 	CPythonCharacterManager& rkChrMgr = CPythonCharacterManager::Instance();
 	CInstanceBase* pkChrInstSel = rkChrMgr.GetInstancePtr(DeadPacket.vid);
+	M2_COMBAT_LOG("recv dead vid=%u", DeadPacket.vid);
 	if (pkChrInstSel)
 	{
 		CInstanceBase* pkInstMain = rkChrMgr.GetMainInstancePtr();
@@ -2465,6 +2473,7 @@ bool CPythonNetworkStream::RecvDamageInfoPacket()
 	}
 
 	CInstanceBase* pInstTarget = CPythonCharacterManager::Instance().GetInstancePtr(DamageInfoPacket.dwVID);
+	M2_COMBAT_LOG("recv damage vid=%u flag=%u damage=%d", DamageInfoPacket.dwVID, DamageInfoPacket.flag, DamageInfoPacket.damage);
 	bool bSelf = (pInstTarget == CPythonCharacterManager::Instance().GetMainInstancePtr());
 	bool bTarget = (pInstTarget == m_pInstTarget);
 	if (pInstTarget)
@@ -2489,6 +2498,7 @@ bool CPythonNetworkStream::RecvTargetPacket()
 
 	CInstanceBase* pInstPlayer = CPythonCharacterManager::Instance().GetMainInstancePtr();
 	CInstanceBase* pInstTarget = CPythonCharacterManager::Instance().GetInstancePtr(TargetPacket.dwVID);
+	M2_COMBAT_LOG("recv target vid=%u hp=%u%%", TargetPacket.dwVID, TargetPacket.bHPPercent);
 	if (pInstPlayer && pInstTarget)
 	{
 		if (!pInstTarget->IsDead())
@@ -2622,6 +2632,7 @@ bool CPythonNetworkStream::SendAttackPacket(UINT uMotAttack, DWORD dwVIDVictim)
 	kPacketAtk.header = HEADER_CG_ATTACK;
 	kPacketAtk.bType = uMotAttack;
 	kPacketAtk.dwVictimVID = dwVIDVictim;
+	M2_COMBAT_LOG("send attack type=%u victim=%u", uMotAttack, dwVIDVictim);
 
 	if (!SendSpecial(sizeof(kPacketAtk), &kPacketAtk))
 	{
@@ -2809,6 +2820,7 @@ bool CPythonNetworkStream::SendTargetPacket(DWORD dwVID)
 {
 	TPacketCGTarget packet;
 	packet.header = HEADER_CG_TARGET;
+	M2_COMBAT_LOG("send target vid=%u", dwVID);
 	packet.dwVID = dwVID;
 
 	if (!Send(sizeof(packet), &packet))

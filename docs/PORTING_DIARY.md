@@ -183,3 +183,37 @@ DevIL, SpeedTree, Miles.
   a non-full-editor `BaseInputConnection`, so use
   `TYPE_TEXT_VARIATION_VISIBLE_PASSWORD` to get direct commits and a working
   Send action. Call `requestFocus` before `restartInput`.
+
+## Android targeting and combat
+
+- The existing Windows mouse path already maps correctly to Android taps once
+  touch coordinates and cursor polling are fixed: tap an actor to send
+  `HEADER_CG_TARGET`; tap/hold it again to drive the normal space-key attack
+  state and `HEADER_CG_ATTACK`. No Android-specific combat packet is needed.
+- Do not add an Android attack button. The taskbar sword menu already offers
+  auto attack (`player.MBF_AUTO`); one tap on a mob then keeps attacking it via
+  the original game path (cooldowns, animation timing, CRC fields).
+- Verify the whole exchange from both ends. Against a level 8 Cursed Wolf the
+  client sent target and attack packets, received HP 100 -> 61 -> 22 -> 0,
+  received damage values 168/171/168, then target-clear and dead packets. The
+  hostile wolf also dealt repeated server-authored damage to the player.
+- A previously observed PONG sequence mismatch did not recur after a clean
+  server restart; keep server sequence validation enabled and re-check during
+  longer sessions rather than bypassing it.
+
+## Touch picking (no hover phase)
+
+- A mouse hovers before it clicks, so the engine's per-frame pick (actor under
+  the cursor) is already up to date when the button goes down. A touch moves
+  and presses in the same instant, so the press used last frame's pick result
+  and always hit the ground.
+- Fix: queue touch events; on a press, first deliver a move, then hold the
+  press back until two rendered frames have rebuilt the pick ray (signalled
+  right after `SetCursorPosition` in the 3D render path), with a 1.5 s timeout
+  so menus without a 3D frame never stall.
+- Do not rebuild the pick ray from the input handler. Outside the 3D frame the
+  projection/view matrices belong to the 2D UI pass, so the ray points at the
+  sky and nothing is picked.
+- Verified: tapping a Metin stone (vnum 8001) with sword auto mode sent target,
+  then repeated attacks; server returned damage ~204 per hit, HP 100% -> 0%,
+  target clear and dead packets. Spawned guards were also hit and killed.

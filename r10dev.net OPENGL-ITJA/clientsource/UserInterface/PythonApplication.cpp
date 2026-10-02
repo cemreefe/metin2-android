@@ -194,6 +194,9 @@ void CPythonApplication::RenderGame()
 			long lx, ly;
 			m_kWndMgr.GetMousePosition(lx, ly);
 			m_pyGraphic.SetCursorPosition(lx, ly);
+#ifdef __ANDROID__
+			CMSApplication::AndroidFrameDone();
+#endif
 		}
 
 		m_pyBackground.RenderSky();
@@ -257,6 +260,9 @@ void CPythonApplication::RenderGame()
 		long lx, ly;
 		m_kWndMgr.GetMousePosition(lx, ly);
 		m_pyGraphic.SetCursorPosition(lx, ly);
+#ifdef __ANDROID__
+		CMSApplication::AndroidFrameDone();
+#endif
 	}
 
 	m_pyBackground.RenderSky();

@@ -1,6 +1,12 @@
 #include "StdAfx.h"
 #include "PythonPlayer.h"
 #include "PythonApplication.h"
+#ifdef __ANDROID__
+#include <android/log.h>
+#define M2_INPUT_LOG(...) __android_log_print(ANDROID_LOG_INFO, "M2Input", __VA_ARGS__)
+#else
+#define M2_INPUT_LOG(...)
+#endif
 
 #include "../EterLib/Camera.h"
 
@@ -137,6 +143,7 @@ void CPythonPlayer::__OnPressSmart(CInstanceBase& rkInstMain, bool isAuto)
 	bool isPickedItemID = __GetPickedItemID(&dwPickedItemID);
 	bool isPickedActorID = __GetPickedActorID(&dwPickedActorID);
 	bool isPickedGroundPos = __GetPickedGroundPos(&kPPosPickedGround);
+	M2_INPUT_LOG("smart press auto=%d item=%d actor=%d vid=%u ground=%d", isAuto, isPickedItemID, isPickedActorID, isPickedActorID ? dwPickedActorID : 0, isPickedGroundPos);
 
 	if (isPickedItemID)
 	{
@@ -197,6 +204,7 @@ bool CPythonPlayer::NEW_SetMouseFunc(int eMBT, int eMBF)
 		return false;
 
 	m_aeMBFButton[eMBT] = eMBF;
+	M2_INPUT_LOG("mouse func button=%d func=%d", eMBT, eMBF);
 
 	return true;
 }
@@ -226,6 +234,7 @@ bool CPythonPlayer::NEW_SetMouseState(int eMBT, int eMBS)
 		return false;
 
 	int eMBF = m_aeMBFButton[eMBT];
+	M2_INPUT_LOG("mouse state button=%d state=%d func=%d", eMBT, eMBS, eMBF);
 	switch (eMBF)
 	{
 	case MBF_MOVE:
