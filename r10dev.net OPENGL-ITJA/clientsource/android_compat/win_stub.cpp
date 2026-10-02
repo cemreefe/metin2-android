@@ -89,6 +89,32 @@ static void FillFindData(const char* path, LPWIN32_FIND_DATAA fd) {
     }
 }
 
+static std::string ResolveDirCaseInsensitive(const char* dir) {
+    struct stat st;
+    if (stat(dir, &st) == 0) return dir;
+    std::string resolved = dir[0] == '/' ? "/" : "";
+    std::string path = dir;
+    size_t start = dir[0] == '/' ? 1 : 0;
+    while (start <= path.size()) {
+        size_t end = path.find('/', start);
+        if (end == std::string::npos) end = path.size();
+        std::string part = path.substr(start, end - start);
+        start = end + 1;
+        if (part.empty()) continue;
+        std::string parent = resolved.empty() ? "." : resolved;
+        std::string match = part;
+        if (DIR* dp = opendir(parent.c_str())) {
+            while (struct dirent* ent = readdir(dp)) {
+                if (strcasecmp(ent->d_name, part.c_str()) == 0) { match = ent->d_name; break; }
+            }
+            closedir(dp);
+        }
+        if (!resolved.empty() && resolved[resolved.size() - 1] != '/') resolved += '/';
+        resolved += match;
+    }
+    return resolved;
+}
+
 HANDLE FindFirstFileA(LPCSTR lpFileName, LPWIN32_FIND_DATAA lpFindFileData) {
     FindHandle* h = new FindHandle();
     char pattern[1024];
@@ -107,11 +133,14 @@ HANDLE FindFirstFileA(LPCSTR lpFileName, LPWIN32_FIND_DATAA lpFindFileData) {
         dir = dirbuf;
         mask = slash + 1;
     }
+    if (strcmp(mask, "*.*") == 0) mask = "*";
+    std::string resolvedDir = ResolveDirCaseInsensitive(dir);
+    dir = resolvedDir.c_str();
     DIR* dp = opendir(dir);
     if (dp) {
         struct dirent* ent;
         while ((ent = readdir(dp)) != NULL) {
-            if (fnmatch(mask, ent->d_name, 0) == 0) {
+            if (fnmatch(mask, ent->d_name, FNM_CASEFOLD) == 0) {
                 char full[1100];
                 snprintf(full, sizeof(full), "%s/%s", dir, ent->d_name);
                 h->paths.push_back(full);

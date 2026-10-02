@@ -193,13 +193,18 @@ bool CProperty::ReadFromMemory(const void* c_pvData, int iLen, const char* c_psz
 
 	pcData += sizeof(DWORD);
 
-	if (*pcData != '\r' || *(pcData + 1) != '\n')
+	int iNewLineLen;
+	if (*pcData == '\r' && *(pcData + 1) == '\n')
+		iNewLineLen = 2;
+	else if (*pcData == '\n')
+		iNewLineLen = 1;
+	else
 	{
 		TraceError("CProperty::ReadFromMemory: File format error after FourCC: %s\n", c_pszFileName);
 		return false;
 	}
 
-	pcData += 2;
+	pcData += iNewLineLen;
 
 	CTokenVector stTokenVector;
 	/*
@@ -242,7 +247,7 @@ bool CProperty::ReadFromMemory(const void* c_pvData, int iLen, const char* c_psz
 		return true;
 		*/
 	CMemoryTextFileLoader textFileLoader;
-	textFileLoader.Bind(iLen - (sizeof(DWORD) + 2), pcData);
+	textFileLoader.Bind(iLen - (sizeof(DWORD) + iNewLineLen), pcData);
 
 	m_stCRC = textFileLoader.GetLineString(0);
 	m_dwCRC = atoi(m_stCRC.c_str());

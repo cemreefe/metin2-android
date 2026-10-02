@@ -1,4 +1,7 @@
 #include "StdAfx.h"
+#ifdef __ANDROID__
+#include <android/log.h>
+#endif
 #include "../EterLib/NetPacketHeaderMap.h"
 
 #include "PythonNetworkStream.h"
@@ -591,6 +594,9 @@ bool CPythonNetworkStream::CheckPacket(TPacketHeader* pRetHeader)
 
 	g_iLastPacket[0] = g_iLastPacket[1];
 	g_iLastPacket[1] = header;
+#ifdef __ANDROID__
+	__android_log_print(ANDROID_LOG_INFO, "M2Pkt", "PKT %d static=%d dyn=%d", header, PacketType.iPacketSize, PacketType.isDynamicSizePacket);
+#endif
 	//Tracenf("header %d size %d", header, PacketType.iPacketSize);
 	//Tracenf("header %d size %d outputpos[%d] security %u", header, PacketType.iPacketSize, m_recvBufOutputPos, IsSecurityMode());
 	return true;

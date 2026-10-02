@@ -212,15 +212,15 @@ PyObject* questGetQuestData(PyObject* poSelf, PyObject* poArgs)
 	if (pQuestInstance->c_index == 99)
 		pQuestInstance->c_index = 6;
 
-	return Py_BuildValue("isiisi", pQuestInstance->dwIndex,
+	return Py_BuildValue("isilsi", pQuestInstance->dwIndex,
 		pQuestInstance->strTitle.c_str(),
 		pQuestInstance->c_index,
-		pImage,
+		(long)(intptr_t)pImage,
 		pQuestInstance->strCounterName.c_str(),
 		pQuestInstance->iCounterValue);
 #else
-	return Py_BuildValue("sisi", pQuestInstance->strTitle.c_str(),
-		pImage,
+	return Py_BuildValue("slsi", pQuestInstance->strTitle.c_str(),
+		(long)(intptr_t)pImage,
 		pQuestInstance->strCounterName.c_str(),
 		pQuestInstance->iCounterValue);
 #endif

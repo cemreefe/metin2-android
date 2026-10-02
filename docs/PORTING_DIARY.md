@@ -99,6 +99,24 @@ DevIL, SpeedTree, Miles.
   bytes were parsed as a DUEL_START with a huge size. `debuggerd -b <pid>`
   gives the game-thread stack without killing the app.
 
+## In-game packet/data fixes (quest, property)
+
+- Feature flags must match the server, not the client tree's defaults:
+  `ENABLE_QUEST_RENEWAL` adds a `WORD c_index` to `packet_quest_info`; the
+  m2dev server does not send it, so every quest packet desynced the stream
+  (symptom: "Unknown packet header: 105" a few packets later). Disabled it.
+- LP64 again: `quest.GetQuestData` returned the icon `CGraphicImage*` via
+  `Py_BuildValue("i")`, truncating it; `wndMgr.SetSlot` then crashed in
+  `CReferenceObject::AddReference`. Grep every `Py_BuildValue` that passes a
+  pointer and use `"l"` + `(long)(intptr_t)`.
+- `FindFirstFile` shim: Windows `*.*` matches names without dots (directories)
+  and paths are case-insensitive; POSIX `fnmatch("*.*")` and `opendir` are
+  not. Map `*.*` -> `*`, use `FNM_CASEFOLD`, resolve directory case.
+- Text data extracted from git-hosted client repos is LF-only;
+  `CProperty::ReadFromMemory` required `\r\n` after the `YPRT` FourCC, so all
+  ~750 `.prd` properties failed ("CArea::LoadObject Property(...) Load ERROR",
+  no trees/buildings). Accept both line endings.
+
 ## Server ops
 
 - DB crashed in `mysql_set_character_set()` when started before MySQL was up;
