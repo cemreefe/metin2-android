@@ -188,6 +188,10 @@ bool CPythonNetworkStream::__RecvLoginSuccessPacket4()
 	if (!Recv(sizeof(kPacketLoginSuccess), &kPacketLoginSuccess))
 		return false;
 
+	Tracenf("LoginSuccess4 size %u slot0 id %u name %s addr 0x%08x port %u", (unsigned)sizeof(kPacketLoginSuccess),
+		kPacketLoginSuccess.akSimplePlayerInformation[0].dwID, kPacketLoginSuccess.akSimplePlayerInformation[0].szName,
+		(DWORD)kPacketLoginSuccess.akSimplePlayerInformation[0].lAddr, kPacketLoginSuccess.akSimplePlayerInformation[0].wPort);
+
 	for (int i = 0; i < PLAYER_PER_ACCOUNT4; ++i)
 	{
 		m_akSimplePlayerInfo[i] = kPacketLoginSuccess.akSimplePlayerInformation[i];

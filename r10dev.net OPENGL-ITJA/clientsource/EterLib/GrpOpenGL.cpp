@@ -221,6 +221,11 @@ HRESULT IDirect3D8::CreateDevice(UINT Adapter, D3DDEVTYPE DeviceType, HWND hFocu
     glGetIntegerv(GL_VIEWPORT, vp);
     pDevice->m_fViewportWidth = (float)(vp[2] > 0 ? vp[2] : 1);
     pDevice->m_fViewportHeight = (float)(vp[3] > 0 ? vp[3] : 1);
+    pDevice->m_iSurfaceHeight = vp[3] > 0 ? vp[3] : 1;
+    pDevice->m_viewport.X = vp[0];
+    pDevice->m_viewport.Y = vp[1];
+    pDevice->m_viewport.Width = vp[2] > 0 ? vp[2] : 1;
+    pDevice->m_viewport.Height = vp[3] > 0 ? vp[3] : 1;
     glBlendFunc(GL_ONE, GL_ZERO);
     glDisable(GL_CULL_FACE);
     glEnable(GL_DEPTH_TEST);
@@ -274,6 +279,8 @@ HRESULT IDirect3DTexture8::UnlockRect(UINT Level) {
 }
 
 ULONG IDirect3DTexture8::Release() {
+    if (--refCount > 0)
+        return refCount;
     if (glId) glDeleteTextures(1, &glId);
     if (pLockedData) free(pLockedData);
     if (pScratch) free(pScratch);
@@ -296,7 +303,9 @@ HRESULT IDirect3DDevice8::CreateTexture(UINT Width, UINT Height, UINT Levels, DW
 }
 
 HRESULT IDirect3DDevice8::SetViewport(const D3DVIEWPORT8* v) {
-    glViewport(v->X, v->Y, v->Width, v->Height);
+    m_viewport = *v;
+    // D3D viewports are top-left based; GL's are bottom-left based.
+    glViewport(v->X, m_iSurfaceHeight - (int)v->Y - (int)v->Height, v->Width, v->Height);
     m_fViewportWidth = (float)(v->Width ? v->Width : 1);
     m_fViewportHeight = (float)(v->Height ? v->Height : 1);
     return S_OK;

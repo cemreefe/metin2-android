@@ -141,6 +141,9 @@ void Trace(const char* c_szMsg)
 
 void Tracen(const char* c_szMsg)
 {
+#ifdef __ANDROID__
+	__android_log_print(ANDROID_LOG_INFO, "metin2", "%s", c_szMsg);
+#endif
 #ifdef _DEBUG
 	char szBuf[DEBUG_STRING_MAX_LEN + 1];
 	_snprintf(szBuf, sizeof(szBuf), "%s\n", c_szMsg);
@@ -175,6 +178,9 @@ void Tracenf(const char* c_szFormat, ...)
 		szBuf[len + 1] = '\0';
 	}
 	va_end(args);
+#ifdef __ANDROID__
+	__android_log_print(ANDROID_LOG_INFO, "metin2", "%s", szBuf);
+#endif
 #ifdef _DEBUG
 	OutputDebugString(szBuf);
 	printf("%s", szBuf);

@@ -1111,8 +1111,9 @@ inline GLCOLOR* D3DXColorModulate(GLCOLOR* pOut, const GLCOLOR* pC1, const GLCOL
         D3DFORMAT format;
         void* pLockedData;
         void* pScratch;
-        IDirect3DTexture8() : glId(0), width(0), height(0), format(0), pLockedData(NULL), pScratch(NULL) {}
-        ULONG AddRef() { return 1; }
+        ULONG refCount;
+        IDirect3DTexture8() : glId(0), width(0), height(0), format(0), pLockedData(NULL), pScratch(NULL), refCount(1) {}
+        ULONG AddRef() { return ++refCount; }
         HRESULT LockRect(UINT Level,D3DLOCKED_RECT* pLockedRect,const RECT* pRect,DWORD Flags);
         HRESULT UnlockRect(UINT Level);
         ULONG Release();
@@ -1312,7 +1313,7 @@ inline GLCOLOR* D3DXColorModulate(GLCOLOR* pOut, const GLCOLOR* pC1, const GLCOL
         HRESULT CreateDepthStencilSurface(UINT,UINT,D3DFORMAT,D3DMULTISAMPLE_TYPE,LPDIRECT3DSURFACE8*) { return S_OK; }
         HRESULT GetRenderTarget(LPDIRECT3DSURFACE8*) { return S_OK; }
         HRESULT GetDepthStencilSurface(LPDIRECT3DSURFACE8*) { return S_OK; }
-        HRESULT GetViewport(D3DVIEWPORT8*) { return S_OK; }
+        HRESULT GetViewport(D3DVIEWPORT8* v) { if (v) *v = m_viewport; return S_OK; }
         HRESULT SetRenderTarget(LPDIRECT3DSURFACE8,LPDIRECT3DSURFACE8) { return S_OK; }
         HRESULT SetViewport(const D3DVIEWPORT8* v);
         HRESULT BeginScene();
@@ -1367,6 +1368,8 @@ inline GLCOLOR* D3DXColorModulate(GLCOLOR* pOut, const GLCOLOR* pC1, const GLCOL
         DWORD m_dwAlphaFunc = D3DCMP_ALWAYS;
         float m_fViewportWidth = 1.0f;
         float m_fViewportHeight = 1.0f;
+        D3DVIEWPORT8 m_viewport = { 0, 0, 1, 1, 0.0f, 1.0f };
+        int m_iSurfaceHeight = 1;
         void ApplyDrawState(const BYTE* pVertexBase, UINT uStride);
     };
 

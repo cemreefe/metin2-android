@@ -5,6 +5,7 @@ add_definitions(-D__ANDROID__)
 add_definitions(-DENABLE_OPENGL)
 add_definitions(-DENABLE_MOBILE_CONTROLS)
 add_definitions(-DLOCALE_SERVICE_EUROPE)
+add_definitions(-DNDEBUG) # match the Windows release build: asserts are compiled out
 
 if(ANDROID)
     # Some older Granny versions use these for 64-bit

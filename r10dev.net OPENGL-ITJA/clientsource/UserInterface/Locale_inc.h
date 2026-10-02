@@ -17,8 +17,10 @@
 #define ENABLE_PACK_GET_CHECK
 #define ENABLE_CANSEEHIDDENTHING_FOR_GM
 #define ENABLE_PROTOSTRUCT_AUTODETECT
+#define ENABLE_SEQUENCE_SYSTEM
+#define ENABLE_PCG_SEQUENCE // packet sequence bytes from pcg32(seed 0), matching m2dev servers
 
-#define ENABLE_PLAYER_PER_ACCOUNT5
+// #define ENABLE_PLAYER_PER_ACCOUNT5 // m2dev server sends 4 slots
 #define ENABLE_LEVEL_IN_TRADE
 #define ENABLE_DICE_SYSTEM
 #define ENABLE_EXTEND_INVEN_SYSTEM
@@ -51,7 +53,7 @@
 
 // if is define ENABLE_ACCE_SYSTEM the players can use shoulder sash
 // if you want to use object scaling function you must defined ENABLE_OBJ_SCALLING
-#define ENABLE_ACCE_SYSTEM
+// #define ENABLE_ACCE_SYSTEM // not supported by the m2dev server protocol
 #define ENABLE_OBJ_SCALLING
 
 // if you want use SetMouseWheelScrollEvent or you want use mouse wheel to move the scrollbar

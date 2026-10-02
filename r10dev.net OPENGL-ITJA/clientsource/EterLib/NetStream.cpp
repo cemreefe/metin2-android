@@ -106,11 +106,14 @@ bool CNetworkStream::__RecvInternalBuffer()
 			return false;
 		}
 
-		if (IsSecurityMode()) {
-			m_cipher.Decrypt(m_recvBuf + m_recvBufInputPos, recvSize);
-		}
+		if (recvSize > 0)
+		{
+			if (IsSecurityMode()) {
+				m_cipher.Decrypt(m_recvBuf + m_recvBufInputPos, recvSize);
+			}
 
-		m_recvBufInputPos += recvSize;
+			m_recvBufInputPos += recvSize;
+		}
 	}
 #else
 	if (IsSecurityMode())
@@ -300,13 +303,23 @@ void CNetworkStream::Process()
 	delay.tv_sec = 0;
 	delay.tv_usec = 0;
 
-	if (select(0, &fdsRecv, &fdsSend, NULL, &delay) == SOCKET_ERROR)
+	if (select((int)m_sock + 1, &fdsRecv, &fdsSend, NULL, &delay) == SOCKET_ERROR)
 		return;
 
 	if (!m_isOnline)
 	{
 		if (FD_ISSET(m_sock, &fdsSend))
 		{
+#ifdef __ANDROID__
+			int sockErr = 0;
+			socklen_t sockErrLen = sizeof(sockErr);
+			if (getsockopt(m_sock, SOL_SOCKET, SO_ERROR, &sockErr, &sockErrLen) != 0 || sockErr != 0)
+			{
+				Clear();
+				OnConnectFailure();
+				return;
+			}
+#endif
 			m_isOnline = true;
 			OnConnectSuccess();
 		}
@@ -395,6 +408,9 @@ void CNetworkStream::Clear()
 
 #ifdef ENABLE_SEQUENCE_SYSTEM
 	m_iSequence = 0;
+#ifdef ENABLE_PCG_SEQUENCE
+	m_SequenceGenerator.seed(0);
+#endif
 #endif
 }
 
@@ -420,9 +436,9 @@ bool CNetworkStream::Connect(const CNetworkAddress& c_rkNetAddr, int limitSec)
 	{
 		int error = WSAGetLastError();
 
-		if (error != WSAEWOULDBLOCK)
+		if (error != WSAEWOULDBLOCK && error != WSAEINPROGRESS)
 		{
-			Tracen("error != WSAEWOULDBLOCK");
+			Tracenf("connect failed: error %d", error);
 			Clear();
 			OnConnectFailure();
 			return false;
@@ -836,7 +852,12 @@ bool CNetworkStream::SendSequence()
 	if (!m_bUseSequence)
 		return true;
 
+#ifdef ENABLE_PCG_SEQUENCE
+	BYTE bSeq = (BYTE)(m_SequenceGenerator.next() & 0xff);
+	++m_iSequence;
+#else
 	BYTE bSeq = m_kVec_bSequenceTable[m_iSequence++];
+#endif
 
 	bool bRet = Send(sizeof(BYTE), &bSeq);
 	if (m_iSequence == SEQUENCE_TABLE_SIZE)
@@ -2963,7 +2984,12 @@ CNetworkStream::CNetworkStream()
 
 #ifdef ENABLE_SEQUENCE_SYSTEM
 	m_iSequence = 0;
+#ifdef ENABLE_PCG_SEQUENCE
+	m_bUseSequence = true;
+	m_SequenceGenerator.seed(0);
+#else
 	m_bUseSequence = false;
+#endif
 	m_kVec_bSequenceTable.resize(SEQUENCE_TABLE_SIZE);
 	memcpy(&m_kVec_bSequenceTable[0], s_bSequenceTable, sizeof(BYTE) * SEQUENCE_TABLE_SIZE);
 #endif
@@ -3011,6 +3037,11 @@ bool CNetworkStream::Activate(size_t agreed_length, const void* buffer, size_t l
 
 void CNetworkStream::ActivateCipher()
 {
-	return m_cipher.set_activated(true);
+	m_cipher.set_activated(true);
+
+	// Bytes already buffered after the completion packet arrived encrypted.
+	int pendingSize = m_recvBufInputPos - m_recvBufOutputPos;
+	if (pendingSize > 0)
+		m_cipher.Decrypt(m_recvBuf + m_recvBufOutputPos, pendingSize);
 }
 #endif // _IMPROVED_PACKET_ENCRYPTION_

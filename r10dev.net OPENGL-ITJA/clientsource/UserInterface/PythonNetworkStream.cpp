@@ -492,6 +492,7 @@ void CPythonNetworkStream::ConnectGameServer(UINT iChrSlot)
 	__DirectEnterMode_Set(iChrSlot);
 
 	TSimplePlayerInformation& rkSimplePlayerInfo = m_akSimplePlayerInfo[iChrSlot];
+	Tracenf("ConnectGameServer slot %u addr 0x%08x port %u", iChrSlot, (DWORD)rkSimplePlayerInfo.lAddr, rkSimplePlayerInfo.wPort);
 	CNetworkStream::Connect((DWORD)rkSimplePlayerInfo.lAddr, rkSimplePlayerInfo.wPort);
 }
 

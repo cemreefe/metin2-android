@@ -462,7 +462,7 @@ BOOL    SetTimer(HWND, UINT_PTR, UINT, void*) { return TRUE; }
 BOOL    KillTimer(HWND, UINT_PTR) { return TRUE; }
 HCURSOR LoadCursorA(HINSTANCE, LPCSTR) { return NULL; }
 HCURSOR SetCursor(HCURSOR hCursor) { return hCursor; }
-int     ShowCursor(BOOL) { return 0; }
+int     ShowCursor(BOOL bShow) { static int s_iDisplayCount = 0; return bShow ? ++s_iDisplayCount : --s_iDisplayCount; }
 HICON   LoadIconA(HINSTANCE, LPCSTR) { return NULL; }
 BOOL    DestroyIcon(HICON) { return TRUE; }
 BOOL    DestroyCursor(HCURSOR) { return TRUE; }

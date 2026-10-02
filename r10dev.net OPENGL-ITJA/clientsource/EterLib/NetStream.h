@@ -7,6 +7,28 @@
 #include "../EterBase/tea.h"
 #include "NetAddress.h"
 
+#ifdef ENABLE_PCG_SEQUENCE
+// Minimal pcg32 (setseq_64_xsh_rr_32, default stream) as used by the server's sequence check.
+class CPcg32
+{
+	public:
+		void seed(unsigned long long s) { m_state = (s + c_inc) * c_mul + c_inc; }
+		unsigned int next()
+		{
+			unsigned long long old = m_state;
+			m_state = old * c_mul + c_inc;
+			unsigned int x = (unsigned int)(((old >> 18) ^ old) >> 27);
+			unsigned int r = (unsigned int)(old >> 59);
+			return (x >> r) | (x << ((32 - r) & 31));
+		}
+
+	private:
+		static const unsigned long long c_mul = 6364136223846793005ULL;
+		static const unsigned long long c_inc = 1442695040888963407ULL;
+		unsigned long long m_state;
+};
+#endif
+
 class CNetworkStream
 {
 public:
@@ -112,5 +134,8 @@ private:
 	DWORD					m_iSequence;
 	bool					m_bUseSequence;
 	std::vector<BYTE>		m_kVec_bSequenceTable;
+#ifdef ENABLE_PCG_SEQUENCE
+	CPcg32					m_SequenceGenerator;
+#endif
 #endif
 };
