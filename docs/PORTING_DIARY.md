@@ -52,6 +52,19 @@ DevIL, SpeedTree, Miles.
   SIZE1=3 at bits 16+2i; vertex stride depends on them.
 - Terrain (`MapOutdoorRenderHTP.cpp`) needs two texture stages with
   `D3DTSS_TCI_CAMERASPACEPOSITION` texgen + `D3DTTFF_COUNT2` texture matrices.
+- Audit every D3DX math helper in the shim before debugging shaders. Ours had
+  placeholder `D3DXMatrixInverse` (returned input), `D3DXVec3TransformCoord`,
+  `D3DXPlaneDotCoord`, `D3DXVec3Project/Unproject`; the camera-space texgen
+  matrices were garbage until those were real.
+- Render-to-texture must be real (FBO + depth renderbuffer). The terrain's
+  last pass multiplies the framebuffer (`ZERO, SRCCOLOR`) by a character
+  shadow render target; with no-op `SetRenderTarget` that texture stayed
+  black and blackened all terrain. When rendering to an FBO, flip clip-space Y
+  so texture row 0 is D3D's top and use an unflipped `glViewport`.
+- `.wtr` water heights are serialized 32-bit `long`; on LP64 read `int32_t`.
+- Debug technique: `adb shell setprop debug.m2.solid N` switches shader debug
+  modes at runtime (skip lit terrain pass, show vertex colour, stage-0/1
+  texture/coords) to bisect a multipass effect without rebuilding.
 - Lesson: add fixed-function features one at a time with a screenshot after
   each; a big all-at-once shader rewrite produced corrupt geometry that was
   hard to bisect.

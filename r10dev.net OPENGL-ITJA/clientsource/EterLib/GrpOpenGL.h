@@ -167,10 +167,10 @@ typedef int D3DPOOL;
 #define D3DFVF_TEX2 0x200
 #define D3DFVF_TEX3 0x300
 #define D3DFVF_TEX4 0x400
-#define D3DFVF_TEXCOORDSIZE1(i) (1 << (i*2 + 16))
-#define D3DFVF_TEXCOORDSIZE2(i) (2 << (i*2 + 16))
-#define D3DFVF_TEXCOORDSIZE3(i) (3 << (i*2 + 16))
-#define D3DFVF_TEXCOORDSIZE4(i) (0 << (i*2 + 16))
+#define D3DFVF_TEXCOORDSIZE1(i) (3 << (i*2 + 16))
+#define D3DFVF_TEXCOORDSIZE2(i) (0)
+#define D3DFVF_TEXCOORDSIZE3(i) (1 << (i*2 + 16))
+#define D3DFVF_TEXCOORDSIZE4(i) (2 << (i*2 + 16))
 #define D3DFVF_TEXCOORDSIZEMASK(i) (3 << (i*2 + 16))
 #define D3DFVF_TEXCOUNT_MASK 0xf00
 #define D3DFVF_TEXCOUNT_SHIFT 8
@@ -259,9 +259,6 @@ typedef struct _D3DLOCKED_RECT {
 #define D3DTTFF_COUNT2 2
 #define D3DTTFF_COUNT3 3
 #define D3DTTFF_COUNT4 4
-#define D3DTSS_TCI_CAMERASPACENORMAL 1
-#define D3DTSS_TCI_CAMERASPACEPOSITION 2
-#define D3DTSS_TCI_CAMERASPACEREFLECTIONVECTOR 3
 #define D3DTOP_DISABLE 1
 #define D3DTOP_SELECTARG1 2
 #define D3DTOP_SELECTARG2 3
@@ -345,7 +342,10 @@ typedef struct _D3DLOCKED_RECT {
 #define D3DTSS_ADDRESSU 24
 #define D3DTSS_ADDRESSV 25
 #define D3DTSS_BORDERCOLOR 26
-#define D3DTSS_TCI_CAMERASPACENORMAL_X 0
+#define D3DTSS_TCI_PASSTHRU 0
+#define D3DTSS_TCI_CAMERASPACENORMAL 0x10000
+#define D3DTSS_TCI_CAMERASPACEPOSITION 0x20000
+#define D3DTSS_TCI_CAMERASPACEREFLECTIONVECTOR 0x30000
 #define D3DTS_WORLD 256
 #define D3DTS_VIEW 2
 #define D3DTS_PROJECTION 3
@@ -360,7 +360,6 @@ typedef struct _D3DLOCKED_RECT {
 #define D3DCAPS2_CANRENDERWINDOWED 0x1
 #define D3DCAPS2_FULLSCREENGAMMA 0x2
 
-#define D3DTADDRESS_CLAMP 1
 
 #define D3DLOCK_READONLY 1
 #define D3DLOCK_NO_DIRTY_UPDATE 2
@@ -451,58 +450,58 @@ typedef struct _D3DSURFACE_DESC {
 #define D3DDEVCAPS_HWTRANSFORMANDLIGHT 1
 #define D3DDEVCAPS_PUREDEVICE 2
 
-#define D3DRS_FOGENABLE 0
-#define D3DTSS_TEXTURETRANSFORMFLAGS 0
-#define D3DTS_TEXTURE0 0
-#define D3DRS_DIFFUSEMATERIALSOURCE 0
-#define D3DRS_SPECULARMATERIALSOURCE 0
-#define D3DRS_AMBIENTMATERIALSOURCE 0
-#define D3DRS_EMISSIVEMATERIALSOURCE 0
-#define D3DRS_LINEPATTERN 0
-#define D3DRS_LASTPIXEL 0
-#define D3DRS_ZVISIBLE 0
-#define D3DRS_FOGSTART 0
-#define D3DRS_FOGEND 0
-#define D3DRS_FOGDENSITY 0
-#define D3DRS_EDGEANTIALIAS 0
-#define D3DRS_ZBIAS 0
-#define D3DRS_STENCILWRITEMASK 0
-#define D3DRS_AMBIENT 0
-#define D3DRS_LOCALVIEWER 0
-#define D3DRS_NORMALIZENORMALS 0
-#define D3DRS_VERTEXBLEND 0
-#define D3DRS_CLIPPLANEENABLE 0
-#define D3DRS_SOFTWAREVERTEXPROCESSING 0
-#define D3DRS_MULTISAMPLEANTIALIAS 0
-#define D3DRS_MULTISAMPLEMASK 0
-#define D3DRS_INDEXEDVERTEXBLENDENABLE 0
-#define D3DRS_COLORWRITEENABLE 0
-#define D3DRS_BLENDOP 0
-#define D3DRS_POSITIONDEGREE 0
-#define D3DRS_NORMALDEGREE 0
-#define D3DRS_SCISSORTESTENABLE 0
-#define D3DRS_SLOPESCALEDEPTHBIAS 0
-#define D3DRS_ANTIALIASEDLINEENABLE 0
-#define D3DRS_MINTESSELLATIONLEVEL 0
-#define D3DRS_MAXTESSELLATIONLEVEL 0
-#define D3DRS_ADAPTIVETESS_X 0
-#define D3DRS_ADAPTIVETESS_Y 0
-#define D3DRS_ADAPTIVETESS_Z 0
-#define D3DRS_ADAPTIVETESS_W 0
-#define D3DRS_ENABLEADAPTIVETESSELLATION 0
-#define D3DRS_TWOSIDEDSTENCILMODE 0
-#define D3DRS_CCW_STENCILFAIL 0
-#define D3DRS_CCW_STENCILZFAIL 0
-#define D3DRS_CCW_STENCILPASS 0
-#define D3DRS_CCW_STENCILFUNC 0
-#define D3DRS_COLORWRITEENABLE1 0
-#define D3DRS_COLORWRITEENABLE2 0
-#define D3DRS_COLORWRITEENABLE3 0
-#define D3DRS_BLENDFACTOR 0
-#define D3DRS_SRGBWRITEENABLE 0
-#define D3DRS_DEPTHBIAS 0
-#define D3DRS_WRAP8 0
-#define D3DRS_WRAP9 0
+#define D3DRS_FOGENABLE 28
+#define D3DTSS_TEXTURETRANSFORMFLAGS 27
+#define D3DTTFF_PROJECTED 256
+#define D3DRS_DIFFUSEMATERIALSOURCE 145
+#define D3DRS_SPECULARMATERIALSOURCE 146
+#define D3DRS_AMBIENTMATERIALSOURCE 147
+#define D3DRS_EMISSIVEMATERIALSOURCE 148
+#define D3DRS_LINEPATTERN 10
+#define D3DRS_LASTPIXEL 16
+#define D3DRS_ZVISIBLE 30
+#define D3DRS_FOGSTART 36
+#define D3DRS_FOGEND 37
+#define D3DRS_FOGDENSITY 38
+#define D3DRS_EDGEANTIALIAS 40
+#define D3DRS_ZBIAS 47
+#define D3DRS_STENCILWRITEMASK 59
+#define D3DRS_AMBIENT 139
+#define D3DRS_LOCALVIEWER 142
+#define D3DRS_NORMALIZENORMALS 143
+#define D3DRS_VERTEXBLEND 151
+#define D3DRS_CLIPPLANEENABLE 152
+#define D3DRS_SOFTWAREVERTEXPROCESSING 153
+#define D3DRS_MULTISAMPLEANTIALIAS 161
+#define D3DRS_MULTISAMPLEMASK 162
+#define D3DRS_INDEXEDVERTEXBLENDENABLE 167
+#define D3DRS_COLORWRITEENABLE 168
+#define D3DRS_BLENDOP 171
+#define D3DRS_POSITIONDEGREE 172
+#define D3DRS_NORMALDEGREE 173
+#define D3DRS_SCISSORTESTENABLE 174
+#define D3DRS_SLOPESCALEDEPTHBIAS 175
+#define D3DRS_ANTIALIASEDLINEENABLE 176
+#define D3DRS_MINTESSELLATIONLEVEL 177
+#define D3DRS_MAXTESSELLATIONLEVEL 178
+#define D3DRS_ADAPTIVETESS_X 179
+#define D3DRS_ADAPTIVETESS_Y 180
+#define D3DRS_ADAPTIVETESS_Z 181
+#define D3DRS_ADAPTIVETESS_W 182
+#define D3DRS_ENABLEADAPTIVETESSELLATION 183
+#define D3DRS_TWOSIDEDSTENCILMODE 184
+#define D3DRS_CCW_STENCILFAIL 185
+#define D3DRS_CCW_STENCILZFAIL 186
+#define D3DRS_CCW_STENCILPASS 187
+#define D3DRS_CCW_STENCILFUNC 188
+#define D3DRS_COLORWRITEENABLE1 189
+#define D3DRS_COLORWRITEENABLE2 190
+#define D3DRS_COLORWRITEENABLE3 191
+#define D3DRS_BLENDFACTOR 192
+#define D3DRS_SRGBWRITEENABLE 193
+#define D3DRS_DEPTHBIAS 194
+#define D3DRS_WRAP8 195
+#define D3DRS_WRAP9 196
 
 #define D3DPTFILTERCAPS_MINFANISOTROPIC 0x0400
 #define D3DPTFILTERCAPS_MAGFANISOTROPIC 0x4000000
@@ -516,36 +515,33 @@ typedef struct _D3DSURFACE_DESC {
 #define D3DBLENDOP_REVSUBTRACT 3
 #define D3DBLENDOP_MIN      4
 #define D3DBLENDOP_MAX      5
-#ifndef D3DRS_WRAP1
-#define D3DRS_WRAP1   27
-#endif
-#define D3DRS_WRAP10 0
-#define D3DRS_WRAP11 0
-#define D3DRS_WRAP12 0
-#define D3DRS_WRAP13 0
-#define D3DRS_WRAP14 0
-#define D3DRS_WRAP15 0
-#define D3DRS_SEPARATEALPHABLENDENABLE 0
-#define D3DRS_SRCBLENDALPHA 0
-#define D3DRS_DESTBLENDALPHA 0
-#define D3DRS_BLENDOPALPHA 0
-#define D3DRS_FOGCOLOR 0
-#define D3DRS_FOGTABLEMODE 0
-#define D3DRS_FOGVERTEXMODE 0
-#define D3DRS_RANGEFOGENABLE 0
-#define D3DRS_DITHERENABLE 0
-#define D3DRS_STENCILENABLE 0
-#define D3DRS_CLIPPING 0
-#define D3DRS_SPECULARENABLE 0
-#define D3DRS_COLORVERTEX 0
-#define D3DRS_WRAP0 0
-#define D3DRS_WRAP2 0
-#define D3DRS_WRAP3 0
-#define D3DRS_WRAP4 0
-#define D3DRS_WRAP5 0
-#define D3DRS_WRAP6 0
-#define D3DRS_WRAP7 0
-#define D3DTSS_TEXCOORDINDEX 0
+#define D3DRS_WRAP10 197
+#define D3DRS_WRAP11 198
+#define D3DRS_WRAP12 199
+#define D3DRS_WRAP13 200
+#define D3DRS_WRAP14 201
+#define D3DRS_WRAP15 202
+#define D3DRS_SEPARATEALPHABLENDENABLE 203
+#define D3DRS_SRCBLENDALPHA 204
+#define D3DRS_DESTBLENDALPHA 205
+#define D3DRS_BLENDOPALPHA 206
+#define D3DRS_FOGCOLOR 34
+#define D3DRS_FOGTABLEMODE 35
+#define D3DRS_FOGVERTEXMODE 140
+#define D3DRS_RANGEFOGENABLE 48
+#define D3DRS_DITHERENABLE 26
+#define D3DRS_STENCILENABLE 52
+#define D3DRS_CLIPPING 136
+#define D3DRS_SPECULARENABLE 29
+#define D3DRS_COLORVERTEX 141
+#define D3DRS_WRAP0 128
+#define D3DRS_WRAP1 129
+#define D3DRS_WRAP2 130
+#define D3DRS_WRAP3 131
+#define D3DRS_WRAP4 132
+#define D3DRS_WRAP5 133
+#define D3DRS_WRAP6 134
+#define D3DRS_WRAP7 135
 #define D3DDEVTYPE_HAL 1
 #define D3DDEVTYPE_REF 2
 #define D3DPTADDRESSCAPS_BORDER 0x00000080
@@ -557,7 +553,7 @@ typedef struct _D3DSURFACE_DESC {
 #define D3DVTXPCAPS_POSITIONALLIGHTS 0x00000010
 #define D3DVTXPCAPS_TEXGEN 0x00000040
 
-#define D3DVS_VERSION(major, minor) (0)
+#define D3DVS_VERSION(major, minor) (0xFFFE0000 | ((major) << 8) | (minor))
 #define D3D_SDK_VERSION 0
 #define D3DX_PI 3.141592654f
 #define D3DXToRadian( degree ) ((degree) * (D3DX_PI / 180.0f))
@@ -812,7 +808,12 @@ inline GLVECTOR4* D3DXVec3Transform(GLVECTOR4* pOut, const GLVECTOR3* pV, const 
     return pOut;
 }
 inline GLVECTOR3* D3DXVec3TransformCoord(GLVECTOR3* pOut, const GLVECTOR3* pV, const GLMATRIX* pM) {
-    *pOut = *pV; // stub
+    float x = pV->x*pM->m[0][0] + pV->y*pM->m[1][0] + pV->z*pM->m[2][0] + pM->m[3][0];
+    float y = pV->x*pM->m[0][1] + pV->y*pM->m[1][1] + pV->z*pM->m[2][1] + pM->m[3][1];
+    float z = pV->x*pM->m[0][2] + pV->y*pM->m[1][2] + pV->z*pM->m[2][2] + pM->m[3][2];
+    float w = pV->x*pM->m[0][3] + pV->y*pM->m[1][3] + pV->z*pM->m[2][3] + pM->m[3][3];
+    float iw = w != 0.0f ? 1.0f / w : 0.0f;
+    pOut->x = x * iw; pOut->y = y * iw; pOut->z = z * iw;
     return pOut;
 }
 inline GLMATRIX* D3DXMatrixIdentity(GLMATRIX* pOut) {
@@ -821,7 +822,30 @@ inline GLMATRIX* D3DXMatrixIdentity(GLMATRIX* pOut) {
     return pOut;
 }
 inline GLMATRIX* D3DXMatrixInverse(GLMATRIX* pOut, float* pDeterminant, const GLMATRIX* pM) {
-    *pOut = *pM; // temporary
+    const float* a = &pM->m[0][0];
+    float inv[16];
+    inv[0] = a[5]*a[10]*a[15] - a[5]*a[11]*a[14] - a[9]*a[6]*a[15] + a[9]*a[7]*a[14] + a[13]*a[6]*a[11] - a[13]*a[7]*a[10];
+    inv[4] = -a[4]*a[10]*a[15] + a[4]*a[11]*a[14] + a[8]*a[6]*a[15] - a[8]*a[7]*a[14] - a[12]*a[6]*a[11] + a[12]*a[7]*a[10];
+    inv[8] = a[4]*a[9]*a[15] - a[4]*a[11]*a[13] - a[8]*a[5]*a[15] + a[8]*a[7]*a[13] + a[12]*a[5]*a[11] - a[12]*a[7]*a[9];
+    inv[12] = -a[4]*a[9]*a[14] + a[4]*a[10]*a[13] + a[8]*a[5]*a[14] - a[8]*a[6]*a[13] - a[12]*a[5]*a[10] + a[12]*a[6]*a[9];
+    inv[1] = -a[1]*a[10]*a[15] + a[1]*a[11]*a[14] + a[9]*a[2]*a[15] - a[9]*a[3]*a[14] - a[13]*a[2]*a[11] + a[13]*a[3]*a[10];
+    inv[5] = a[0]*a[10]*a[15] - a[0]*a[11]*a[14] - a[8]*a[2]*a[15] + a[8]*a[3]*a[14] + a[12]*a[2]*a[11] - a[12]*a[3]*a[10];
+    inv[9] = -a[0]*a[9]*a[15] + a[0]*a[11]*a[13] + a[8]*a[1]*a[15] - a[8]*a[3]*a[13] - a[12]*a[1]*a[11] + a[12]*a[3]*a[9];
+    inv[13] = a[0]*a[9]*a[14] - a[0]*a[10]*a[13] - a[8]*a[1]*a[14] + a[8]*a[2]*a[13] + a[12]*a[1]*a[10] - a[12]*a[2]*a[9];
+    inv[2] = a[1]*a[6]*a[15] - a[1]*a[7]*a[14] - a[5]*a[2]*a[15] + a[5]*a[3]*a[14] + a[13]*a[2]*a[7] - a[13]*a[3]*a[6];
+    inv[6] = -a[0]*a[6]*a[15] + a[0]*a[7]*a[14] + a[4]*a[2]*a[15] - a[4]*a[3]*a[14] - a[12]*a[2]*a[7] + a[12]*a[3]*a[6];
+    inv[10] = a[0]*a[5]*a[15] - a[0]*a[7]*a[13] - a[4]*a[1]*a[15] + a[4]*a[3]*a[13] + a[12]*a[1]*a[7] - a[12]*a[3]*a[5];
+    inv[14] = -a[0]*a[5]*a[14] + a[0]*a[6]*a[13] + a[4]*a[1]*a[14] - a[4]*a[2]*a[13] - a[12]*a[1]*a[6] + a[12]*a[2]*a[5];
+    inv[3] = -a[1]*a[6]*a[11] + a[1]*a[7]*a[10] + a[5]*a[2]*a[11] - a[5]*a[3]*a[10] - a[9]*a[2]*a[7] + a[9]*a[3]*a[6];
+    inv[7] = a[0]*a[6]*a[11] - a[0]*a[7]*a[10] - a[4]*a[2]*a[11] + a[4]*a[3]*a[10] + a[8]*a[2]*a[7] - a[8]*a[3]*a[6];
+    inv[11] = -a[0]*a[5]*a[11] + a[0]*a[7]*a[9] + a[4]*a[1]*a[11] - a[4]*a[3]*a[9] - a[8]*a[1]*a[7] + a[8]*a[3]*a[5];
+    inv[15] = a[0]*a[5]*a[10] - a[0]*a[6]*a[9] - a[4]*a[1]*a[10] + a[4]*a[2]*a[9] + a[8]*a[1]*a[6] - a[8]*a[2]*a[5];
+    float det = a[0]*inv[0] + a[1]*inv[4] + a[2]*inv[8] + a[3]*inv[12];
+    if (pDeterminant) *pDeterminant = det;
+    if (det == 0.0f) return NULL;
+    float id = 1.0f / det;
+    float* o = &pOut->m[0][0];
+    for (int i = 0; i < 16; ++i) o[i] = inv[i] * id;
     return pOut;
 }
 inline GLMATRIX* D3DXMatrixMultiply(GLMATRIX* pOut, const GLMATRIX* pM1, const GLMATRIX* pM2) {
@@ -920,8 +944,8 @@ inline GLVECTOR3* D3DXVec3Add(GLVECTOR3* pOut, const GLVECTOR3* pV1, const GLVEC
 inline GLVECTOR3* D3DXVec3Subtract(GLVECTOR3* pOut, const GLVECTOR3* pV1, const GLVECTOR3* pV2) {
     pOut->x = pV1->x-pV2->x; pOut->y = pV1->y-pV2->y; pOut->z = pV1->z-pV2->z; return pOut;
 }
-inline float D3DXPlaneDotCoord(const GLPLANE* pP, const GLVECTOR3* pV) { return 0.0f; }
-inline float D3DXMatrixfDeterminant(const GLMATRIX* pM) { return 1.0f; }
+inline float D3DXPlaneDotCoord(const GLPLANE* pP, const GLVECTOR3* pV) { return pP->a*pV->x + pP->b*pV->y + pP->c*pV->z + pP->d; }
+inline float D3DXMatrixfDeterminant(const GLMATRIX* pM) { GLMATRIX t; float d = 0.0f; D3DXMatrixInverse(&t, &d, pM); return d; }
 inline GLMATRIX* D3DXMatrixLookAtRH(GLMATRIX* pOut, const GLVECTOR3* pEye, const GLVECTOR3* pAt, const GLVECTOR3* pUp) {
     GLVECTOR3 f, s, u;
     GLVECTOR3 tmp(pAt->x - pEye->x, pAt->y - pEye->y, pAt->z - pEye->z);
@@ -977,7 +1001,7 @@ inline HRESULT D3DXGetImageInfoFromFileInMemory(LPCVOID pSrcData, UINT SrcDataSi
     }
     return S_OK;
 }
-inline GLMATRIX* D3DXMatrixRotationAxis(GLMATRIX* pOut, const GLVECTOR3* pV, float angle) { return D3DXMatrixIdentity(pOut); }
+inline GLMATRIX* D3DXMatrixRotationAxis(GLMATRIX* pOut, const GLVECTOR3* pV, float angle) { GLVECTOR3 n; D3DXVec3Normalize(&n, pV); GLQUATERNION q; D3DXQuaternionRotationAxis(&q, &n, angle); return D3DXMatrixRotationQuaternion(pOut, &q); }
 inline GLMATRIX* D3DXMatrixRotationYawPitchRoll(GLMATRIX* pOut, float y, float p, float r) {
     GLMATRIX my, mp, mr;
     D3DXMatrixRotationY(&my, y);
@@ -989,13 +1013,29 @@ inline GLMATRIX* D3DXMatrixRotationYawPitchRoll(GLMATRIX* pOut, float y, float p
 }
 inline GLVECTOR3* D3DXVec3Project(GLVECTOR3* pOut, const GLVECTOR3* pV, const D3DVIEWPORT8* pViewport, const GLMATRIX* pProjection, const GLMATRIX* pView, const GLMATRIX* pWorld) {
     GLMATRIX mat;
-    D3DXMatrixMultiply(&mat, pWorld, pView);
-    D3DXMatrixMultiply(&mat, &mat, pProjection);
-    *pOut = *pV; 
+    D3DXMatrixIdentity(&mat);
+    if (pWorld) D3DXMatrixMultiply(&mat, &mat, pWorld);
+    if (pView) D3DXMatrixMultiply(&mat, &mat, pView);
+    if (pProjection) D3DXMatrixMultiply(&mat, &mat, pProjection);
+    GLVECTOR3 c;
+    D3DXVec3TransformCoord(&c, pV, &mat);
+    pOut->x = pViewport->X + (1.0f + c.x) * pViewport->Width * 0.5f;
+    pOut->y = pViewport->Y + (1.0f - c.y) * pViewport->Height * 0.5f;
+    pOut->z = pViewport->MinZ + c.z * (pViewport->MaxZ - pViewport->MinZ);
     return pOut;
 }
 inline GLVECTOR3* D3DXVec3Unproject(GLVECTOR3* pOut, const GLVECTOR3* pV, const D3DVIEWPORT8* pViewport, const GLMATRIX* pProjection, const GLMATRIX* pView, const GLMATRIX* pWorld) {
-    *pOut = *pV;
+    GLMATRIX mat, inv;
+    D3DXMatrixIdentity(&mat);
+    if (pWorld) D3DXMatrixMultiply(&mat, &mat, pWorld);
+    if (pView) D3DXMatrixMultiply(&mat, &mat, pView);
+    if (pProjection) D3DXMatrixMultiply(&mat, &mat, pProjection);
+    if (!D3DXMatrixInverse(&inv, NULL, &mat)) return NULL;
+    float fDepth = pViewport->MaxZ - pViewport->MinZ;
+    GLVECTOR3 c((pV->x - pViewport->X) * 2.0f / pViewport->Width - 1.0f,
+                1.0f - (pV->y - pViewport->Y) * 2.0f / pViewport->Height,
+                fDepth != 0.0f ? (pV->z - pViewport->MinZ) / fDepth : pV->z);
+    D3DXVec3TransformCoord(pOut, &c, &inv);
     return pOut;
 }
 inline float D3DXVec2CCW(const GLVECTOR2* pV1, const GLVECTOR2* pV2) { return pV1->x*pV2->y - pV1->y*pV2->x; }
@@ -1117,17 +1157,32 @@ inline GLCOLOR* D3DXColorModulate(GLCOLOR* pOut, const GLCOLOR* pC1, const GLCOL
         HRESULT LockRect(UINT Level,D3DLOCKED_RECT* pLockedRect,const RECT* pRect,DWORD Flags);
         HRESULT UnlockRect(UINT Level);
         ULONG Release();
-        HRESULT GetSurfaceLevel(UINT,LPDIRECT3DSURFACE8*) { return S_OK; }
+        HRESULT GetSurfaceLevel(UINT Level, LPDIRECT3DSURFACE8* ppSurface);
         DWORD GetLevelCount() { return 1; }
         HRESULT GetLevelDesc(UINT, D3DSURFACE_DESC* pDesc) { if (pDesc) memset(pDesc, 0, sizeof(*pDesc)); return S_OK; }
     };
 
     struct IDirect3DSurface8 {
-        ULONG AddRef() { return 1; }
-        ULONG Release() { return 0; }
+        IDirect3DTexture8* pTexture;
+        GLuint glRbo;
+        UINT width, height;
+        D3DFORMAT format;
+        ULONG refCount;
+        bool bBackBuffer;
+        IDirect3DSurface8() : pTexture(NULL), glRbo(0), width(0), height(0), format(0), refCount(1), bBackBuffer(false) {}
+        ULONG AddRef() { return bBackBuffer ? 1 : ++refCount; }
+        ULONG Release();
         HRESULT LockRect(D3DLOCKED_RECT*, const RECT*, DWORD) { return S_OK; }
         HRESULT UnlockRect() { return S_OK; }
-        HRESULT GetDesc(D3DSURFACE_DESC* pDesc) { if (pDesc) memset(pDesc, 0, sizeof(*pDesc)); return S_OK; }
+        HRESULT GetDesc(D3DSURFACE_DESC* pDesc) {
+            if (pDesc) {
+                memset(pDesc, 0, sizeof(*pDesc));
+                pDesc->Format = format;
+                pDesc->Width = width;
+                pDesc->Height = height;
+            }
+            return S_OK;
+        }
     };
 
     struct IDirect3DVertexBuffer8 {
@@ -1202,10 +1257,12 @@ inline GLCOLOR* D3DXColorModulate(GLCOLOR* pOut, const GLCOLOR* pC1, const GLCOL
             MultMatrix(&t); return S_OK;
         }
         HRESULT RotateAxis(const GLVECTOR3* pV, float angle) {
-            return S_OK;
+            GLMATRIX m; D3DXMatrixRotationAxis(&m, pV, angle);
+            MultMatrix(&m); return S_OK;
         }
         HRESULT RotateAxisLocal(const GLVECTOR3* pV, float angle) {
-            return S_OK;
+            GLMATRIX m; D3DXMatrixRotationAxis(&m, pV, angle);
+            MultMatrixLocal(&m); return S_OK;
         }
         HRESULT RotateYawPitchRollLocal(float y, float p, float r) {
             GLMATRIX m; D3DXMatrixRotationYawPitchRoll(&m, y, p, r);
@@ -1264,6 +1321,8 @@ inline GLCOLOR* D3DXColorModulate(GLCOLOR* pOut, const GLCOLOR* pC1, const GLCOL
                 pCaps->VertexProcessingCaps = D3DVTXPCAPS_DIRECTIONALLIGHTS | D3DVTXPCAPS_POSITIONALLIGHTS | D3DVTXPCAPS_TEXGEN;
                 pCaps->PrimitiveMiscCaps = D3DPMISCCAPS_CLIPTLVERTS;
                 pCaps->TextureAddressCaps = D3DPTADDRESSCAPS_BORDER;
+                pCaps->MaxSimultaneousTextures = 2;
+                pCaps->VertexShaderVersion = D3DVS_VERSION(1, 1);
             }
             return S_OK;
         }
@@ -1283,8 +1342,8 @@ inline GLCOLOR* D3DXColorModulate(GLCOLOR* pOut, const GLCOLOR* pC1, const GLCOL
 #endif
         }
         HRESULT CreateTexture(UINT Width, UINT Height, UINT Levels, DWORD Usage, D3DFORMAT Format, D3DPOOL Pool, LPDIRECT3DTEXTURE8* ppTexture);
-        HRESULT SetLight(DWORD,const void*) { return S_OK; }
-        HRESULT LightEnable(DWORD,BOOL) { return S_OK; }
+        HRESULT SetLight(DWORD index, const D3DLIGHT8* pLight);
+        HRESULT LightEnable(DWORD index, BOOL bEnable);
         DWORD m_dwFVF = 0;
         HRESULT GetVertexShader(DWORD* pShader) { *pShader = m_dwFVF; return S_OK; }
         HRESULT SetVertexShader(DWORD Shader) { m_dwFVF = Shader; return S_OK; }
@@ -1295,7 +1354,7 @@ inline GLCOLOR* D3DXColorModulate(GLCOLOR* pOut, const GLCOLOR* pC1, const GLCOL
         HRESULT SetPixelShader(DWORD Handle) { return S_OK; }
         HRESULT SetVertexShaderConstant(DWORD Register, const void* pData, DWORD Count) { return S_OK; }
         HRESULT SetPixelShaderConstant(DWORD Register, const void* pData, DWORD Count) { return S_OK; }
-        HRESULT SetMaterial(const D3DMATERIAL8* mat) { return S_OK; }
+        HRESULT SetMaterial(const D3DMATERIAL8* mat) { if (mat) m_material = *mat; return S_OK; }
         HRESULT Clear(DWORD n, const void* pRects, DWORD flags, D3DCOLOR color, float z, DWORD stencil); 
 #if 0
             if (flags & 2) { // D3DCLEAR_ZBUFFER
@@ -1310,17 +1369,17 @@ inline GLCOLOR* D3DXColorModulate(GLCOLOR* pOut, const GLCOLOR* pC1, const GLCOL
         HRESULT TestCooperativeLevel() { return S_OK; }
         HRESULT Reset(D3DPRESENT_PARAMETERS*);
         HRESULT Present(const RECT*,const RECT*,HWND,const void*);
-        HRESULT CreateDepthStencilSurface(UINT,UINT,D3DFORMAT,D3DMULTISAMPLE_TYPE,LPDIRECT3DSURFACE8*) { return S_OK; }
-        HRESULT GetRenderTarget(LPDIRECT3DSURFACE8*) { return S_OK; }
-        HRESULT GetDepthStencilSurface(LPDIRECT3DSURFACE8*) { return S_OK; }
+        HRESULT CreateDepthStencilSurface(UINT Width, UINT Height, D3DFORMAT Format, D3DMULTISAMPLE_TYPE, LPDIRECT3DSURFACE8* ppSurface);
+        HRESULT GetRenderTarget(LPDIRECT3DSURFACE8* ppSurface);
+        HRESULT GetDepthStencilSurface(LPDIRECT3DSURFACE8* ppSurface);
         HRESULT GetViewport(D3DVIEWPORT8* v) { if (v) *v = m_viewport; return S_OK; }
-        HRESULT SetRenderTarget(LPDIRECT3DSURFACE8,LPDIRECT3DSURFACE8) { return S_OK; }
+        HRESULT SetRenderTarget(LPDIRECT3DSURFACE8 pRenderTarget, LPDIRECT3DSURFACE8 pDepthStencil);
         HRESULT SetViewport(const D3DVIEWPORT8* v);
         HRESULT BeginScene();
         HRESULT EndScene();
-        HRESULT GetDeviceCaps(D3DCAPS8*) { return S_OK; }
+        HRESULT GetDeviceCaps(D3DCAPS8* pCaps) { IDirect3D8 d3d; return d3d.GetDeviceCaps(0, 0, pCaps); }
         void SetGammaRamp(DWORD,const D3DGAMMARAMP*) {}
-        HRESULT GetBackBuffer(UINT,D3DBACKBUFFER_TYPE,LPDIRECT3DSURFACE8*) { return S_OK; }
+        HRESULT GetBackBuffer(UINT, D3DBACKBUFFER_TYPE, LPDIRECT3DSURFACE8* ppSurface);
         UINT GetAvailableTextureMem() { return 128 * 1024 * 1024; }
         LPDIRECT3DVERTEXBUFFER8 m_pStreamSource = NULL;
         UINT m_StreamStride = 0;
@@ -1360,6 +1419,26 @@ inline GLCOLOR* D3DXColorModulate(GLCOLOR* pOut, const GLCOLOR* pC1, const GLCOL
         DWORD m_adwAddressV[MAX_STAGES] = { D3DTADDRESS_WRAP, D3DTADDRESS_WRAP };
         DWORD m_adwMagFilter[MAX_STAGES] = { D3DTEXF_LINEAR, D3DTEXF_LINEAR };
         DWORD m_adwMinFilter[MAX_STAGES] = { D3DTEXF_LINEAR, D3DTEXF_LINEAR };
+        DWORD m_adwTexCoordIndex[MAX_STAGES] = { 0, 1 };
+        DWORD m_adwTextureTransformFlags[MAX_STAGES] = { D3DTTFF_DISABLE, D3DTTFF_DISABLE };
+        GLMATRIX m_amatTexture[MAX_STAGES];
+        enum { MAX_LIGHTS = 2 };
+        D3DLIGHT8 m_aLight[MAX_LIGHTS] = {};
+        BOOL m_abLightEnable[MAX_LIGHTS] = {};
+        D3DMATERIAL8 m_material = {};
+        BOOL m_bLighting = TRUE;
+        BOOL m_bColorVertex = TRUE;
+        DWORD m_dwDiffuseMaterialSource = D3DMCS_COLOR1;
+        DWORD m_dwAmbientMaterialSource = D3DMCS_MATERIAL;
+        DWORD m_dwEmissiveMaterialSource = D3DMCS_MATERIAL;
+        DWORD m_dwAmbient = 0;
+        BOOL m_bFogEnable = FALSE;
+        DWORD m_dwFogColor = 0;
+        DWORD m_dwFogTableMode = D3DFOG_NONE;
+        DWORD m_dwFogVertexMode = D3DFOG_NONE;
+        float m_fFogStart = 0.0f;
+        float m_fFogEnd = 1.0f;
+        float m_fFogDensity = 1.0f;
         DWORD m_dwTextureFactor = 0xffffffff;
         DWORD m_dwSrcBlend = D3DBLEND_ONE;
         DWORD m_dwDestBlend = D3DBLEND_ZERO;
@@ -1370,6 +1449,10 @@ inline GLCOLOR* D3DXColorModulate(GLCOLOR* pOut, const GLCOLOR* pC1, const GLCOL
         float m_fViewportHeight = 1.0f;
         D3DVIEWPORT8 m_viewport = { 0, 0, 1, 1, 0.0f, 1.0f };
         int m_iSurfaceHeight = 1;
+        int m_iWindowHeight = 1;
+        GLuint m_glFbo = 0;
+        IDirect3DSurface8* m_pRenderTarget = NULL;
+        IDirect3DSurface8* m_pDepthStencil = NULL;
         void ApplyDrawState(const BYTE* pVertexBase, UINT uStride);
     };
 
@@ -1425,7 +1508,10 @@ inline GLCOLOR* D3DXColorModulate(GLCOLOR* pOut, const GLCOLOR* pC1, const GLCOL
         if (fvf & D3DFVF_DIFFUSE) size += 4;
         if (fvf & D3DFVF_SPECULAR) size += 4;
         int texCount = (fvf & D3DFVF_TEXCOUNT_MASK) >> D3DFVF_TEXCOUNT_SHIFT;
-        size += texCount * 8;
+        for (int i = 0; i < texCount; ++i) {
+            static const UINT s_auSize[4] = { 8, 12, 16, 4 };
+            size += s_auSize[(fvf >> (i * 2 + 16)) & 3];
+        }
         return size;
     }
 

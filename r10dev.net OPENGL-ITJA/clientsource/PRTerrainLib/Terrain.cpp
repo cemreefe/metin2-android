@@ -262,7 +262,7 @@ bool CTerrainImpl::LoadWaterMapFile(const char* c_szFileName)
 		m_byNumWater = kWaterMapHeader.m_byLayerCount;
 
 		DWORD dwFileRestSize = dwFileSize - sizeof(kWaterMapHeader);
-		DWORD dwFileNeedSize = sizeof(m_abyWaterMap) + sizeof(long) * m_byNumWater;
+		DWORD dwFileNeedSize = sizeof(m_abyWaterMap) + sizeof(int32_t) * m_byNumWater;
 		DWORD dwFileNeedSize2 = sizeof(m_abyWaterMap) + sizeof(WORD) * m_byNumWater;
 		if (dwFileRestSize == dwFileNeedSize2)
 		{
@@ -293,8 +293,12 @@ bool CTerrainImpl::LoadWaterMapFile(const char* c_szFileName)
 
 		BYTE* abSrcWaterHeight = abSrcWaterData + sizeof(m_abyWaterMap);
 
-		if (m_byNumWater)
-			memcpy(m_lWaterHeight, abSrcWaterHeight, sizeof(long) * m_byNumWater);
+		for (BYTE i = 0; i < m_byNumWater; ++i)
+		{
+			int32_t lHeight;
+			memcpy(&lHeight, abSrcWaterHeight + i * sizeof(int32_t), sizeof(int32_t));
+			m_lWaterHeight[i] = lHeight;
+		}
 	}
 
 	return true;
