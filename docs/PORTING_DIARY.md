@@ -261,3 +261,7 @@ DevIL, SpeedTree, Miles.
 - `m2.devUrl`/`m2.updateChannel`: `make_bundle.sh` writes `latest-<channel>.txt`. On launch the app offers newer builds and opens the APK URL. It also posts the previous run's `crash.txt`, `syserr.txt`/`stderr.txt` tails and the app's own logcat to `POST /crash`.
 - The native crash handler (`AndroidMain.cpp`) writes signal, fault address and an `_Unwind_Backtrace` with `dladdr` to `crash.txt`. Symbols for each build are copied to `$M2_SYMS/<name>-<build>`.
 - To reproduce phone profiles on the x86_64 emulator, use `-Pm2abi=x86_64`. When moving the install from arm64 to x86_64, `adb install --abi x86_64` an APK that contains both ABIs first, otherwise the install fails with "Error deriving application ABI".
+
+### Touch felt ~1 s late on login/select screens
+
+- The two-frame press delay (see touch targeting) counted frames in `RenderGame`, which only runs in the game phase. On login and select it never counted, so every press waited for the 1500 ms safety timeout. The end of every rendered frame in `Process()` now counts a frame when `RenderGame` did not. syserr also logs update/render FPS every 10 s, so phone performance can be read from crash/log uploads.

@@ -36,10 +36,22 @@ static bool s_bWaitFrame = false;
 static int s_iWaitFrames = 0;
 static DWORD s_dwWaitStart = 0;
 
+static bool s_bFrameCounted = false;
+
 void CMSApplication::AndroidFrameDone()
 {
+	s_bFrameCounted = true;
 	if (s_iWaitFrames > 0 && --s_iWaitFrames == 0)
 		s_bWaitFrame = false;
+}
+
+// Phases without a 3D game frame (login, character select) never reach the pick pass,
+// so the end of any rendered frame counts instead.
+void CMSApplication::AndroidEndFrame()
+{
+	if (!s_bFrameCounted)
+		AndroidFrameDone();
+	s_bFrameCounted = false;
 }
 
 void CMSApplication::PushTouchEvent(int action, int x, int y)

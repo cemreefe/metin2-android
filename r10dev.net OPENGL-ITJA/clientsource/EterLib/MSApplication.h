@@ -20,6 +20,7 @@ public:
 	static void PushKeyEvent(int action, int keyCode, int unicodeChar);
 	virtual void OnAndroidKeyEvent(int action, int keyCode, int unicodeChar) {}
 	static void AndroidFrameDone();
+	static void AndroidEndFrame();
 #endif
 
 protected:

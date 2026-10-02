@@ -464,6 +464,12 @@ bool CPythonApplication::Process()
 
 		m_dwFaceCount = s_dwFaceCount / max(1, s_dwRenderFrameCount);
 
+#ifdef __ANDROID__
+		static int s_iFPSLogTick = 0;
+		if (++s_iFPSLogTick % 10 == 0)
+			Tracenf("fps update %u render %u load %u", m_dwUpdateFPS, m_dwRenderFPS, m_dwLoad);
+#endif
+
 		s_dwCheckTime = ELTimer_GetMSec();
 
 		s_uiLoad = s_dwFaceCount = s_dwUpdateFrameCount = s_dwRenderFrameCount = 0;
@@ -874,6 +880,9 @@ bool CPythonApplication::Process()
 					m_pyBackground.SetViewDistanceSet(0, 25600.0f);
 				}
 
+#ifdef __ANDROID__
+				CMSApplication::AndroidEndFrame();
+#endif
 				++s_dwRenderFrameCount;
 			}
 		}
