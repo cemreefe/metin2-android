@@ -278,6 +278,32 @@ void FnDateAddSeconds(sqlite3_context *ctx, int, sqlite3_value **argv)
 	sqlite3_result_text(ctx, buf, -1, SQLITE_TRANSIENT);
 }
 
+void FnInetAton(sqlite3_context *ctx, int, sqlite3_value **argv)
+{
+	const char *s = reinterpret_cast<const char *>(sqlite3_value_text(argv[0]));
+	unsigned a, b, c, d;
+	char tail;
+	if (!s || sscanf(s, "%u.%u.%u.%u%c", &a, &b, &c, &d, &tail) != 4 || a > 255 || b > 255 || c > 255 || d > 255)
+	{
+		sqlite3_result_null(ctx);
+		return;
+	}
+	sqlite3_result_int64(ctx, (sqlite3_int64)((a << 24) | (b << 16) | (c << 8) | d));
+}
+
+void FnInetNtoa(sqlite3_context *ctx, int, sqlite3_value **argv)
+{
+	if (sqlite3_value_type(argv[0]) == SQLITE_NULL)
+	{
+		sqlite3_result_null(ctx);
+		return;
+	}
+	const uint32_t v = (uint32_t)sqlite3_value_int64(argv[0]);
+	char buf[16];
+	snprintf(buf, sizeof(buf), "%u.%u.%u.%u", v >> 24, (v >> 16) & 255, (v >> 8) & 255, v & 255);
+	sqlite3_result_text(ctx, buf, -1, SQLITE_TRANSIENT);
+}
+
 void FnPassword(sqlite3_context *ctx, int, sqlite3_value **argv)
 {
 	const unsigned char *s = sqlite3_value_text(argv[0]);
@@ -405,6 +431,8 @@ void RegisterFunctions(sqlite3 *db)
 	sqlite3_create_function(db, "m2_diff_seconds", 2, flags, nullptr, FnTimestampDiffSeconds, nullptr, nullptr);
 	sqlite3_create_function(db, "m2_add_seconds", 2, flags, nullptr, FnDateAddSeconds, nullptr, nullptr);
 	sqlite3_create_function(db, "password", 1, flags | SQLITE_DETERMINISTIC, nullptr, FnPassword, nullptr, nullptr);
+	sqlite3_create_function(db, "inet_aton", 1, flags | SQLITE_DETERMINISTIC, nullptr, FnInetAton, nullptr, nullptr);
+	sqlite3_create_function(db, "inet_ntoa", 1, flags | SQLITE_DETERMINISTIC, nullptr, FnInetNtoa, nullptr, nullptr);
 	sqlite3_create_function(db, "m2_enum_num", 3, flags | SQLITE_DETERMINISTIC, nullptr, FnEnumNum, nullptr, nullptr);
 	sqlite3_create_function(db, "m2_enum_text", 3, flags | SQLITE_DETERMINISTIC, nullptr, FnEnumText, nullptr, nullptr);
 }
