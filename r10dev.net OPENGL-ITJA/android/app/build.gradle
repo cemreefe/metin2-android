@@ -5,6 +5,10 @@ def m2profile = new Properties()
 file("../profiles/${m2profileName}.properties").withInputStream { m2profile.load(it) }
 def m2 = { String key, String fallback = '' -> m2profile.getProperty("m2.${key}", fallback).trim() }
 def m2abis = project.hasProperty('m2abi') ? project.property('m2abi') : m2('abi', 'arm64-v8a,x86_64')
+def m2dataBundled = m2('dataBundled', 'false').toBoolean()
+def m2dataAssets = project.hasProperty('m2dataAssets') ? project.property('m2dataAssets') : null
+if (m2dataBundled && m2dataAssets == null)
+    throw new GradleException("profile ${m2profileName} bundles client data: pass -Pm2dataAssets=<dir containing m2data.zip> (tools/make_bundle.sh does this)")
 def m2buildNumber = (project.hasProperty('m2build') ? project.property('m2build') : '1') as int
 
 android {
@@ -26,6 +30,7 @@ android {
         buildConfigField "int", "M2_CHANNEL_PORT", m2('channelPort', '11011')
         buildConfigField "String", "M2_DATA_URL", "\"${m2('dataUrl')}\""
         buildConfigField "int", "M2_DATA_VERSION", m2('dataVersion', '1')
+        buildConfigField "boolean", "M2_DATA_BUNDLED", "${m2dataBundled}"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         
@@ -56,7 +61,7 @@ android {
     sourceSets {
         main {
             jniLibs.srcDirs = ['src/main/jniLibs']
-            assets.srcDirs = ['src/main/assets']
+            assets.srcDirs = m2dataBundled ? ['src/main/assets', m2dataAssets] : ['src/main/assets']
         }
     }
 
@@ -64,6 +69,10 @@ android {
         cmake {
             path file("../../clientsource/CMakeLists.txt")
         }
+    }
+
+    aaptOptions {
+        noCompress 'zip'
     }
 
     packagingOptions {

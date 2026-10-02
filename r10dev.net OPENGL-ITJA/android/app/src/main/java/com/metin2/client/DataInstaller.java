@@ -18,9 +18,10 @@ final class DataInstaller {
     }
 
     private static final String VERSION_FILE = ".m2data_version";
+    private static final String BUNDLED_ASSET = "m2data.zip";
 
     static boolean isInstalled(File dataDir) {
-        if (BuildConfig.M2_DATA_URL.isEmpty())
+        if (!BuildConfig.M2_DATA_BUNDLED && BuildConfig.M2_DATA_URL.isEmpty())
             return true;
         return installedVersion(dataDir) == BuildConfig.M2_DATA_VERSION;
     }
@@ -40,15 +41,29 @@ final class DataInstaller {
         }
     }
 
-    static void install(File dataDir, final Progress progress) throws IOException {
+    static void install(android.content.Context context, File dataDir, Progress progress) throws IOException {
+        if (BuildConfig.M2_DATA_BUNDLED) {
+            android.content.res.AssetFileDescriptor fd = context.getAssets().openFd(BUNDLED_ASSET);
+            long total = fd.getLength();
+            fd.close();
+            extract(context.getAssets().open(BUNDLED_ASSET), total, dataDir, progress);
+            return;
+        }
         HttpURLConnection conn = (HttpURLConnection) new URL(resolveDataUrl(BuildConfig.M2_DATA_URL)).openConnection();
         conn.setConnectTimeout(15000);
         conn.setReadTimeout(60000);
-        if (conn.getResponseCode() != HttpURLConnection.HTTP_OK)
-            throw new IOException("HTTP " + conn.getResponseCode());
-        final long total = conn.getContentLengthLong();
+        try {
+            if (conn.getResponseCode() != HttpURLConnection.HTTP_OK)
+                throw new IOException("HTTP " + conn.getResponseCode());
+            extract(conn.getInputStream(), conn.getContentLengthLong(), dataDir, progress);
+        } finally {
+            conn.disconnect();
+        }
+    }
+
+    private static void extract(InputStream source, final long total, File dataDir, final Progress progress) throws IOException {
         final long[] done = { 0 };
-        InputStream counting = new FilterInputStream(new BufferedInputStream(conn.getInputStream(), 1 << 16)) {
+        InputStream counting = new FilterInputStream(new BufferedInputStream(source, 1 << 16)) {
             private long lastReport;
 
             @Override
@@ -89,7 +104,6 @@ final class DataInstaller {
             }
         } finally {
             zip.close();
-            conn.disconnect();
         }
 
         OutputStream os = new FileOutputStream(new File(dataDir, VERSION_FILE));

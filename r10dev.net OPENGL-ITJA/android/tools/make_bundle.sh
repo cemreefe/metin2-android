@@ -13,6 +13,7 @@ OUT=${M2_BUNDLE_OUT:-$HOME/m2bundle}
 GRADLE=${GRADLE:-/opt/gradle-8.1.1/bin/gradle}
 VERSION=$(sed -n 's/^m2.dataVersion=//p' "profiles/$PROFILE.properties")
 NAME=$(sed -n 's/^m2.versionName=//p' "profiles/$PROFILE.properties")
+BUNDLED=$(sed -n 's/^m2.dataBundled=//p' "profiles/$PROFILE.properties")
 mkdir -p "$OUT"
 
 ZIP="$OUT/m2data-$VERSION.zip"
@@ -26,7 +27,14 @@ if [ ! -f "$ZIP" ]; then
   mv "$ZIP.tmp" "$ZIP"
 fi
 
-"$GRADLE" assembleDebug -Pm2profile="$PROFILE" -Pm2build="$BUILD" -q
+EXTRA=()
+if [ "$BUNDLED" = "true" ]; then
+  ASSETS="$OUT/assets-$VERSION"
+  mkdir -p "$ASSETS"
+  ln -f "$ZIP" "$ASSETS/m2data.zip"
+  EXTRA=(-Pm2dataAssets="$ASSETS")
+fi
+"$GRADLE" assembleDebug -Pm2profile="$PROFILE" -Pm2build="$BUILD" "${EXTRA[@]}" -q
 cp app/build/outputs/apk/debug/app-debug.apk "$OUT/metin2-$NAME-$BUILD.apk"
 echo "$OUT/metin2-$NAME-$BUILD.apk"
 echo "$ZIP"

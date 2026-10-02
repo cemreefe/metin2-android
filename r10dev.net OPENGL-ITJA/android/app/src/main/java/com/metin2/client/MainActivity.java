@@ -22,6 +22,8 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
     private Thread mGameThread;
     private GameView mView;
     private File mDataDir;
+    private float mFocusBottom = -1.0f;
+    private int mImeHeight;
     private TextView mStatus;
     private ProgressBar mProgress;
     private Button mAction;
@@ -74,7 +76,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
         new Thread(new Runnable() {
             public void run() {
                 try {
-                    DataInstaller.install(mDataDir, new DataInstaller.Progress() {
+                    DataInstaller.install(MainActivity.this, mDataDir, new DataInstaller.Progress() {
                         public void onProgress(final long done, final long total) {
                             runOnUiThread(new Runnable() {
                                 public void run() {
@@ -118,13 +120,27 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
                         mView.getHolder().addCallback(MainActivity.this);
                         setContentView(mView);
                         mView.requestFocus();
+                        mView.getViewTreeObserver().addOnGlobalLayoutListener(new android.view.ViewTreeObserver.OnGlobalLayoutListener() {
+                            public void onGlobalLayout() {
+                                updateKeyboardShift();
+                            }
+                        });
+                        if (android.os.Build.VERSION.SDK_INT >= 30) {
+                            getWindow().getDecorView().setOnApplyWindowInsetsListener(new android.view.View.OnApplyWindowInsetsListener() {
+                                public android.view.WindowInsets onApplyWindowInsets(android.view.View v, android.view.WindowInsets insets) {
+                                    mImeHeight = insets.getInsets(android.view.WindowInsets.Type.ime()).bottom;
+                                    updateKeyboardShift();
+                                    return v.onApplyWindowInsets(insets);
+                                }
+                            });
+                        }
                     }
                 });
             }
         }, "M2Prepare").start();
     }
 
-    static void setKeyboardVisible(final boolean visible) {
+    static void setKeyboardVisible(final boolean visible, final float focusBottom) {
         final MainActivity activity = sInstance;
         if (activity == null)
             return;
@@ -133,6 +149,8 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
                 InputMethodManager imm = (InputMethodManager) activity.getSystemService(Context.INPUT_METHOD_SERVICE);
                 GameView view = activity.mView;
                 view.mTextInputActive = visible;
+                activity.mFocusBottom = visible ? focusBottom : -1.0f;
+                activity.updateKeyboardShift();
                 if (visible) {
                     view.requestFocus();
                     imm.restartInput(view);
@@ -143,6 +161,24 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
                 }
             }
         });
+    }
+
+    // Slides the game view up so the focused text field stays above the soft keyboard.
+    private void updateKeyboardShift() {
+        if (mView == null)
+            return;
+        float shift = 0;
+        if (mFocusBottom >= 0) {
+            float keyboardTop = mView.getHeight() - mImeHeight;
+            if (android.os.Build.VERSION.SDK_INT < 30) {
+                android.graphics.Rect visibleFrame = new android.graphics.Rect();
+                mView.getWindowVisibleDisplayFrame(visibleFrame);
+                keyboardTop = visibleFrame.bottom;
+            }
+            float focusBottomPx = mFocusBottom * mView.getHeight() + mView.getHeight() * 0.12f;
+            shift = Math.max(0, focusBottomPx - keyboardTop);
+        }
+        mView.setTranslationY(-shift);
     }
 
     @Override
@@ -166,7 +202,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
 
     @Override
     public boolean onTouchEvent(MotionEvent event) {
-        NativeLib.touchEvent(event.getAction(), event.getX(), event.getY());
+        NativeLib.touchEvent(event.getAction(), event.getX(), event.getY() - (mView != null ? mView.getTranslationY() : 0));
         return true;
     }
 

@@ -239,3 +239,9 @@ DevIL, SpeedTree, Miles.
   quick tunnel served it at tens of MB/s; its random URL goes into the pointer file.
 - The client connects to the channel address from `serverinfo.py`, not one the
   auth server hands out, so one tunnel port per channel core is enough.
+
+### Bundled-data APKs, pinned tunnel IPs, soft-keyboard shift
+
+- `m2.dataBundled=true` packs the versioned data zip into the APK as `assets/m2data.zip`. `make_bundle.sh` hard-links it into `$M2_BUNDLE_OUT/assets-<ver>/` and passes `-Pm2dataAssets`. aapt `noCompress 'zip'` keeps the asset stored, so `AssetManager.openFd()` gives its length for the progress bar. The engine needs loose files through stdio, so the zip is still extracted to external files on first launch. That took under a minute on the emulator, versus the download. A 1 GB APK installs fine through adb.
+- On a user's network, `bore.pub` resolved to 81.99.162.48, while our tunnels are on 159.223.110.159, and the connection timed out. Profiles therefore pin the bore server by IP. Lesson: never rely on a third-party relay's DNS for test bundles.
+- Soft keyboard: the activity uses `adjustNothing`, so the visible frame never shrinks and `getWindowVisibleDisplayFrame` doesn't see the IME. On API 30+, read `WindowInsets.Type.ime()` from the decor view's insets listener instead. Native passes the focused edit window's bottom (as a fraction of the screen) with `setKeyboardVisible(boolean, float)`. Java then translates the game view up so that bottom, plus a 12% margin to cover the next field (password) and the button, sits above the keyboard. Touch Y is corrected by `getTranslationY()`, because the activity receives window coordinates.
