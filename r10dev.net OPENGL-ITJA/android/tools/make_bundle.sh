@@ -1,0 +1,32 @@
+#!/bin/bash
+# Build a test bundle: APK for a profile + versioned client-data zip.
+#   tools/make_bundle.sh <profile> [build-number]
+# Env: M2_CLIENT_DATA (extracted client data dir), M2_PYLIB (Python 2.7 stdlib .py dir),
+#      M2_BUNDLE_OUT (output dir served to devices), GRADLE (gradle binary).
+set -euo pipefail
+cd "$(dirname "$0")/.."
+PROFILE=${1:?profile name, see profiles/}
+BUILD=${2:-1}
+DATA=${M2_CLIENT_DATA:-$HOME/m2stage}
+PYLIB=${M2_PYLIB:-$HOME/m2pylib}
+OUT=${M2_BUNDLE_OUT:-$HOME/m2bundle}
+GRADLE=${GRADLE:-/opt/gradle-8.1.1/bin/gradle}
+VERSION=$(sed -n 's/^m2.dataVersion=//p' "profiles/$PROFILE.properties")
+NAME=$(sed -n 's/^m2.versionName=//p' "profiles/$PROFILE.properties")
+mkdir -p "$OUT"
+
+ZIP="$OUT/m2data-$VERSION.zip"
+if [ ! -f "$ZIP" ]; then
+  echo "building $ZIP"
+  (cd "$DATA" && zip -q -1 -r "$ZIP.tmp" . -x 'syserr.txt' 'stderr.txt' 'm2profile.py*' '.m2data_version')
+  OVERLAY=$(mktemp -d)
+  ln -s "$PYLIB" "$OVERLAY/lib"
+  (cd "$OVERLAY" && zip -q -1 -r "$ZIP.tmp" lib -x '*.pyc')
+  rm -rf "$OVERLAY"
+  mv "$ZIP.tmp" "$ZIP"
+fi
+
+"$GRADLE" assembleDebug -Pm2profile="$PROFILE" -Pm2build="$BUILD" -q
+cp app/build/outputs/apk/debug/app-debug.apk "$OUT/metin2-$NAME-$BUILD.apk"
+echo "$OUT/metin2-$NAME-$BUILD.apk"
+echo "$ZIP"

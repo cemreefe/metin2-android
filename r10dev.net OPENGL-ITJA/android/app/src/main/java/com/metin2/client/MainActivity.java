@@ -9,11 +9,22 @@ import android.view.inputmethod.InputMethodManager;
 import android.view.SurfaceHolder;
 import android.view.Window;
 import android.view.WindowManager;
+import android.view.Gravity;
+import android.view.View;
+import android.widget.Button;
+import android.widget.LinearLayout;
+import android.widget.ProgressBar;
+import android.widget.TextView;
+import java.io.File;
 
 public class MainActivity extends Activity implements SurfaceHolder.Callback {
     private static MainActivity sInstance;
     private Thread mGameThread;
     private GameView mView;
+    private File mDataDir;
+    private TextView mStatus;
+    private ProgressBar mProgress;
+    private Button mAction;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -24,10 +35,93 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
                 WindowManager.LayoutParams.FLAG_FULLSCREEN);
 
         sInstance = this;
-        mView = new GameView(this);
-        mView.getHolder().addCallback(this);
-        setContentView(mView);
-        mView.requestFocus();
+        mDataDir = getExternalFilesDir(null);
+        if (DataInstaller.isInstalled(mDataDir))
+            prepareAndStart();
+        else
+            showInstaller();
+    }
+
+    private void showInstaller() {
+        LinearLayout layout = new LinearLayout(this);
+        layout.setOrientation(LinearLayout.VERTICAL);
+        layout.setGravity(Gravity.CENTER);
+        layout.setPadding(96, 48, 96, 48);
+        mStatus = new TextView(this);
+        mStatus.setGravity(Gravity.CENTER);
+        mStatus.setTextSize(18);
+        mProgress = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
+        mProgress.setMax(1000);
+        mAction = new Button(this);
+        mAction.setText("Retry download");
+        mAction.setVisibility(View.GONE);
+        mAction.setOnClickListener(new View.OnClickListener() {
+            public void onClick(View v) {
+                startDownload();
+            }
+        });
+        layout.addView(mStatus);
+        layout.addView(mProgress, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+        layout.addView(mAction);
+        setContentView(layout);
+        startDownload();
+    }
+
+    private void startDownload() {
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        mAction.setVisibility(View.GONE);
+        mStatus.setText("Downloading game data...");
+        new Thread(new Runnable() {
+            public void run() {
+                try {
+                    DataInstaller.install(mDataDir, new DataInstaller.Progress() {
+                        public void onProgress(final long done, final long total) {
+                            runOnUiThread(new Runnable() {
+                                public void run() {
+                                    mStatus.setText(String.format("Downloading game data... %d / %d MB", done >> 20, Math.max(total, 0) >> 20));
+                                    if (total > 0)
+                                        mProgress.setProgress((int) (done * 1000 / total));
+                                }
+                            });
+                        }
+                    });
+                    runOnUiThread(new Runnable() {
+                        public void run() {
+                            getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+                            prepareAndStart();
+                        }
+                    });
+                } catch (final Exception e) {
+                    runOnUiThread(new Runnable() {
+                        public void run() {
+                            getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+                            mStatus.setText("Download failed: " + e.getMessage());
+                            mAction.setVisibility(View.VISIBLE);
+                        }
+                    });
+                }
+            }
+        }, "M2DataInstall").start();
+    }
+
+    private void prepareAndStart() {
+        new Thread(new Runnable() {
+            public void run() {
+                try {
+                    DataInstaller.writeServerProfile(mDataDir);
+                } catch (final Exception e) {
+                    android.util.Log.e("Metin2Mobile", "server profile: " + e);
+                }
+                runOnUiThread(new Runnable() {
+                    public void run() {
+                        mView = new GameView(MainActivity.this);
+                        mView.getHolder().addCallback(MainActivity.this);
+                        setContentView(mView);
+                        mView.requestFocus();
+                    }
+                });
+            }
+        }, "M2Prepare").start();
     }
 
     static void setKeyboardVisible(final boolean visible) {
@@ -84,7 +178,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
     public void surfaceChanged(final SurfaceHolder holder, int format, final int width, final int height) {
         if (mGameThread != null)
             return;
-        final String dataDir = getExternalFilesDir(null).getAbsolutePath();
+        final String dataDir = mDataDir.getAbsolutePath();
         mGameThread = new Thread(new Runnable() {
             public void run() {
                 NativeLib.init(getAssets(), holder.getSurface(), dataDir, width, height);

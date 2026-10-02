@@ -1,5 +1,12 @@
 apply plugin: 'com.android.application'
 
+def m2profileName = project.hasProperty('m2profile') ? project.property('m2profile') : 'emulator'
+def m2profile = new Properties()
+file("../profiles/${m2profileName}.properties").withInputStream { m2profile.load(it) }
+def m2 = { String key, String fallback = '' -> m2profile.getProperty("m2.${key}", fallback).trim() }
+def m2abis = project.hasProperty('m2abi') ? project.property('m2abi') : m2('abi', 'arm64-v8a,x86_64')
+def m2buildNumber = (project.hasProperty('m2build') ? project.property('m2build') : '1') as int
+
 android {
     namespace "com.metin2.client"
     compileSdkVersion 33
@@ -10,8 +17,15 @@ android {
         applicationId "com.metin2.client"
         minSdkVersion 21
         targetSdkVersion 33
-        versionCode 1
-        versionName "1.0"
+        versionCode m2buildNumber
+        versionName "${m2('versionName', 'dev')}-${m2buildNumber}"
+        buildConfigField "String", "M2_PROFILE", "\"${m2profileName}\""
+        buildConfigField "String", "M2_SERVER_MODE", "\"${m2('serverMode', 'remote')}\""
+        buildConfigField "String", "M2_SERVER_HOST", "\"${m2('serverHost')}\""
+        buildConfigField "int", "M2_AUTH_PORT", m2('authPort', '11000')
+        buildConfigField "int", "M2_CHANNEL_PORT", m2('channelPort', '11011')
+        buildConfigField "String", "M2_DATA_URL", "\"${m2('dataUrl')}\""
+        buildConfigField "int", "M2_DATA_VERSION", m2('dataVersion', '1')
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         
@@ -19,9 +33,13 @@ android {
             cmake {
                 cppFlags "-std=c++11 -frtti -fexceptions -Wno-invalid-source-encoding"
                 arguments "-DANDROID_STL=c++_shared", "-DANDROID_TOOLCHAIN=clang"
-                abiFilters(*(project.hasProperty('m2abi') ? project.property('m2abi').split(',') : ['arm64-v8a', 'x86_64']))
+                abiFilters(*m2abis.split(','))
             }
         }
+    }
+
+    buildFeatures {
+        buildConfig true
     }
 
     buildTypes {

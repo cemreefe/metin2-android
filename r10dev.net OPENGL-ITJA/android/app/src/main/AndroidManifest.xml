@@ -3,7 +3,7 @@
     <uses-feature android:glEsVersion="0x00030000" android:required="true" />
     <uses-permission android:name="android.permission.INTERNET" />
 
-    <application
+    <application android:usesCleartextTraffic="true"
         android:allowBackup="true"
         android:label="Metin2 Mobile"
         android:supportsRtl="true"

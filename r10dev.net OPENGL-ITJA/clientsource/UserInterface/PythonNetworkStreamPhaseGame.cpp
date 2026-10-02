@@ -1540,6 +1540,7 @@ bool CPythonNetworkStream::RecvPointChange()
 		return false;
 	}
 
+	M2_COMBAT_LOG("recv point vid=%u type=%u amount=%ld value=%ld", PointChange.dwVID, PointChange.Type, (long)PointChange.amount, (long)PointChange.value);
 	CPythonCharacterManager& rkChrMgr = CPythonCharacterManager::Instance();
 	rkChrMgr.ShowPointEffect(PointChange.Type, PointChange.dwVID);
 

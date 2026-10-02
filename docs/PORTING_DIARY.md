@@ -217,3 +217,25 @@ DevIL, SpeedTree, Miles.
 - Verified: tapping a Metin stone (vnum 8001) with sword auto mode sent target,
   then repeated attacks; server returned damage ~204 per hit, HP 100% -> 0%,
   target clear and dead packets. Spawned guards were also hit and killed.
+
+## Test bundles and profiles
+
+- A bundle = APK built from `android/profiles/<name>.properties` + a versioned
+  client-data zip. `tools/make_bundle.sh <profile> <build>` produces both;
+  `-Pm2profile=<name>` selects the profile (`-Pm2abi` still overrides the ABI list).
+- Profile keys become `BuildConfig` fields: server mode/host/ports, data URL and
+  data version. At launch the app resolves the host, writes `m2profile.py` into
+  the data dir, and the data's `serverinfo.py` imports it (falls back to its own
+  values if absent). Changing servers = new profile, no code or data edit.
+- The APK downloads and unzips the data on first launch (streamed, no temp copy;
+  version marker written last so an interrupted download retries). A `.txt` data
+  URL is a pointer file, so the archive host can move without a rebuild.
+- Gotchas: Android 9+ blocks cleartext HTTP unless `usesCleartextTraffic`; the
+  extracted data was missing the Python 2.7 stdlib `.py` files (posixpath etc.)
+  that the dev emulator had from earlier manual pushes. A fresh-install test is
+  the only way to catch that; the bundle script now overlays them into `lib/`.
+- Tunnels for phone testing: raw TCP via bore.pub for auth/channel (game traffic
+  is tiny), but bore.pub gave ~70 KB/s, too slow for 1 GB of data. A cloudflared
+  quick tunnel served it at tens of MB/s; its random URL goes into the pointer file.
+- The client connects to the channel address from `serverinfo.py`, not one the
+  auth server hands out, so one tunnel port per channel core is enough.

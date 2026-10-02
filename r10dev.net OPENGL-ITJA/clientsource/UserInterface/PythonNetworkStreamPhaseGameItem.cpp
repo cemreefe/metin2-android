@@ -7,6 +7,12 @@
 #include "PythonCharacterManager.h"
 
 #include "AbstractPlayer.h"
+#ifdef __ANDROID__
+#include <android/log.h>
+#define M2_ITEM_LOG(...) __android_log_print(ANDROID_LOG_INFO, "M2Item", __VA_ARGS__)
+#else
+#define M2_ITEM_LOG(...)
+#endif
 
 //////////////////////////////////////////////////////////////////////////
 // SafeBox
@@ -246,6 +252,7 @@ bool CPythonNetworkStream::RecvItemSetPacket2()
 
 	if (!Recv(sizeof(TPacketGCItemSet2), &packet_item_set))
 		return false;
+	M2_ITEM_LOG("recv item set window=%u cell=%u vnum=%u count=%u", packet_item_set.Cell.window_type, packet_item_set.Cell.cell, packet_item_set.vnum, packet_item_set.count);
 
 	TItemData kItemData;
 	kItemData.vnum = packet_item_set.vnum;
@@ -303,6 +310,7 @@ bool CPythonNetworkStream::RecvItemGroundAddPacket()
 
 	if (!Recv(sizeof(TPacketGCItemGroundAdd), &packet_item_ground_add))
 		return false;
+	M2_ITEM_LOG("recv ground add vid=%u vnum=%u", packet_item_ground_add.dwVID, packet_item_ground_add.dwVnum);
 
 	__GlobalPositionToLocalPosition(packet_item_ground_add.lX, packet_item_ground_add.lY);
 
@@ -335,6 +343,7 @@ bool CPythonNetworkStream::RecvItemGroundDelPacket()
 
 	if (!Recv(sizeof(TPacketGCItemGroundDel), &packet_item_ground_del))
 		return false;
+	M2_ITEM_LOG("recv ground del vid=%u", packet_item_ground_del.vid);
 
 	CPythonItem::Instance().DeleteItem(packet_item_ground_del.vid);
 	return true;
@@ -699,6 +708,7 @@ bool CPythonNetworkStream::SendItemPickUpPacket(DWORD vid)
 	TPacketCGItemPickUp	itemPickUpPacket;
 	itemPickUpPacket.header = HEADER_CG_ITEM_PICKUP;
 	itemPickUpPacket.vid = vid;
+	M2_ITEM_LOG("send pickup vid=%u", vid);
 
 	if (!Send(sizeof(TPacketCGItemPickUp), &itemPickUpPacket))
 	{
