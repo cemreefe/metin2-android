@@ -237,8 +237,9 @@ DevIL, SpeedTree, Miles.
 - Tunnels for phone testing: raw TCP via bore.pub for auth/channel (game traffic
   is tiny), but bore.pub gave ~70 KB/s, too slow for 1 GB of data. A cloudflared
   quick tunnel served it at tens of MB/s; its random URL goes into the pointer file.
-- The client connects to the channel address from `serverinfo.py`, not one the
-  auth server hands out, so one tunnel port per channel core is enough.
+- The client's first channel connection uses the address from `serverinfo.py`, but
+  after `LOGIN_BY_KEY` the core sends the address of the core that hosts the
+  character's map (see "Phone kicked back to server select" below).
 
 ### Bundled-data APKs, pinned tunnel IPs, soft-keyboard shift
 
@@ -310,3 +311,19 @@ DevIL, SpeedTree, Miles.
   "cannot find server for mapindex 41"), waiting until each port
   accepts, before the game view is created; stale processes from a killed
   app are found via their `pid` files and terminated.
+
+
+### Phone kicked back to server select after Start; character-select offset
+
+- Symptom: on the phone (tunnel profile), Start on character select returned to the server list. Server logs showed `LOGIN_BY_KEY` on core1, then the socket closed with no `player_select`. The emulator worked because it can reach the LAN address directly.
+- Cause: the login-success packet carries each character's game server address. The character's map (41) is hosted on core3, so core1 advertised `172.16.255.2:11013`. The phone can't reach that, and a failed connect returns to the server list. Warps (`HEADER_GC_WARP`) do the same.
+- Fix: tunnel every core (`4711x -> 1101x`) and add the profile key `m2.gamePortOffset`. When it is nonzero, Java sets `M2_GAME_HOST`/`M2_GAME_PORT_OFFSET` with `Os.setenv`. `CNetworkStream::Connect(DWORD, port)` then swaps in the profile host and shifts the port. A fully tunnelled x86_64 build of the phone profile then reached `ENTERGAME` on core3.
+- Character select: `grp.SetViewport` takes fractions of the screen, and the GLES layer multiplied them by the logical 1024x768 back buffer instead of the real surface. Android now uses `g_iAndroidSurfaceWidth/Height`.
+- Lesson: when a phone-only bug looks like a crash, read the server logs for the session first. "Back to the server list" was a failed connect, not a native crash.
+
+### Iteration loop
+
+- Phone profiles build arm64 only; Gradle passes ccache as the CMake compiler launcher when it exists.
+- `m2.devUrl`/`m2.updateChannel`: `make_bundle.sh` writes `latest-<channel>.txt`. On launch the app offers newer builds and opens the APK URL. It also posts the previous run's `crash.txt`, `syserr.txt`/`stderr.txt` tails and the app's own logcat to `POST /crash`.
+- The native crash handler (`AndroidMain.cpp`) writes signal, fault address and an `_Unwind_Backtrace` with `dladdr` to `crash.txt`. Symbols for each build are copied to `$M2_SYMS/<name>-<build>`.
+- To reproduce phone profiles on the x86_64 emulator, use `-Pm2abi=x86_64`. When moving the install from arm64 to x86_64, `adb install --abi x86_64` an APK that contains both ABIs first, otherwise the install fails with "Error deriving application ABI".

@@ -116,30 +116,57 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
                     android.util.Log.e("Metin2Mobile", "server profile: " + e);
                 }
                 startEmbeddedServer();
+                DevReporter.uploadPreviousRun(mDataDir);
+                final DevReporter.Update update = DevReporter.checkForUpdate();
                 runOnUiThread(new Runnable() {
                     public void run() {
-                        mView = new GameView(MainActivity.this);
-                        mView.getHolder().addCallback(MainActivity.this);
-                        setContentView(mView);
-                        mView.requestFocus();
-                        mView.getViewTreeObserver().addOnGlobalLayoutListener(new android.view.ViewTreeObserver.OnGlobalLayoutListener() {
-                            public void onGlobalLayout() {
-                                updateKeyboardShift();
-                            }
-                        });
-                        if (android.os.Build.VERSION.SDK_INT >= 30) {
-                            getWindow().getDecorView().setOnApplyWindowInsetsListener(new android.view.View.OnApplyWindowInsetsListener() {
-                                public android.view.WindowInsets onApplyWindowInsets(android.view.View v, android.view.WindowInsets insets) {
-                                    mImeHeight = insets.getInsets(android.view.WindowInsets.Type.ime()).bottom;
-                                    updateKeyboardShift();
-                                    return v.onApplyWindowInsets(insets);
-                                }
-                            });
-                        }
+                        if (update != null)
+                            offerUpdate(update);
+                        else
+                            startGame();
                     }
                 });
             }
         }, "M2Prepare").start();
+    }
+
+    private void offerUpdate(final DevReporter.Update update) {
+        new android.app.AlertDialog.Builder(this)
+                .setTitle("Build " + update.build + " is available")
+                .setPositiveButton("Update", new android.content.DialogInterface.OnClickListener() {
+                    public void onClick(android.content.DialogInterface dialog, int which) {
+                        startActivity(new android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(update.url)));
+                        finish();
+                    }
+                })
+                .setNegativeButton("Play build " + BuildConfig.VERSION_CODE, new android.content.DialogInterface.OnClickListener() {
+                    public void onClick(android.content.DialogInterface dialog, int which) {
+                        startGame();
+                    }
+                })
+                .setCancelable(false)
+                .show();
+    }
+
+    private void startGame() {
+        mView = new GameView(MainActivity.this);
+        mView.getHolder().addCallback(MainActivity.this);
+        setContentView(mView);
+        mView.requestFocus();
+        mView.getViewTreeObserver().addOnGlobalLayoutListener(new android.view.ViewTreeObserver.OnGlobalLayoutListener() {
+            public void onGlobalLayout() {
+                updateKeyboardShift();
+            }
+        });
+        if (android.os.Build.VERSION.SDK_INT >= 30) {
+            getWindow().getDecorView().setOnApplyWindowInsetsListener(new android.view.View.OnApplyWindowInsetsListener() {
+                public android.view.WindowInsets onApplyWindowInsets(android.view.View v, android.view.WindowInsets insets) {
+                    mImeHeight = insets.getInsets(android.view.WindowInsets.Type.ime()).bottom;
+                    updateKeyboardShift();
+                    return v.onApplyWindowInsets(insets);
+                }
+            });
+        }
     }
 
     static void setKeyboardVisible(final boolean visible, final float focusBottom) {

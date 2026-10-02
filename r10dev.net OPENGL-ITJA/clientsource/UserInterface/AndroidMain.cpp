@@ -7,6 +7,11 @@
 #include <android/asset_manager_jni.h>
 #include <android/native_window_jni.h>
 #include <EGL/egl.h>
+#include <dlfcn.h>
+#include <fcntl.h>
+#include <signal.h>
+#include <string.h>
+#include <unwind.h>
 
 #define LOG_TAG "Metin2Mobile"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
@@ -18,6 +23,92 @@ int g_iAndroidSurfaceHeight = 0;
 int AndroidMain(int argc, char** argv);
 
 static JavaVM* s_pJavaVM = NULL;
+
+static void CrashWrite(int fd, const char* s)
+{
+	write(fd, s, strlen(s));
+}
+
+static void CrashWriteHex(int fd, uintptr_t v)
+{
+	char buf[19] = "0x";
+	for (int i = 0; i < 16; ++i)
+		buf[2 + i] = "0123456789abcdef"[(v >> ((15 - i) * 4)) & 0xf];
+	buf[18] = 0;
+	CrashWrite(fd, buf);
+}
+
+struct SCrashUnwind
+{
+	int fd;
+	int depth;
+};
+
+static _Unwind_Reason_Code CrashUnwindFrame(struct _Unwind_Context* ctx, void* arg)
+{
+	SCrashUnwind* st = (SCrashUnwind*)arg;
+	uintptr_t pc = _Unwind_GetIP(ctx);
+	if (!pc || st->depth >= 64)
+		return _URC_END_OF_STACK;
+	Dl_info info;
+	CrashWrite(st->fd, "#");
+	CrashWriteHex(st->fd, (uintptr_t)st->depth++);
+	CrashWrite(st->fd, " pc ");
+	if (dladdr((void*)pc, &info) && info.dli_fname)
+	{
+		CrashWriteHex(st->fd, pc - (uintptr_t)info.dli_fbase);
+		CrashWrite(st->fd, " ");
+		CrashWrite(st->fd, info.dli_fname);
+		if (info.dli_sname)
+		{
+			CrashWrite(st->fd, " (");
+			CrashWrite(st->fd, info.dli_sname);
+			CrashWrite(st->fd, ")");
+		}
+	}
+	else
+		CrashWriteHex(st->fd, pc);
+	CrashWrite(st->fd, "\n");
+	return _URC_NO_REASON;
+}
+
+static struct sigaction s_kOldCrashActions[NSIG];
+
+static void CrashHandler(int sig, siginfo_t* info, void* uctx)
+{
+	int fd = open("crash.txt", O_WRONLY | O_CREAT | O_TRUNC, 0644);
+	if (fd >= 0)
+	{
+		CrashWrite(fd, "signal ");
+		CrashWriteHex(fd, (uintptr_t)sig);
+		CrashWrite(fd, " code ");
+		CrashWriteHex(fd, (uintptr_t)info->si_code);
+		CrashWrite(fd, " addr ");
+		CrashWriteHex(fd, (uintptr_t)info->si_addr);
+#if defined(__aarch64__)
+		CrashWrite(fd, " abi arm64-v8a\n");
+#else
+		CrashWrite(fd, " abi x86_64\n");
+#endif
+		SCrashUnwind st = { fd, 0 };
+		_Unwind_Backtrace(CrashUnwindFrame, &st);
+		close(fd);
+	}
+	sigaction(sig, &s_kOldCrashActions[sig], NULL);
+	raise(sig);
+}
+
+static void InstallCrashHandler()
+{
+	static const int c_aiSignals[] = { SIGSEGV, SIGBUS, SIGILL, SIGFPE, SIGABRT, SIGTRAP };
+	struct sigaction sa;
+	memset(&sa, 0, sizeof(sa));
+	sa.sa_sigaction = CrashHandler;
+	sa.sa_flags = SA_SIGINFO | SA_ONSTACK;
+	sigemptyset(&sa.sa_mask);
+	for (size_t i = 0; i < sizeof(c_aiSignals) / sizeof(c_aiSignals[0]); ++i)
+		sigaction(c_aiSignals[i], &sa, &s_kOldCrashActions[c_aiSignals[i]]);
+}
 static jclass s_jNativeLib = NULL;
 static jmethodID s_jSetKeyboardVisible = NULL;
 
@@ -89,6 +180,8 @@ JNIEXPORT void JNICALL Java_com_metin2_client_NativeLib_init(JNIEnv* env, jobjec
 		LOGE("chdir(%s) failed", c_szDataDir);
 	LOGI("Starting Metin2 (%dx%d), data dir: %s", width, height, c_szDataDir);
 	env->ReleaseStringUTFChars(dataDir, c_szDataDir);
+
+	InstallCrashHandler();
 
 	if (freopen("stderr.txt", "w", stderr))
 		setvbuf(stderr, NULL, _IONBF, 0);

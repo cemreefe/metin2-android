@@ -142,6 +142,14 @@ final class DataInstaller {
         String py = "SERVER_IP = \"" + ip + "\"\n"
                 + "PORT_AUTH = " + BuildConfig.M2_AUTH_PORT + "\n"
                 + "PORT_1 = " + BuildConfig.M2_CHANNEL_PORT + "\n";
+        if (BuildConfig.M2_GAME_PORT_OFFSET != 0) {
+            try {
+                android.system.Os.setenv("M2_GAME_HOST", ip, true);
+                android.system.Os.setenv("M2_GAME_PORT_OFFSET", Integer.toString(BuildConfig.M2_GAME_PORT_OFFSET), true);
+            } catch (android.system.ErrnoException e) {
+                throw new IOException("setenv failed", e);
+            }
+        }
         OutputStream os = new FileOutputStream(new File(dataDir, "m2profile.py"));
         os.write(py.getBytes());
         os.close();

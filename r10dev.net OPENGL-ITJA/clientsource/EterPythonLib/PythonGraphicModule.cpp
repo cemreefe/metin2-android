@@ -907,7 +907,15 @@ PyObject* grpSetViewport(PyObject* poSelf, PyObject* poArgs)
 
 	UINT uWidth;
 	UINT uHeight;
+#ifdef __ANDROID__
+	// Viewports are in GL surface pixels; the D3D back buffer is only the logical UI size.
+	extern int g_iAndroidSurfaceWidth;
+	extern int g_iAndroidSurfaceHeight;
+	uWidth = g_iAndroidSurfaceWidth;
+	uHeight = g_iAndroidSurfaceHeight;
+#else
 	CPythonGraphic::Instance().GetBackBufferSize(&uWidth, &uHeight);
+#endif
 	CPythonGraphic::Instance().SetViewport(fx * uWidth, fy * uHeight, fWidth * uWidth, fHeight * uHeight);
 	return Py_BuildNone();
 }
