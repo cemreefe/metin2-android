@@ -36,3 +36,31 @@
  STATE_NONE = "..."
  
  STATE_DICT = {
+--- a/game.py
++++ b/game.py
+@@ -85,6 +85,14 @@
+ 		self.interface = interfaceModule.Interface()
+ 		self.interface.MakeInterface()
+ 		self.interface.ShowDefaultWindows()
++		self.mobileHud = None
++		try:
++			import m2profile
++		except ImportError:
++			m2profile = None
++		if m2profile:
++			import uimobilehud
++			self.mobileHud = uimobilehud.MobileHud(self)
+ 
+ 		self.curtain = uiPhaseCurtain.PhaseCurtain()
+ 		self.curtain.speed = 0.03
+@@ -222,6 +230,10 @@
+ 	def Close(self):
+ 		self.Hide()
+ 
++		if self.mobileHud:
++			self.mobileHud.Destroy()
++			self.mobileHud = None
++
+ 		global cameraDistance, cameraPitch, cameraRotation, cameraHeight
+ 		(cameraDistance, cameraPitch, cameraRotation, cameraHeight) = app.GetCamera()
+ 

@@ -2010,11 +2010,20 @@ PyObject* skillGetIconName(PyObject* poSelf, PyObject* poArgs)
 	if (!PyTuple_GetInteger(poArgs, 0, &iSkillIndex))
 		return Py_BadArgument();
 
+	int iGrade = 0;
+	PyTuple_GetInteger(poArgs, 1, &iGrade);
+
 	CPythonSkill::SSkillData* c_pSkillData;
 	if (!CPythonSkill::Instance().GetSkillData(iSkillIndex, &c_pSkillData))
 		return Py_BuildValue("s", "");
 
-	return Py_BuildValue("s", c_pSkillData->strIconFileName.c_str());
+	if (!c_pSkillData->strIconFileName.empty())
+		return Py_BuildValue("s", c_pSkillData->strIconFileName.c_str());
+
+	CGraphicImage* pImage = c_pSkillData->pImage;
+	if (iGrade >= 0 && iGrade < CPythonSkill::SKILL_GRADE_COUNT && c_pSkillData->GradeData[iGrade].pImage)
+		pImage = c_pSkillData->GradeData[iGrade].pImage;
+	return Py_BuildValue("s", pImage ? pImage->GetFileName() : "");
 }
 
 PyObject* skillGetIconImage(PyObject* poSelf, PyObject* poArgs)

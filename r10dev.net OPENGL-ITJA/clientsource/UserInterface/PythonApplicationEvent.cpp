@@ -323,10 +323,24 @@ void CPythonApplication::OnAndroidKeyEvent(int action, int keyCode, int unicodeC
 }
 
 void AndroidSetGameControlsVisible(bool bVisible);
+void AndroidSetTouchBlockers(const std::vector<RECT>& rects, int iWidth, int iHeight);
 
 namespace
 {
 	const DWORD c_dwTouchHoldMs = 350;
+
+	void CollectTouchBlockers(UI::CWindow* pWindow, std::vector<RECT>& rects)
+	{
+		for (UI::CWindow* pChild : pWindow->GetChildren())
+		{
+			if (!pChild->IsShow() || 0 == strcmp(pChild->GetName(), "game"))
+				continue;
+			if (pChild->IsFlag(UI::CWindow::FLAG_NOT_PICK) || pChild->IsFlag(UI::CWindow::FLAG_IGNORE_SIZE))
+				CollectTouchBlockers(pChild, rects);
+			else
+				rects.push_back(pChild->GetRect());
+		}
+	}
 
 	bool IsTouchOnWorld()
 	{
@@ -436,6 +450,15 @@ void CPythonApplication::OnAndroidFrame()
 		m_bGameControlsVisible = bVisible;
 		AndroidSetGameControlsVisible(bVisible);
 	}
+
+	std::vector<RECT> blockers;
+	UI::CWindowManager& rkWndMgr = UI::CWindowManager::Instance();
+	if (rkWndMgr.GetLockWindow())
+		blockers.push_back({ 0, 0, (LONG)m_dwWidth, (LONG)m_dwHeight });
+	else
+		for (UI::CWindow* pLayer : rkWndMgr.GetLayers())
+			CollectTouchBlockers(pLayer, blockers);
+	AndroidSetTouchBlockers(blockers, (int)m_dwWidth, (int)m_dwHeight);
 }
 #endif
 

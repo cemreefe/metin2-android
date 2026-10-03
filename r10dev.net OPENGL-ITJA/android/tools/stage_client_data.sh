@@ -34,6 +34,7 @@ for kind in item mob; do
 	mv "$f.tmp" "$f"
 done
 
-cp "$HERE/data-overlay/m2compat.py" "$OUT/"
+cp "$HERE/data-overlay/m2compat.py" "$HERE/data-overlay/uimobilehud.py" "$OUT/"
+python3 "$HERE/data-overlay/make_hud_art.py" "$OUT"
 patch -d "$OUT" -p1 --forward < "$HERE/data-overlay/client-data.patch"
 echo "staged client data in $OUT"

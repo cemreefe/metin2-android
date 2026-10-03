@@ -15,6 +15,8 @@
 #include <unwind.h>
 #include <pthread.h>
 #include <time.h>
+#include <mutex>
+#include <vector>
 
 #define LOG_TAG "Metin2Mobile"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
@@ -124,6 +126,18 @@ void AndroidSetGameControlsVisible(bool bVisible)
 	if (s_pJavaVM->GetEnv((void**)&env, JNI_VERSION_1_6) != JNI_OK || !env)
 		return;
 	env->CallStaticVoidMethod(s_jNativeLib, s_jSetGameControlsVisible, (jboolean)bVisible);
+}
+
+static std::mutex s_kTouchBlockerLock;
+static std::vector<RECT> s_kTouchBlockers;
+static int s_iTouchBlockerWidth = 0, s_iTouchBlockerHeight = 0;
+
+void AndroidSetTouchBlockers(const std::vector<RECT>& rects, int iWidth, int iHeight)
+{
+	std::lock_guard<std::mutex> lock(s_kTouchBlockerLock);
+	s_kTouchBlockers = rects;
+	s_iTouchBlockerWidth = iWidth;
+	s_iTouchBlockerHeight = iHeight;
 }
 
 void AndroidSetKeyboardVisible(bool bVisible, float fFocusBottom)
@@ -332,6 +346,19 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void*)
 JNIEXPORT void JNICALL Java_com_metin2_client_NativeLib_keyEvent(JNIEnv* env, jobject obj, jint action, jint keyCode, jint unicodeChar)
 {
 	CMSApplication::PushKeyEvent(action, keyCode, unicodeChar);
+}
+
+JNIEXPORT jboolean JNICALL Java_com_metin2_client_NativeLib_isUiAt(JNIEnv* env, jobject obj, jfloat x, jfloat y)
+{
+	std::lock_guard<std::mutex> lock(s_kTouchBlockerLock);
+	if (g_iAndroidSurfaceWidth <= 0 || g_iAndroidSurfaceHeight <= 0 || s_iTouchBlockerWidth <= 0 || s_iTouchBlockerHeight <= 0)
+		return JNI_FALSE;
+	long lx = (long)(x * s_iTouchBlockerWidth / g_iAndroidSurfaceWidth);
+	long ly = (long)(y * s_iTouchBlockerHeight / g_iAndroidSurfaceHeight);
+	for (const RECT& r : s_kTouchBlockers)
+		if (lx >= r.left && lx < r.right && ly >= r.top && ly < r.bottom)
+			return JNI_TRUE;
+	return JNI_FALSE;
 }
 
 JNIEXPORT void JNICALL Java_com_metin2_client_NativeLib_touchEvent(JNIEnv* env, jobject obj, jint action, jfloat x, jfloat y)
