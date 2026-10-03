@@ -381,6 +381,7 @@ set(SPHERE_LIB_SOURCES
 )
 
 set(MILES_LIB_SOURCES
+    MilesLib/mss_android.cpp
     MilesLib/SoundBase.cpp
     MilesLib/SoundData.cpp
     MilesLib/SoundInstance2D.cpp

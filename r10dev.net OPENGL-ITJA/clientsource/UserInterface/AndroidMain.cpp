@@ -1,4 +1,5 @@
 #include "StdAfx.h"
+#include "../MilesLib/mss.h"
 #include "PythonApplication.h"
 #include <jni.h>
 #include <unistd.h>
@@ -336,6 +337,11 @@ JNIEXPORT void JNICALL Java_com_metin2_client_NativeLib_keyEvent(JNIEnv* env, jo
 JNIEXPORT void JNICALL Java_com_metin2_client_NativeLib_touchEvent(JNIEnv* env, jobject obj, jint action, jfloat x, jfloat y)
 {
 	CMSApplication::PushTouchEvent(action, (int)x, (int)y);
+}
+
+JNIEXPORT void JNICALL Java_com_metin2_client_NativeLib_setAudioPaused(JNIEnv* env, jobject obj, jboolean paused)
+{
+	AIL_android_set_paused(paused ? 1 : 0);
 }
 
 }
