@@ -1,5 +1,6 @@
 package com.metin2.client;
 
+import android.content.Context;
 import android.os.Build;
 
 import java.io.BufferedInputStream;
@@ -11,6 +12,8 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
@@ -138,24 +141,55 @@ final class DataInstaller {
         }
     }
 
-    static void writeServerProfile(File dataDir) throws IOException {
-        String host = BuildConfig.M2_SERVER_HOST;
-        if (BuildConfig.M2_SERVER_MODE.equals("embedded"))
-            host = "127.0.0.1";
-        String ip = java.net.InetAddress.getByName(host).getHostAddress();
-        String py = "SERVER_IP = \"" + ip + "\"\n"
-                + "PORT_AUTH = " + BuildConfig.M2_AUTH_PORT + "\n"
-                + "PORT_1 = " + BuildConfig.M2_CHANNEL_PORT + "\n";
-        if (BuildConfig.M2_GAME_PORT_OFFSET != 0) {
-            try {
-                android.system.Os.setenv("M2_GAME_HOST", ip, true);
-                android.system.Os.setenv("M2_GAME_PORT_OFFSET", Integer.toString(BuildConfig.M2_GAME_PORT_OFFSET), true);
-            } catch (android.system.ErrnoException e) {
-                throw new IOException("setenv failed", e);
+    // m2profile.py feeds serverinfo.py: SERVER_IP/PORT_* for the first server, SERVERS for the login list.
+    static void writeServerProfile(Context context, File dataDir) throws IOException {
+        boolean embeddedBuild = "embedded".equals(BuildConfig.M2_SERVER_MODE);
+        List<ServerCatalog.Server> servers = new ArrayList<>();
+        boolean profileListed = embeddedBuild || BuildConfig.M2_SERVER_HOST.isEmpty();
+        for (ServerCatalog.Server s : ServerCatalog.load(context)) {
+            if (s.embedded && !embeddedBuild)
+                continue;
+            if (s.host.equals(BuildConfig.M2_SERVER_HOST) && s.authPort == BuildConfig.M2_AUTH_PORT)
+                profileListed = true;
+            servers.add(s);
+        }
+        if (!profileListed)
+            servers.add(0, new ServerCatalog.Server("Dev", BuildConfig.M2_SERVER_HOST, BuildConfig.M2_AUTH_PORT,
+                    BuildConfig.M2_CHANNEL_PORT, BuildConfig.M2_GAME_PORT_OFFSET, false));
+
+        StringBuilder list = new StringBuilder("SERVERS = [\n");
+        String firstIp = null;
+        for (ServerCatalog.Server s : servers) {
+            String ip = resolve(s.host);
+            if (firstIp == null)
+                firstIp = ip;
+            list.append("\t(\"").append(s.name).append("\", \"").append(ip).append("\", ")
+                    .append(s.authPort).append(", ").append(s.channelPort).append("),\n");
+            if (s.gamePortOffset != 0) {
+                try {
+                    android.system.Os.setenv("M2_GAME_HOST", ip, true);
+                    android.system.Os.setenv("M2_GAME_PORT_OFFSET", Integer.toString(s.gamePortOffset), true);
+                } catch (android.system.ErrnoException e) {
+                    throw new IOException("setenv failed", e);
+                }
             }
         }
+        list.append("]\n");
+        ServerCatalog.Server first = servers.get(0);
+        String py = "SERVER_IP = \"" + firstIp + "\"\n"
+                + "PORT_AUTH = " + first.authPort + "\n"
+                + "PORT_1 = " + first.channelPort + "\n"
+                + list;
         OutputStream os = new FileOutputStream(new File(dataDir, "m2profile.py"));
         os.write(py.getBytes());
         os.close();
+    }
+
+    private static String resolve(String host) {
+        try {
+            return java.net.InetAddress.getByName(host).getHostAddress();
+        } catch (java.net.UnknownHostException e) {
+            return host;
+        }
     }
 }

@@ -139,7 +139,8 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
         new Thread(new Runnable() {
             public void run() {
                 try {
-                    DataInstaller.writeServerProfile(mDataDir);
+                    ServerCatalog.refresh(getApplicationContext());
+                    DataInstaller.writeServerProfile(getApplicationContext(), mDataDir);
                 } catch (final Exception e) {
                     android.util.Log.e("Metin2Mobile", "server profile: " + e);
                 }

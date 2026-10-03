@@ -35,7 +35,7 @@ and testing on more physical phones. See the [porting diary](docs/PORTING_DIARY.
 | You want to… | Read |
 |---|---|
 | Run your own server, prepare game data, build an APK, connect a phone | [docs/SELF_HOSTING.md](docs/SELF_HOSTING.md) |
-| Build the single-file offline APK | [docs/SELF_HOSTING.md § 4.4](docs/SELF_HOSTING.md#44-fully-offline-apk-embedded-server) |
+| Build the single-file offline APK | [docs/SELF_HOSTING.md § 4.6](docs/SELF_HOSTING.md#46-fully-offline-apk-embedded-server) |
 | Understand how the port works / port to another platform | [docs/PORTING_DIARY.md](docs/PORTING_DIARY.md) |
 
 Quick version, once the toolchain, staged data and server pack are in place:
