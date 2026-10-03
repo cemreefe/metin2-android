@@ -377,6 +377,7 @@ def _RebuildGameUI(game, reopenOptions):
 	if reopenOptions:
 		interface.ToggleSystemDialog()
 		interface.dlgSystem._SystemDialog__ClickGameOptionButton()
+	game.SetFocus()
 
 
 def ApplyUIScaleLive():

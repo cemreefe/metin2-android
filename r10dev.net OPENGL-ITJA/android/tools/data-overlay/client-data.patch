@@ -152,7 +152,17 @@
  
  		self.questButtonList = []
  		self.whisperButtonList = []
-@@ -1359,6 +1365,30 @@
+@@ -964,6 +970,9 @@
+ 			if False == self.wndInventory.IsShow():
+ 				self.wndInventory.Show()
+ 				self.wndInventory.SetTop()
++				x, y = self.wndInventory.GetGlobalPosition()
++				x = max(0, min(x, wndMgr.GetScreenWidth() - self.wndInventory.GetWidth()))
++				self.wndInventory.SetPosition(x, max(0, y))
+ 			else:
+ 				self.wndInventory.OverOutItem()
+ 				self.wndInventory.Close()
+@@ -1359,6 +1368,30 @@
  			else:
  				btn.Show()
  
@@ -183,7 +193,7 @@
  	def __StartQuest(self, btn):
  		event.QuestButtonClick(btn.index)
  		self.__DestroyQuestButton(btn)
-@@ -1378,10 +1408,14 @@
+@@ -1378,10 +1411,14 @@
  	def HideAllQuestButton(self):
  		for btn in self.questButtonList:
  			btn.Hide()
