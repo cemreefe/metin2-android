@@ -331,3 +331,34 @@ DevIL, SpeedTree, Miles.
 ### Touch felt ~1 s late on login/select screens
 
 - The two-frame press delay (see touch targeting) counted frames in `RenderGame`, which only runs in the game phase. On login and select it never counted, so every press waited for the 1500 ms safety timeout. The end of every rendered frame in `Process()` now counts a frame when `RenderGame` did not. syserr also logs update/render FPS every 10 s, so phone performance can be read from crash/log uploads.
+
+### Backgrounding, legible UI, joystick and camera drag (builds 19–23)
+
+- Lifecycle: the native game thread and its network connection are static and outlive the
+  activity's surface. `surfaceDestroyed` -> `setSurface(null)`: the game thread destroys its
+  EGL window surface and keeps ticking, and Present sleeps ~33 ms instead of swapping. A new
+  surface is attached on the game thread at the next Present. Repeated `surfaceChanged` calls
+  with the same `ANativeWindow` are ignored, otherwise each resume re-created the surface 2–3 times.
+- `eglMakeCurrent(dpy, EGL_NO_SURFACE, EGL_NO_SURFACE, ctx)` fails with `EGL_BAD_MATCH` (0x3009)
+  on the emulator's driver (no surfaceless contexts). Bind a 1x1 pbuffer while detached instead,
+  which means the config needs `EGL_PBUFFER_BIT`.
+- Without a foreground service, a backgrounded game sits at oom_adj 700 and the low-memory
+  killer took it after ~30 s on a 2 GB emulator, server processes included. `GameSessionService`
+  (an ongoing "Game running. Tap to return." notification) keeps it at 50–200. Started in
+  `startGame()`, stopped when the activity finishes.
+- An obsolete activity must not stop the embedded server: `singleTask` plus a generation counter,
+  and the server stop runs only if no newer activity has started.
+- Legibility: rendering the 1024x768 logical UI stretched to 2148x1080 made text tiny and wide.
+  `CPythonSystem::FitUIToAndroidSurface()` sets logical height 600 and width = 600 * aspect, so
+  text is ~1.3x larger and square. The UI scripts already anchor to SCREEN_WIDTH/HEIGHT, so
+  login/select/game layouts followed without script edits (the server dialog overlaps the logo
+  slightly).
+- Touch model (`CPythonApplication::OnTouchEvent`): a touch that starts over a UI window acts as a
+  plain left button. On the world, a quick tap is replayed as a synthetic down/up through the
+  two-frame hover deferral (so target picking still works), a press held still ~350 ms becomes a
+  held left button (walk/attack), and a drag past a small slop becomes `CCamera::DragBy(dx, dy)`
+  (the right-mouse-drag equivalent) without moving the character.
+- Joystick (`JoystickView`): drives DPAD up/down/left/right key events, i.e. the engine's
+  arrow-key movement, so walking is camera-relative exactly as on desktop. 8 directions via
+  thresholds, with a deadzone. Native code shows it only in the game phase
+  (`AndroidSetGameControlsVisible`), and it releases its keys on pause.

@@ -260,6 +260,39 @@ adb shell cat /sdcard/Android/data/com.metin2.client/files/syserr.txt
 During development you can skip zipping and push the data once:
 `adb push ~/m2stage/. /sdcard/Android/data/com.metin2.client/files/`.
 
+### 4.4 Fully offline APK (embedded server)
+
+The `offline-bundled` profile puts the client data **and** the server inside one APK. On
+launch the app starts db (9000), auth (11000) and one game core (11011) on 127.0.0.1, then
+opens the game. No network, no PC and no adb pushes are needed after install.
+
+1. Build the server pack once. It holds configs, map data, compiled quests and SQLite seed
+   databases with the local `test` account:
+   ```bash
+   "r10dev.net OPENGL-ITJA/server/tools/make-server-pack.sh" ~/m2dev-server ~/m2dev-server-src ~/m2serverpack
+   ```
+   The server executables (`libm2db.so`, `libm2game.so`) are built by Gradle from the pinned
+   server source for each ABI. MySQL is replaced by a SQLite shim in
+   `r10dev.net OPENGL-ITJA/server/sqlite-mysql`.
+2. Build and install:
+   ```bash
+   cd "$ANDROID"
+   M2_SERVER_PACK=~/m2serverpack tools/make_bundle.sh offline-bundled 1
+   adb install -r ~/m2bundle/metin2-offline-1.apk     # emulator: add --abi x86_64
+   ```
+3. On first launch it unpacks about 2 GB of data, shows "Starting local server...", then
+   opens the game. Log in with the account from the seed databases.
+
+Notes:
+- The package is `com.metin2.client.offline`, labelled "Metin2 Offline", so it installs next
+  to an online build instead of over it.
+- Characters live in the app's internal storage and survive restarts and updates. The
+  server saves every 30 s, so a force-stop can lose up to about 30 s of progress.
+- If a server process fails to start, the app shows which one, its exit status and the end of
+  its log, plus a Retry button. Full logs are in `files/server/logs/` on external app storage.
+- While a session is running, the app shows a "Game running. Tap to return." notification.
+  That foreground service is what stops Android from killing the game in the background.
+
 ## 5. Reaching the server from a phone
 
 - **Same Wi-Fi:** set `m2.serverHost` to the server's LAN IP and make sure the
