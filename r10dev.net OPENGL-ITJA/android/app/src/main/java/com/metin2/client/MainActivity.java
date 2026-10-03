@@ -20,7 +20,9 @@ import java.io.File;
 public class MainActivity extends Activity implements SurfaceHolder.Callback {
     private static MainActivity sInstance;
     private static EmbeddedServer sServer;
-    private Thread mGameThread;
+    private static MainActivity sCurrent;
+    private static int sGeneration;
+    private static Thread sGameThread;
     private GameView mView;
     private File mDataDir;
     private float mFocusBottom = -1.0f;
@@ -32,6 +34,10 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        synchronized (MainActivity.class) {
+            sCurrent = this;
+            ++sGeneration;
+        }
 
         requestWindowFeature(Window.FEATURE_NO_TITLE);
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
@@ -66,7 +72,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
     }
 
     private void showInstaller() {
-        showStatusScreen("Retry download", new View.OnClickListener() {
+        showStatusScreen(BuildConfig.M2_DATA_BUNDLED ? "Retry" : "Retry download", new View.OnClickListener() {
             public void onClick(View v) {
                 startDownload();
             }
@@ -77,7 +83,8 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
     private void startDownload() {
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         mAction.setVisibility(View.GONE);
-        mStatus.setText("Downloading game data...");
+        final String verb = BuildConfig.M2_DATA_BUNDLED ? "Unpacking" : "Downloading";
+        mStatus.setText(verb + " game data...");
         new Thread(new Runnable() {
             public void run() {
                 try {
@@ -85,7 +92,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
                         public void onProgress(final long done, final long total) {
                             runOnUiThread(new Runnable() {
                                 public void run() {
-                                    mStatus.setText(String.format("Downloading game data... %d / %d MB", done >> 20, Math.max(total, 0) >> 20));
+                                    mStatus.setText(String.format(verb + " game data... %d / %d MB", done >> 20, Math.max(total, 0) >> 20));
                                     if (total > 0)
                                         mProgress.setProgress((int) (done * 1000 / total));
                                 }
@@ -102,7 +109,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
                     runOnUiThread(new Runnable() {
                         public void run() {
                             getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-                            mStatus.setText("Download failed: " + e.getMessage());
+                            mStatus.setText(verb + " failed: " + e.getMessage());
                             mAction.setVisibility(View.VISIBLE);
                         }
                     });
@@ -263,27 +270,38 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
 
     @Override
     public void surfaceChanged(final SurfaceHolder holder, int format, final int width, final int height) {
-        if (mGameThread != null)
+        if (sGameThread != null) {
+            NativeLib.setSurface(holder.getSurface());
             return;
+        }
         final String dataDir = mDataDir.getAbsolutePath();
-        mGameThread = new Thread(new Runnable() {
+        sGameThread = new Thread(new Runnable() {
             public void run() {
                 NativeLib.init(getAssets(), holder.getSurface(), dataDir, width, height);
-                stopEmbeddedServer();
+                if (sCurrent == MainActivity.this)
+                    stopEmbeddedServer();
             }
         }, "Metin2Game");
-        mGameThread.start();
+        sGameThread.start();
     }
 
     @Override
     public void surfaceDestroyed(SurfaceHolder holder) {
+        if (sGameThread != null)
+            NativeLib.setSurface(null);
     }
 
     @Override
     protected void onDestroy() {
-        if (isFinishing()) {
+        if (isFinishing() && sCurrent == this) {
+            sCurrent = null;
+            final int generation = sGeneration;
             new Thread(new Runnable() {
                 public void run() {
+                    synchronized (MainActivity.class) {
+                        if (generation != sGeneration)
+                            return;
+                    }
                     stopEmbeddedServer();
                 }
             }, "M2ServerStop").start();

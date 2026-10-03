@@ -6,12 +6,14 @@
     <application android:usesCleartextTraffic="true"
         android:allowBackup="true"
         android:label="${m2appLabel}"
+        android:icon="${m2appIcon}"
         android:supportsRtl="true"
         android:theme="@android:style/Theme.NoTitleBar.Fullscreen">
         <activity android:name=".MainActivity"
             android:windowSoftInputMode="adjustNothing"
             android:screenOrientation="landscape"
-            android:configChanges="orientation|keyboardHidden|screenSize"
+            android:launchMode="singleTask"
+            android:configChanges="orientation|keyboardHidden|keyboard|navigation|screenSize|screenLayout|smallestScreenSize|uiMode"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

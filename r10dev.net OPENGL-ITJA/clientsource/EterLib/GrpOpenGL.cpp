@@ -924,10 +924,13 @@ HRESULT IDirect3DDevice8::DrawIndexedPrimitiveUP(D3DPRIMITIVETYPE Type, UINT Min
 HRESULT IDirect3DDevice8::Reset(D3DPRESENT_PARAMETERS* pPresentationParameters) { return S_OK; }
 HRESULT IDirect3DDevice8::BeginScene() { return S_OK; }
 HRESULT IDirect3DDevice8::EndScene() { return S_OK; }
+#ifdef ANDROID
+extern "C" bool AndroidPresent();
+#endif
 HRESULT IDirect3DDevice8::Present(const RECT* pSourceRect, const RECT* pDestRect, HWND hDestWindowOverride, const void* pDirtyRegion) {
 #ifdef ANDROID
     static unsigned s_uFrame = 0;
-    EGLBoolean ok = eglSwapBuffers(eglGetCurrentDisplay(), eglGetCurrentSurface(EGL_DRAW));
+    EGLBoolean ok = AndroidPresent() ? EGL_TRUE : EGL_FALSE;
     static DWORD s_dwLastLog = 0;
     DWORD dwNow = timeGetTime();
     ++s_uFrame;

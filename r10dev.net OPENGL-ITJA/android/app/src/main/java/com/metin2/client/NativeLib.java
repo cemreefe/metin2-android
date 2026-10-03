@@ -8,6 +8,7 @@ public class NativeLib {
     }
 
     public static native void init(Object assetManager, Surface surface, String dataDir, int width, int height);
+    public static native void setSurface(Surface surface);
     public static native void touchEvent(int action, float x, float y);
     public static native void keyEvent(int action, int keyCode, int unicodeChar);
 

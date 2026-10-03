@@ -12,6 +12,8 @@
 #include <signal.h>
 #include <string.h>
 #include <unwind.h>
+#include <pthread.h>
+#include <time.h>
 
 #define LOG_TAG "Metin2Mobile"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
@@ -125,10 +127,23 @@ void AndroidSetKeyboardVisible(bool bVisible, float fFocusBottom)
 
 extern "C" {
 
+static EGLDisplay s_eglDisplay = EGL_NO_DISPLAY;
+static EGLConfig s_eglConfig = NULL;
+static EGLContext s_eglContext = EGL_NO_CONTEXT;
+static EGLSurface s_eglSurface = EGL_NO_SURFACE;
+
+// The Java side hands the game thread a new window (or none while backgrounded); the game
+// thread swaps it in at the next Present so the game loop and its connection keep running.
+static pthread_mutex_t s_kWindowLock = PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t s_kWindowCond = PTHREAD_COND_INITIALIZER;
+static ANativeWindow* s_pPendingWindow = NULL;
+static bool s_bWindowPending = false;
+static bool s_bGameRunning = false;
+
 static bool CreateEGLContext(ANativeWindow* pWindow)
 {
-	EGLDisplay display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
-	if (display == EGL_NO_DISPLAY || !eglInitialize(display, NULL, NULL))
+	s_eglDisplay = eglGetDisplay(EGL_DEFAULT_DISPLAY);
+	if (s_eglDisplay == EGL_NO_DISPLAY || !eglInitialize(s_eglDisplay, NULL, NULL))
 	{
 		LOGE("eglInitialize failed: 0x%x", eglGetError());
 		return false;
@@ -141,23 +156,64 @@ static bool CreateEGLContext(ANativeWindow* pWindow)
 		EGL_DEPTH_SIZE, 16,
 		EGL_NONE
 	};
-	EGLConfig config;
 	EGLint iNumConfigs = 0;
-	if (!eglChooseConfig(display, aConfigAttribs, &config, 1, &iNumConfigs) || iNumConfigs < 1)
+	if (!eglChooseConfig(s_eglDisplay, aConfigAttribs, &s_eglConfig, 1, &iNumConfigs) || iNumConfigs < 1)
 	{
 		LOGE("eglChooseConfig failed: 0x%x", eglGetError());
 		return false;
 	}
 
-	EGLSurface surface = eglCreateWindowSurface(display, config, pWindow, NULL);
+	s_eglSurface = eglCreateWindowSurface(s_eglDisplay, s_eglConfig, pWindow, NULL);
 	const EGLint aContextAttribs[] = { EGL_CONTEXT_CLIENT_VERSION, 3, EGL_NONE };
-	EGLContext context = eglCreateContext(display, config, EGL_NO_CONTEXT, aContextAttribs);
-	if (surface == EGL_NO_SURFACE || context == EGL_NO_CONTEXT || !eglMakeCurrent(display, surface, surface, context))
+	s_eglContext = eglCreateContext(s_eglDisplay, s_eglConfig, EGL_NO_CONTEXT, aContextAttribs);
+	if (s_eglSurface == EGL_NO_SURFACE || s_eglContext == EGL_NO_CONTEXT || !eglMakeCurrent(s_eglDisplay, s_eglSurface, s_eglSurface, s_eglContext))
 	{
 		LOGE("EGL surface/context setup failed: 0x%x", eglGetError());
 		return false;
 	}
 	return true;
+}
+
+static void ApplyPendingWindow()
+{
+	pthread_mutex_lock(&s_kWindowLock);
+	if (s_bWindowPending)
+	{
+		ANativeWindow* pWindow = s_pPendingWindow;
+		s_pPendingWindow = NULL;
+		s_bWindowPending = false;
+		if (s_eglSurface != EGL_NO_SURFACE)
+		{
+			eglMakeCurrent(s_eglDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, s_eglContext);
+			eglDestroySurface(s_eglDisplay, s_eglSurface);
+			s_eglSurface = EGL_NO_SURFACE;
+		}
+		if (pWindow)
+		{
+			s_eglSurface = eglCreateWindowSurface(s_eglDisplay, s_eglConfig, pWindow, NULL);
+			if (s_eglSurface == EGL_NO_SURFACE || !eglMakeCurrent(s_eglDisplay, s_eglSurface, s_eglSurface, s_eglContext))
+				LOGE("EGL surface re-attach failed: 0x%x", eglGetError());
+			else
+				LOGI("EGL surface re-attached");
+			ANativeWindow_release(pWindow);
+		}
+		else
+			LOGI("EGL surface detached; game keeps running in the background");
+		pthread_cond_broadcast(&s_kWindowCond);
+	}
+	pthread_mutex_unlock(&s_kWindowLock);
+}
+
+// Called by the D3D8 device's Present on the game thread.
+bool AndroidPresent()
+{
+	ApplyPendingWindow();
+	if (s_eglSurface == EGL_NO_SURFACE)
+	{
+		usleep(33000);
+		return true;
+	}
+	return eglSwapBuffers(s_eglDisplay, s_eglSurface) == EGL_TRUE;
 }
 
 JNIEXPORT void JNICALL Java_com_metin2_client_NativeLib_init(JNIEnv* env, jobject obj, jobject assetManager, jobject jSurface, jstring dataDir, jint width, jint height)
@@ -166,6 +222,7 @@ JNIEXPORT void JNICALL Java_com_metin2_client_NativeLib_init(JNIEnv* env, jobjec
 	if (s_bStarted)
 		return;
 	s_bStarted = true;
+	s_bGameRunning = true;
 
 	ANativeWindow* pWindow = ANativeWindow_fromSurface(env, jSurface);
 	if (!pWindow || !CreateEGLContext(pWindow))
@@ -190,7 +247,37 @@ JNIEXPORT void JNICALL Java_com_metin2_client_NativeLib_init(JNIEnv* env, jobjec
 	char* argv[] = { szProgram, NULL };
 	AndroidMain(1, argv);
 
+	pthread_mutex_lock(&s_kWindowLock);
+	s_bGameRunning = false;
+	pthread_cond_broadcast(&s_kWindowCond);
+	pthread_mutex_unlock(&s_kWindowLock);
 	LOGI("Metin2 main loop exited");
+}
+
+// Surface lifecycle from the UI thread. Detaching blocks until the game thread has stopped
+// using the old window, as surfaceDestroyed requires.
+JNIEXPORT void JNICALL Java_com_metin2_client_NativeLib_setSurface(JNIEnv* env, jobject obj, jobject jSurface)
+{
+	ANativeWindow* pWindow = jSurface ? ANativeWindow_fromSurface(env, jSurface) : NULL;
+	pthread_mutex_lock(&s_kWindowLock);
+	if (!s_bGameRunning)
+	{
+		pthread_mutex_unlock(&s_kWindowLock);
+		if (pWindow)
+			ANativeWindow_release(pWindow);
+		return;
+	}
+	if (s_pPendingWindow)
+		ANativeWindow_release(s_pPendingWindow);
+	s_pPendingWindow = pWindow;
+	s_bWindowPending = true;
+	struct timespec deadline;
+	clock_gettime(CLOCK_REALTIME, &deadline);
+	deadline.tv_sec += 3;
+	while (s_bWindowPending && s_bGameRunning)
+		if (pthread_cond_timedwait(&s_kWindowCond, &s_kWindowLock, &deadline) != 0)
+			break;
+	pthread_mutex_unlock(&s_kWindowLock);
 }
 
 JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void*)

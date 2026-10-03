@@ -18,6 +18,7 @@ NAME=$(sed -n 's/^m2.versionName=//p' "profiles/$PROFILE.properties")
 BUNDLED=$(sed -n 's/^m2.dataBundled=//p' "profiles/$PROFILE.properties")
 MODE=$(sed -n 's/^m2.serverMode=//p' "profiles/$PROFILE.properties")
 mkdir -p "$OUT"
+tools/make_icon.sh "$DATA"
 
 ZIP="$OUT/m2data-$VERSION.zip"
 SERVER_PACK=

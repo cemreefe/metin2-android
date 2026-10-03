@@ -81,6 +81,10 @@ final class EmbeddedServer {
     /** Blocks until every process accepts connections. */
     synchronized boolean start() {
         mFailure = "";
+        if (isRunning()) {
+            Log.i(TAG, "already running");
+            return true;
+        }
         try {
             if (!new File(mPack, "share/conf/game.txt").isFile()) {
                 mFailure = "server data pack missing: " + mPack;
@@ -111,6 +115,13 @@ final class EmbeddedServer {
             Log.e(TAG, "embedded server start failed", e);
             return false;
         }
+    }
+
+    private boolean isRunning() {
+        for (Node node : mNodes)
+            if (node.process == null || !isAlive(node.process))
+                return false;
+        return true;
     }
 
     /** Why the last start() failed, including the tail of the failing process's output. */
@@ -258,21 +269,40 @@ final class EmbeddedServer {
         return false;
     }
 
-    /** Processes left over from a previous app instance that was killed. */
+    /** Server processes left over from a previous start or a killed app instance. */
     private void killStale() throws InterruptedException {
-        for (Node node : mNodes) {
-            int pid = readPid(node);
-            if (pid <= 0 || !new File("/proc/" + pid + "/cmdline").exists())
-                continue;
-            String cmdline = readText(new File("/proc/" + pid + "/cmdline"));
-            if (cmdline == null || !cmdline.contains(node.exe))
-                continue;
-            Log.w(TAG, "killing stale " + node.name + " pid " + pid);
-            android.os.Process.sendSignal(pid, 15);
+        List<Integer> pids = new ArrayList<Integer>();
+        File[] procs = new File("/proc").listFiles();
+        if (procs != null) {
+            for (File proc : procs) {
+                int pid;
+                try {
+                    pid = Integer.parseInt(proc.getName());
+                } catch (NumberFormatException e) {
+                    continue;
+                }
+                String cmdline = readText(new File(proc, "cmdline"));
+                if (cmdline == null)
+                    continue;
+                int end = cmdline.indexOf('\0');
+                String exe = end < 0 ? cmdline : cmdline.substring(0, end);
+                for (Node node : mNodes) {
+                    if (exe.endsWith("/" + node.exe)) {
+                        Log.w(TAG, "killing stale " + node.exe + " pid " + pid);
+                        android.os.Process.sendSignal(pid, 15);
+                        pids.add(pid);
+                        break;
+                    }
+                }
+            }
+        }
+        for (int pid : pids) {
             for (int i = 0; i < 50 && new File("/proc/" + pid).exists(); ++i)
                 Thread.sleep(200);
             android.os.Process.killProcess(pid);
         }
+        for (Node node : mNodes)
+            node.process = null;
     }
 
     private int readPid(Node node) {

@@ -12,9 +12,12 @@ if (m2dataBundled && m2dataAssets == null)
     throw new GradleException("profile ${m2profileName} bundles client data: pass -Pm2dataAssets=<dir containing m2data.zip> (tools/make_bundle.sh does this)")
 def m2ccacheBin = ['/usr/bin/ccache', '/usr/local/bin/ccache'].find { new File(it).canExecute() }
 def m2ccache = m2ccacheBin ? ["-DCMAKE_C_COMPILER_LAUNCHER=${m2ccacheBin}", "-DCMAKE_CXX_COMPILER_LAUNCHER=${m2ccacheBin}"] : []
+def m2iconDir = file('build/generated-icon')
+def m2icon = new File(m2iconDir, 'mipmap-mdpi/ic_launcher.png').isFile() ? '@mipmap/ic_launcher' : '@android:drawable/sym_def_app_icon'
 def m2buildNumber = (project.hasProperty('m2build') ? project.property('m2build') : '1') as int
 
 android {
+    sourceSets.main.res.srcDirs += m2iconDir
     namespace "com.metin2.client"
     compileSdkVersion 33
     buildToolsVersion "33.0.1"
@@ -23,7 +26,7 @@ android {
     defaultConfig {
         applicationId "com.metin2.client"
         applicationIdSuffix m2('applicationIdSuffix')
-        manifestPlaceholders = [m2appLabel: m2('appLabel', 'Metin2 Mobile')]
+        manifestPlaceholders = [m2appLabel: m2('appLabel', 'Metin2 Mobile'), m2appIcon: m2icon]
         minSdkVersion 21
         targetSdkVersion 33
         versionCode m2buildNumber
