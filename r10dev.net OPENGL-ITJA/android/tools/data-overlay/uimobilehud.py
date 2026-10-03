@@ -3,7 +3,7 @@
 # exists (Android). The "HUD" game option switches between it and the desktop taskbar.
 import math
 import app, item, net, player, skill, wndMgr
-import emotion, ui
+import emotion, mouseModule, ui
 
 ART = "mobile/"
 CONFIG = "mobilehud.cfg"
@@ -302,7 +302,12 @@ class MobileHud(ui.Window):
 	def __UseSlot(self, index):
 		if app.IsRTL():
 			index = 3 - index if index < 4 else 11 - index
-		return lambda: player.RequestUseLocalQuickSlot(index)
+		def use():
+			if mouseModule.mouseController.isAttached():
+				self.game.interface.wndTaskBar.AddQuickSlot(index)
+			else:
+				player.RequestUseLocalQuickSlot(index)
+		return use
 
 	def __ToggleWheel(self):
 		self.wheel.Toggle()
