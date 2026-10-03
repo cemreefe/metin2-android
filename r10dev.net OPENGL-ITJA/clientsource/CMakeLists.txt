@@ -16,7 +16,6 @@ include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/android_compat
     ${CMAKE_CURRENT_SOURCE_DIR}/../Extern/include
-    ${CMAKE_CURRENT_SOURCE_DIR}/../Extern/include/granny2
     ${CMAKE_CURRENT_SOURCE_DIR}/../Extern/include/Python2
     ${CMAKE_CURRENT_SOURCE_DIR}/../common
     ${CMAKE_CURRENT_SOURCE_DIR}/EterBase
@@ -41,8 +40,6 @@ set(ETER_BASE_SOURCES
     android_compat/win_stub.cpp
     EterBase/Poly/Poly.cpp
     EterBase/Poly/SymTable.cpp
-    android_compat/granny_rt.cpp
-    android_compat/opengr2/oodle1.c
     android_compat/devil_stub.cpp
     android_compat/gdi_font.cpp
     android_compat/speedtree_stub.cpp
@@ -430,6 +427,11 @@ else()
     set(C_WEB_BROWSER_SOURCES "")
 endif()
 
+set(OPENGR2NDMA_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../third_party/OpenGr2ndma CACHE PATH "OpenGr2ndma checkout")
+set(OPENGR2NDMA_BUILD_TOOLS OFF CACHE BOOL "" FORCE)
+set(OPENGR2NDMA_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+add_subdirectory(${OPENGR2NDMA_DIR} ${CMAKE_CURRENT_BINARY_DIR}/opengr2ndma)
+
 link_directories(${CMAKE_CURRENT_SOURCE_DIR}/../Extern/lib/android/${ANDROID_ABI})
 add_library(metin2_mobile SHARED
     ${USER_INTERFACE_SOURCES}
@@ -472,6 +474,7 @@ if(ANDROID)
 endif()
 
 target_link_libraries(metin2_mobile
+    OpenGr2ndma::opengr2ndma
     ${log-lib}
     ${android-lib}
     ${gles3-lib}
