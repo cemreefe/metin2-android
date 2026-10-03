@@ -1,0 +1,38 @@
+--- a/system.py
++++ b/system.py
+@@ -292,5 +292,6 @@
+ 
+ loginMark = "-cs"
+ 
++import m2compat
+ RunMainScript("prototype.py")
+ 
+--- a/intrologin.py
++++ b/intrologin.py
+@@ -200,7 +200,7 @@
+ 			dbg.TraceError("SelectCharacterWindow.Open - __LoadScript Error")
+ 			return
+ 
+-		self.__LoadLoginInfo("loginInfo.xml")
++		self.__LoadLoginInfo("loginInfo.py")
+ 		
+ 		if app.loggined:
+ 			self.loginFailureFuncDict = {
+--- a/serverinfo.py
++++ b/serverinfo.py
+@@ -13,6 +13,15 @@
+ PORT_AUTH			= 11000
+ PORT_MARK			= 11011
+ 
++try:
++	import m2profile
++	SERVER_IP = m2profile.SERVER_IP
++	PORT_AUTH = m2profile.PORT_AUTH
++	PORT_1 = m2profile.PORT_1
++	PORT_MARK = m2profile.PORT_1
++except ImportError:
++	pass
++
+ STATE_NONE = "..."
+ 
+ STATE_DICT = {

@@ -1,0 +1,48 @@
+diff --git a/src/libsql/AsyncSQL.cpp b/src/libsql/AsyncSQL.cpp
+index 184703b..9d1d1a4 100644
+--- a/src/libsql/AsyncSQL.cpp
++++ b/src/libsql/AsyncSQL.cpp
+@@ -46,6 +46,15 @@ bool CAsyncSQL::QueryLocaleSet()
+ 		return true;
+ 	}
+ 
++	for (int i = 0; i < 1000 && !IsConnected(); ++i)
++		std::this_thread::sleep_for(std::chrono::milliseconds(10));
++
++	if (!IsConnected())
++	{
++		sys_err("QueryLocaleSet: not connected");
++		return false;
++	}
++
+ 	if (mysql_set_character_set(&m_hDB, m_stLocale.c_str()))
+ 	{
+ 		sys_err("cannot set locale %s by 'mysql_set_character_set', errno %u %s",
+diff --git a/src/libthecore/fdwatch.cpp b/src/libthecore/fdwatch.cpp
+index 0c618d8..871c674 100644
+--- a/src/libthecore/fdwatch.cpp
++++ b/src/libthecore/fdwatch.cpp
+@@ -359,16 +359,21 @@ int fdwatch(LPFDWATCH fdw, struct timeval *timeout)
+     fdw->working_rfd_set = fdw->rfd_set;
+     fdw->working_wfd_set = fdw->wfd_set;
+ 
++    int max_fd = -1;
++    for (i = 0; i < fdw->nselect_fds; ++i)
++	if ((int) fdw->select_fds[i] > max_fd)
++	    max_fd = (int) fdw->select_fds[i];
++
+     if (!timeout)
+     {
+ 	tv.tv_sec = 0;
+ 	tv.tv_usec = 0;
+-	r = select(0, &fdw->working_rfd_set, &fdw->working_wfd_set, (fd_set*) 0, &tv);
++	r = select(max_fd + 1, &fdw->working_rfd_set, &fdw->working_wfd_set, (fd_set*) 0, &tv);
+     }
+     else
+     {
+ 	tv = *timeout;
+-	r = select(0, &fdw->working_rfd_set, &fdw->working_wfd_set, (fd_set*) 0, &tv);
++	r = select(max_fd + 1, &fdw->working_rfd_set, &fdw->working_wfd_set, (fd_set*) 0, &tv);
+     }
+ 
+     if (r == -1)
