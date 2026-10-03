@@ -1,8 +1,8 @@
 {
-  "_comment": "Server list shown on the login screen, in order. Edit this file to add a server; installed apps pick up the copy on main at their next launch. Offline is the server embedded in the app (only listed in builds that ship it).",
-  "version": 1,
+  "_comment": "Server list shown on the login screen, in order. Edit this file to add a server; installed apps pick up the copy on main at their next launch. Single Player is the server embedded in the app (only listed in builds that ship it).",
+  "version": 2,
   "servers": [
-    { "name": "Offline", "embedded": true },
+    { "name": "Single Player", "embedded": true },
     {
       "name": "Istanbul",
       "_comment": "PLACEHOLDER: temporary bore.pub tunnel to the dev VM; works only while that VM is up. Replace with the persistent server.",

@@ -224,7 +224,7 @@ float CPythonSystem::GetMusicVolume()
 	return m_Config.music_volume;
 }
 
-int CPythonSystem::GetSoundVolume()
+float CPythonSystem::GetSoundVolume()
 {
 	return m_Config.voice_volume;
 }
@@ -236,7 +236,7 @@ void CPythonSystem::SetMusicVolume(float fVolume)
 
 void CPythonSystem::SetSoundVolumef(float fVolume)
 {
-	m_Config.voice_volume = int(5 * fVolume);
+	m_Config.voice_volume = fMAX(0.0f, fMIN(1.0f, fVolume));
 }
 
 int CPythonSystem::GetDistance()
@@ -327,7 +327,7 @@ void CPythonSystem::SetDefaultConfig()
 
 	m_Config.gamma = 3;
 	m_Config.music_volume = 1.0f;
-	m_Config.voice_volume = 5;
+	m_Config.voice_volume = 1.0f;
 
 	m_Config.bDecompressDDS = 0;
 	m_Config.bSoftwareTiling = 0;
@@ -479,7 +479,12 @@ bool CPythonSystem::LoadConfig()
 			} else
 				m_Config.music_volume = atof(value);
 		} else if (!stricmp(command, "VOICE_VOLUME"))
-			m_Config.voice_volume = (char)atoi(value);
+		{
+			if (strchr(value, '.') == 0) // legacy 0-5 grade
+				m_Config.voice_volume = atoi(value) / 5.0f;
+			else
+				m_Config.voice_volume = atof(value);
+		}
 		else if (!stricmp(command, "GAMMA"))
 			m_Config.gamma = atoi(value);
 		else if (!stricmp(command, "IS_SAVE_ID"))
@@ -572,7 +577,7 @@ bool CPythonSystem::SaveConfig()
 		"OBJECT_CULLING				%d\n"
 		"VISIBILITY					%d\n"
 		"MUSIC_VOLUME				%.3f\n"
-		"VOICE_VOLUME				%d\n"
+		"VOICE_VOLUME				%.3f\n"
 		"GAMMA						%d\n"
 		"IS_SAVE_ID					%d\n"
 		"SAVE_ID					%s\n"
@@ -722,7 +727,7 @@ void CPythonSystem::ChangeSystem()
 	else
 		fVoiceVolume = (float)pow(10.0f, (-1.0f + (float)m_Config.voice_volume / 5.0f));
 	*/
-	rkSndMgr.SetSoundVolumeGrade(m_Config.voice_volume);
+	rkSndMgr.SetSoundVolumeRatio(m_Config.voice_volume);
 }
 
 void CPythonSystem::Clear()

@@ -816,6 +816,16 @@ BOOL CSlotWindow::OnMouseLeftButtonDown()
 
 	if (pSlot->isItem && !(pSlot->dwState & SLOT_STATE_LOCK))
 	{
+#ifdef __ANDROID__
+		// Touch has no hover: a tap shows the tooltip, holding picks the item up.
+		if (!UI::CWindowManager::Instance().IsAttaching())
+		{
+			m_dwHoldSlotNumber = pSlot->dwSlotNumber;
+			m_dwHoldStartTime = ELTimer_GetMSec();
+			OnOverInItem(pSlot->dwSlotNumber);
+			return TRUE;
+		}
+#endif
 		OnSelectItemSlot(pSlot->dwSlotNumber);
 	}
 	else
@@ -828,6 +838,12 @@ BOOL CSlotWindow::OnMouseLeftButtonDown()
 
 BOOL CSlotWindow::OnMouseLeftButtonUp()
 {
+	if (m_dwHoldSlotNumber != SLOT_NUMBER_NONE)
+	{
+		m_dwHoldSlotNumber = SLOT_NUMBER_NONE;
+		return TRUE;
+	}
+
 	if (UI::CWindowManager::Instance().IsAttaching())
 		if (UI::CWindowManager::Instance().IsDragging())
 			if (IsIn())
@@ -986,6 +1002,22 @@ void CSlotWindow::OnPressedSlotButton(DWORD dwType, DWORD dwSlotNumber, BOOL isL
 
 void CSlotWindow::OnUpdate()
 {
+	if (m_dwHoldSlotNumber != SLOT_NUMBER_NONE)
+	{
+		const DWORD c_dwHoldMs = 400;
+		TSlot* pSlot;
+		if (!IsIn() || !GetPickedSlotPointer(&pSlot) || pSlot->dwSlotNumber != m_dwHoldSlotNumber)
+		{
+			m_dwHoldSlotNumber = SLOT_NUMBER_NONE;
+		}
+		else if (ELTimer_GetMSec() - m_dwHoldStartTime >= c_dwHoldMs)
+		{
+			m_dwHoldSlotNumber = SLOT_NUMBER_NONE;
+			if (pSlot->isItem && !(pSlot->dwState & SLOT_STATE_LOCK))
+				OnSelectItemSlot(pSlot->dwSlotNumber);
+		}
+	}
+
 	for (std::deque<DWORD>::iterator itor = m_ReserveDestroyEffectDeque.begin(); itor != m_ReserveDestroyEffectDeque.end(); ++itor)
 	{
 		DWORD dwSlotIndex = *itor;
@@ -1560,6 +1592,8 @@ void CSlotWindow::__Initialize()
 	m_dwSlotType = 0;
 	m_dwSlotStyle = SLOT_STYLE_PICK_UP;
 	m_dwToolTipSlotNumber = SLOT_NUMBER_NONE;
+	m_dwHoldSlotNumber = SLOT_NUMBER_NONE;
+	m_dwHoldStartTime = 0;
 
 	m_isUseMode = FALSE;
 	m_isUsableItem = FALSE;

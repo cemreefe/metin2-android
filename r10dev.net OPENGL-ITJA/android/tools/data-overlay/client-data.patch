@@ -119,3 +119,91 @@
  	def __ClickRadioButton(self, buttonList, buttonIndex):
  		try:
  			selButton=buttonList[buttonIndex]
+--- a/interfacemodule.py
++++ b/interfacemodule.py
+@@ -54,6 +54,7 @@
+ 		systemSetting.SetInterfaceHandler(self)
+ 		self.windowOpenPosition = 0
+ 		self.dlgWhisperWithoutTarget = None
++		self.btnQuestDismiss = None
+ 		self.inputDialog = None
+ 		self.tipBoard = None
+ 		self.bigBoard = None
+@@ -303,6 +304,7 @@
+ 		self.whisperButtonList = []
+ 		self.whisperDialogDict = {}
+ 		self.privateShopAdvertisementBoardDict = {}
++		self.__MakeQuestDismissButton()
+ 
+ 		self.wndMessenger.InitializeHandler()
+ 
+@@ -511,6 +513,10 @@
+ 		del self.tipBoard
+ 		del self.bigBoard
+ 		del self.wndItemSelect
++		if self.btnQuestDismiss:
++			self.btnQuestDismiss.SetEvent(0)
++			self.btnQuestDismiss.Hide()
++			self.btnQuestDismiss = None
+ 
+ 		self.questButtonList = []
+ 		self.whisperButtonList = []
+@@ -1359,6 +1365,30 @@
+ 			else:
+ 				btn.Show()
+ 
++		if self.btnQuestDismiss:
++			self.btnQuestDismiss.SetPosition(xPos, yPos - 26)
++			if len(self.questButtonList) >= 2 and not IsQBHide:
++				self.btnQuestDismiss.Show()
++			else:
++				self.btnQuestDismiss.Hide()
++
++	def __MakeQuestDismissButton(self):
++		btn = ui.Button()
++		btn.SetUpVisual("d:/ymir work/ui/public/middle_button_01.sub")
++		btn.SetOverVisual("d:/ymir work/ui/public/middle_button_02.sub")
++		btn.SetDownVisual("d:/ymir work/ui/public/middle_button_03.sub")
++		btn.SetText("Dismiss all")
++		btn.SetEvent(ui.__mem_func__(self.__DismissAllQuestButtons))
++		btn.Hide()
++		self.btnQuestDismiss = btn
++
++	def __DismissAllQuestButtons(self):
++		for btn in self.questButtonList:
++			btn.SetEvent(0)
++			btn.Hide()
++		self.questButtonList = []
++		self.__ArrangeQuestButton()
++
+ 	def __StartQuest(self, btn):
+ 		event.QuestButtonClick(btn.index)
+ 		self.__DestroyQuestButton(btn)
+@@ -1378,10 +1408,14 @@
+ 	def HideAllQuestButton(self):
+ 		for btn in self.questButtonList:
+ 			btn.Hide()
++		if self.btnQuestDismiss:
++			self.btnQuestDismiss.Hide()
+ 
+ 	def ShowAllQuestButton(self):
+ 		for btn in self.questButtonList:
+ 			btn.Show()
++		if self.btnQuestDismiss and len(self.questButtonList) >= 2:
++			self.btnQuestDismiss.Show()
+ 	#####################################################################################
+ 
+ 	#####################################################################################
+--- a/metin2.cfg
++++ b/metin2.cfg
+@@ -5,8 +5,8 @@
+ SOFTWARE_CURSOR			0
+ OBJECT_CULLING				1
+ VISIBILITY					3
+-MUSIC_VOLUME				0.000
+-VOICE_VOLUME				0
++MUSIC_VOLUME				0.500
++VOICE_VOLUME				1.000
+ GAMMA						1
+ IS_SAVE_ID					0
+ SAVE_ID					0

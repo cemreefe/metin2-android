@@ -59,7 +59,7 @@ public:
 		int				iShadowLevel;
 
 		FLOAT			music_volume;
-		BYTE			voice_volume;
+		FLOAT			voice_volume;
 
 		int				gamma;
 
@@ -158,7 +158,7 @@ public:
 
 	// Sound
 	float							GetMusicVolume();
-	int								GetSoundVolume();
+	float							GetSoundVolume();
 	void							SetMusicVolume(float fVolume);
 	void							SetSoundVolumef(float fVolume);
 
