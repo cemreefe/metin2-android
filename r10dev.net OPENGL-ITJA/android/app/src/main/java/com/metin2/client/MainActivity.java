@@ -24,6 +24,8 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
     private static int sGeneration;
     private static Thread sGameThread;
     private GameView mView;
+    private JoystickView mJoystick;
+    private static boolean sGameControlsVisible;
     private File mDataDir;
     private float mFocusBottom = -1.0f;
     private int mImeHeight;
@@ -180,7 +182,16 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
     private void startGame() {
         mView = new GameView(MainActivity.this);
         mView.getHolder().addCallback(MainActivity.this);
-        setContentView(mView);
+        android.widget.FrameLayout root = new android.widget.FrameLayout(MainActivity.this);
+        root.addView(mView);
+        mJoystick = new JoystickView(MainActivity.this);
+        int stick = (int) (getResources().getDisplayMetrics().density * 140);
+        android.widget.FrameLayout.LayoutParams stickParams = new android.widget.FrameLayout.LayoutParams(stick, stick, Gravity.BOTTOM | Gravity.START);
+        stickParams.leftMargin = stick / 3;
+        stickParams.bottomMargin = stick / 2;
+        root.addView(mJoystick, stickParams);
+        mJoystick.setVisibility(sGameControlsVisible ? View.VISIBLE : View.GONE);
+        setContentView(root);
         mView.requestFocus();
         mView.getViewTreeObserver().addOnGlobalLayoutListener(new android.view.ViewTreeObserver.OnGlobalLayoutListener() {
             public void onGlobalLayout() {
@@ -196,6 +207,22 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
                 }
             });
         }
+    }
+
+    static void setGameControlsVisible(final boolean visible) {
+        sGameControlsVisible = visible;
+        final MainActivity activity = sInstance;
+        if (activity == null)
+            return;
+        activity.runOnUiThread(new Runnable() {
+            public void run() {
+                if (activity.mJoystick == null)
+                    return;
+                if (!visible)
+                    activity.mJoystick.release();
+                activity.mJoystick.setVisibility(visible ? View.VISIBLE : View.GONE);
+            }
+        });
     }
 
     static void setKeyboardVisible(final boolean visible, final float focusBottom) {
@@ -256,6 +283,13 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
         if (event.getAction() == KeyEvent.ACTION_DOWN || event.getAction() == KeyEvent.ACTION_UP)
             NativeLib.keyEvent(event.getAction(), keyCode, event.getUnicodeChar());
         return true;
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        if (mJoystick != null)
+            mJoystick.release();
     }
 
     @Override

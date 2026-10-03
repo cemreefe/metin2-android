@@ -82,7 +82,7 @@ bool CMSApplication::MessageProcess()
 		if (s_touchQueue.empty())
 			return true;
 		ev = s_touchQueue.front();
-		bool bPress = !ev.key && ev.action == 0;
+		bool bPress = !ev.key && (ev.action == 0 || ev.action == TOUCH_SYNTHETIC_DOWN);
 		if (bPress && !s_bPressHovered)
 		{
 			s_bPressHovered = true;

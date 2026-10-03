@@ -284,27 +284,14 @@ public:
 	void OnMouseLeftButtonDownPublic(int x, int y) { OnMouseLeftButtonDown(x, y); }
 	void OnMouseLeftButtonUpPublic(int x, int y) { OnMouseLeftButtonUp(x, y); }
 	void OnAndroidKeyEvent(int action, int keyCode, int unicodeChar) override;
-	void OnTouchEvent(int action, int x, int y) override
-	{
-		extern int g_iAndroidSurfaceWidth;
-		extern int g_iAndroidSurfaceHeight;
-		if (g_iAndroidSurfaceWidth > 0 && g_iAndroidSurfaceHeight > 0 && m_dwWidth && m_dwHeight)
-		{
-			x = x * (int)m_dwWidth / g_iAndroidSurfaceWidth;
-			y = y * (int)m_dwHeight / g_iAndroidSurfaceHeight;
-		}
-		extern volatile int g_iAndroidCursorX;
-		extern volatile int g_iAndroidCursorY;
-		g_iAndroidCursorX = x;
-		g_iAndroidCursorY = y;
-		OnMouseMove(x, y);
-		if (action == 0)
-			OnMouseLeftButtonDown(x, y);
-		else if (action == 1)
-			OnMouseLeftButtonUp(x, y);
-		else if (action == 2)
-			OnMouseMove(x, y);
-	}
+	void OnTouchEvent(int action, int x, int y) override;
+	void OnAndroidFrame();
+
+	enum ETouchMode { TOUCH_NONE, TOUCH_UI, TOUCH_WORLD_PENDING, TOUCH_WORLD_HOLD, TOUCH_CAMERA };
+	ETouchMode m_eTouchMode = TOUCH_NONE;
+	int m_iTouchStartX = 0, m_iTouchStartY = 0, m_iTouchLastX = 0, m_iTouchLastY = 0;
+	DWORD m_dwTouchStartTime = 0;
+	bool m_bGameControlsVisible = false;
 #endif
 
 protected:

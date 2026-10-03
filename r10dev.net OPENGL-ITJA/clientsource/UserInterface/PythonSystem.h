@@ -93,6 +93,9 @@ public:
 
 	// Config
 	void							SetDefaultConfig();
+#ifdef __ANDROID__
+	void							FitUIToAndroidSurface();
+#endif
 	bool							LoadConfig();
 	bool							SaveConfig();
 	void							ApplyConfig();

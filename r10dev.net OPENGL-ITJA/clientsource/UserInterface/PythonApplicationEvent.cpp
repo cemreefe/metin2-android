@@ -1,6 +1,7 @@
 #include "StdAfx.h"
 #include "PythonApplication.h"
 #include "../EterLib/Camera.h"
+#include "../EterPythonLib/PythonWindow.h"
 
 void CPythonApplication::OnCameraUpdate()
 {
@@ -320,4 +321,121 @@ void CPythonApplication::OnAndroidKeyEvent(int action, int keyCode, int unicodeC
 	if (iDIK)
 		KeyDown(iDIK);
 }
+
+void AndroidSetGameControlsVisible(bool bVisible);
+
+namespace
+{
+	const DWORD c_dwTouchHoldMs = 350;
+
+	bool IsTouchOnWorld()
+	{
+		if (!CPythonBackground::Instance().IsMapReady())
+			return false;
+		UI::CWindow* pWindow = UI::CWindowManager::Instance().GetPointWindow();
+		return pWindow && 0 == strcmp(pWindow->GetName(), "game");
+	}
+}
+
+// Touches on UI windows behave like the left mouse button. On the world, a quick tap is a
+// click, holding still is a held click (walk/attack), and dragging rotates the camera like
+// the right mouse button does on desktop.
+void CPythonApplication::OnTouchEvent(int action, int x, int y)
+{
+	extern int g_iAndroidSurfaceWidth;
+	extern int g_iAndroidSurfaceHeight;
+	if (g_iAndroidSurfaceWidth > 0 && g_iAndroidSurfaceHeight > 0 && m_dwWidth && m_dwHeight)
+	{
+		x = x * (int)m_dwWidth / g_iAndroidSurfaceWidth;
+		y = y * (int)m_dwHeight / g_iAndroidSurfaceHeight;
+	}
+	extern volatile int g_iAndroidCursorX;
+	extern volatile int g_iAndroidCursorY;
+	g_iAndroidCursorX = x;
+	g_iAndroidCursorY = y;
+
+	if (action == TOUCH_SYNTHETIC_DOWN)
+	{
+		OnMouseMove(x, y);
+		OnMouseLeftButtonDown(x, y);
+		return;
+	}
+	if (action == TOUCH_SYNTHETIC_UP)
+	{
+		OnMouseMove(x, y);
+		OnMouseLeftButtonUp(x, y);
+		return;
+	}
+
+	const int iSlop = (int)m_dwHeight / 40 + 1;
+	switch (action)
+	{
+	case 0:
+		OnMouseMove(x, y);
+		m_iTouchStartX = m_iTouchLastX = x;
+		m_iTouchStartY = m_iTouchLastY = y;
+		m_dwTouchStartTime = ELTimer_GetMSec();
+		if (IsTouchOnWorld())
+		{
+			m_eTouchMode = TOUCH_WORLD_PENDING;
+			return;
+		}
+		m_eTouchMode = TOUCH_UI;
+		OnMouseLeftButtonDown(x, y);
+		return;
+
+	case 2:
+		if (m_eTouchMode == TOUCH_WORLD_PENDING && (abs(x - m_iTouchStartX) > iSlop || abs(y - m_iTouchStartY) > iSlop))
+			m_eTouchMode = TOUCH_CAMERA;
+		if (m_eTouchMode == TOUCH_CAMERA)
+		{
+			CCamera* pkCmrCur = CCameraManager::Instance().GetCurrentCamera();
+			if (pkCmrCur)
+				pkCmrCur->DragBy(x - m_iTouchLastX, y - m_iTouchLastY);
+			m_iTouchLastX = x;
+			m_iTouchLastY = y;
+			return;
+		}
+		if (m_eTouchMode == TOUCH_WORLD_PENDING)
+			return;
+		OnMouseMove(x, y);
+		return;
+
+	case 1:
+	case 3:
+	{
+		ETouchMode eMode = m_eTouchMode;
+		m_eTouchMode = TOUCH_NONE;
+		if (eMode == TOUCH_WORLD_PENDING && action == 1)
+		{
+			PushTouchEvent(TOUCH_SYNTHETIC_DOWN, m_iTouchStartX * g_iAndroidSurfaceWidth / (int)m_dwWidth, m_iTouchStartY * g_iAndroidSurfaceHeight / (int)m_dwHeight);
+			PushTouchEvent(TOUCH_SYNTHETIC_UP, m_iTouchStartX * g_iAndroidSurfaceWidth / (int)m_dwWidth, m_iTouchStartY * g_iAndroidSurfaceHeight / (int)m_dwHeight);
+			return;
+		}
+		if (eMode == TOUCH_CAMERA || eMode == TOUCH_WORLD_PENDING)
+			return;
+		OnMouseMove(x, y);
+		OnMouseLeftButtonUp(x, y);
+		return;
+	}
+	}
+}
+
+void CPythonApplication::OnAndroidFrame()
+{
+	if (m_eTouchMode == TOUCH_WORLD_PENDING && ELTimer_GetMSec() - m_dwTouchStartTime >= c_dwTouchHoldMs)
+	{
+		m_eTouchMode = TOUCH_WORLD_HOLD;
+		OnMouseMove(m_iTouchStartX, m_iTouchStartY);
+		OnMouseLeftButtonDown(m_iTouchStartX, m_iTouchStartY);
+	}
+
+	bool bVisible = CPythonBackground::Instance().IsMapReady() && CPythonPlayer::Instance().GetMainCharacterIndex() != 0;
+	if (bVisible != m_bGameControlsVisible)
+	{
+		m_bGameControlsVisible = bVisible;
+		AndroidSetGameControlsVisible(bVisible);
+	}
+}
 #endif
+

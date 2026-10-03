@@ -882,6 +882,7 @@ bool CPythonApplication::Process()
 
 #ifdef __ANDROID__
 				CMSApplication::AndroidEndFrame();
+				OnAndroidFrame();
 #endif
 				++s_dwRenderFrameCount;
 			}

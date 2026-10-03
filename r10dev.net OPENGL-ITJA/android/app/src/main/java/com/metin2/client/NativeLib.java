@@ -15,4 +15,8 @@ public class NativeLib {
     static void setKeyboardVisible(boolean visible, float focusBottom) {
         MainActivity.setKeyboardVisible(visible, focusBottom);
     }
+
+    static void setGameControlsVisible(boolean visible) {
+        MainActivity.setGameControlsVisible(visible);
+    }
 }

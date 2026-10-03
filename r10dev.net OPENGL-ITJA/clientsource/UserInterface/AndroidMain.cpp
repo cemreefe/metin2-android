@@ -113,6 +113,17 @@ static void InstallCrashHandler()
 }
 static jclass s_jNativeLib = NULL;
 static jmethodID s_jSetKeyboardVisible = NULL;
+static jmethodID s_jSetGameControlsVisible = NULL;
+
+void AndroidSetGameControlsVisible(bool bVisible)
+{
+	if (!s_pJavaVM || !s_jSetGameControlsVisible)
+		return;
+	JNIEnv* env = NULL;
+	if (s_pJavaVM->GetEnv((void**)&env, JNI_VERSION_1_6) != JNI_OK || !env)
+		return;
+	env->CallStaticVoidMethod(s_jNativeLib, s_jSetGameControlsVisible, (jboolean)bVisible);
+}
 
 void AndroidSetKeyboardVisible(bool bVisible, float fFocusBottom)
 {
@@ -137,6 +148,7 @@ static EGLSurface s_eglSurface = EGL_NO_SURFACE;
 static pthread_mutex_t s_kWindowLock = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t s_kWindowCond = PTHREAD_COND_INITIALIZER;
 static ANativeWindow* s_pPendingWindow = NULL;
+static ANativeWindow* s_pCurrentWindow = NULL;
 static bool s_bWindowPending = false;
 static bool s_bGameRunning = false;
 
@@ -182,11 +194,23 @@ static void ApplyPendingWindow()
 		ANativeWindow* pWindow = s_pPendingWindow;
 		s_pPendingWindow = NULL;
 		s_bWindowPending = false;
+		if (pWindow && pWindow == s_pCurrentWindow && s_eglSurface != EGL_NO_SURFACE)
+		{
+			ANativeWindow_release(pWindow);
+			pthread_cond_broadcast(&s_kWindowCond);
+			pthread_mutex_unlock(&s_kWindowLock);
+			return;
+		}
 		if (s_eglSurface != EGL_NO_SURFACE)
 		{
 			eglMakeCurrent(s_eglDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, s_eglContext);
 			eglDestroySurface(s_eglDisplay, s_eglSurface);
 			s_eglSurface = EGL_NO_SURFACE;
+		}
+		if (s_pCurrentWindow)
+		{
+			ANativeWindow_release(s_pCurrentWindow);
+			s_pCurrentWindow = NULL;
 		}
 		if (pWindow)
 		{
@@ -195,7 +219,7 @@ static void ApplyPendingWindow()
 				LOGE("EGL surface re-attach failed: 0x%x", eglGetError());
 			else
 				LOGI("EGL surface re-attached");
-			ANativeWindow_release(pWindow);
+			s_pCurrentWindow = pWindow;
 		}
 		else
 			LOGI("EGL surface detached; game keeps running in the background");
@@ -227,6 +251,7 @@ JNIEXPORT void JNICALL Java_com_metin2_client_NativeLib_init(JNIEnv* env, jobjec
 	ANativeWindow* pWindow = ANativeWindow_fromSurface(env, jSurface);
 	if (!pWindow || !CreateEGLContext(pWindow))
 		return;
+	s_pCurrentWindow = pWindow;
 
 	g_iAndroidSurfaceWidth = width;
 	g_iAndroidSurfaceHeight = height;
@@ -291,6 +316,7 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void*)
 	{
 		s_jNativeLib = (jclass)env->NewGlobalRef(cls);
 		s_jSetKeyboardVisible = env->GetStaticMethodID(s_jNativeLib, "setKeyboardVisible", "(ZF)V");
+		s_jSetGameControlsVisible = env->GetStaticMethodID(s_jNativeLib, "setGameControlsVisible", "(Z)V");
 	}
 	return JNI_VERSION_1_6;
 }

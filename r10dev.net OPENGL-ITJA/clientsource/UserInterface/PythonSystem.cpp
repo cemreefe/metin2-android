@@ -289,6 +289,24 @@ void CPythonSystem::SetConfig(TConfig* pNewConfig)
 	m_Config = *pNewConfig;
 }
 
+#ifdef __ANDROID__
+// The UI is laid out at a logical resolution and stretched to the surface. Keeping the
+// logical height at the engine's minimum (600) makes text and widgets as large as the
+// layouts allow, and matching the surface aspect ratio keeps glyphs from stretching.
+void CPythonSystem::FitUIToAndroidSurface()
+{
+	extern int g_iAndroidSurfaceWidth;
+	extern int g_iAndroidSurfaceHeight;
+	const int c_iUIHeight = 600;
+	if (g_iAndroidSurfaceWidth <= 0 || g_iAndroidSurfaceHeight <= 0)
+		return;
+	m_Config.height = c_iUIHeight;
+	m_Config.width = (c_iUIHeight * g_iAndroidSurfaceWidth + g_iAndroidSurfaceHeight / 2) / g_iAndroidSurfaceHeight;
+	if (m_Config.width < 800)
+		m_Config.width = 800;
+}
+#endif
+
 void CPythonSystem::SetDefaultConfig()
 {
 	memset(&m_Config, 0, sizeof(m_Config));
@@ -721,6 +739,10 @@ CPythonSystem::CPythonSystem()
 	SetDefaultConfig();
 
 	LoadConfig();
+
+#ifdef __ANDROID__
+	FitUIToAndroidSurface();
+#endif
 
 	ChangeSystem();
 
