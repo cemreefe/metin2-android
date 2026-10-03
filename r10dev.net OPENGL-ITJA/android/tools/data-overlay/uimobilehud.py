@@ -3,7 +3,7 @@
 # exists (Android). The "HUD" game option switches between it and the desktop taskbar.
 import math
 import app, item, net, player, skill, wndMgr
-import emotion, mouseModule, ui
+import emotion, mouseModule, ui, uiQuest
 
 ART = "mobile/"
 CONFIG = "mobilehud.cfg"
@@ -335,11 +335,21 @@ def _RebuildGameUI(game, reopenOptions):
 		game.mobileHud.Destroy()
 		game.mobileHud = None
 	mouseModule.mouseController.DeattachObject()
+	oldWindows = [v for v in old.__dict__.values() if isinstance(v, ui.Window)]
 	old.HideAllWindows()
 	old.Close()
+	for wnd in oldWindows:
+		wnd.Hide()
 	game.interface = None
 	old = None
 	gc.collect()
+
+	curtain = uiQuest.QuestDialog.__dict__.get("QuestCurtain")
+	if curtain:
+		curtain.TopBar.Hide()
+		curtain.BottomBar.Hide()
+		curtain.Hide()
+		del uiQuest.QuestDialog.QuestCurtain
 
 	app.ApplyUIScale()
 	w, h = wndMgr.GetScreenWidth(), wndMgr.GetScreenHeight()
@@ -398,13 +408,15 @@ class DisplayOption:
 		self.runningPortrait = self.conf["portrait"]
 		self.children = []
 
-		self.sizeLabel = self.__Text(board, labelX, y + 2, "")
+		self.__Text(board, labelX, y + 2, "UI size")
 		self.sizeSlider = self.__Slider(board, dataX, y + 2,
 			(self.conf["ui_scale"] - UI_SCALE_MIN) / (UI_SCALE_MAX - UI_SCALE_MIN), self.__OnSlideSize)
+		self.sizeLabel = self.__Text(board, dataX + self.sizeSlider.GetWidth() + 6, y + 2, "")
 
-		self.cameraLabel = self.__Text(board, labelX, y + 27, "")
+		self.__Text(board, labelX, y + 27, "Camera")
 		self.cameraSlider = self.__Slider(board, dataX, y + 27,
 			(self.conf["camera_sensitivity"] - CAMERA_MIN) / (CAMERA_MAX - CAMERA_MIN), self.__OnSlideCamera)
+		self.cameraLabel = self.__Text(board, dataX + self.cameraSlider.GetWidth() + 6, y + 27, "")
 
 		self.__Text(board, labelX, y + 52, "Screen")
 		self.orientButtons = []
@@ -474,8 +486,8 @@ class DisplayOption:
 			app.RestartApplication()
 
 	def __Refresh(self):
-		self.sizeLabel.SetText("UI size %d%%" % int(self.conf["ui_scale"] * 100 + 0.5))
-		self.cameraLabel.SetText("Camera %d%%" % int(self.conf["camera_sensitivity"] * 100 + 0.5))
+		self.sizeLabel.SetText("%d%%" % int(self.conf["ui_scale"] * 100 + 0.5))
+		self.cameraLabel.SetText("%d%%" % int(self.conf["camera_sensitivity"] * 100 + 0.5))
 		on = 1 if self.conf["portrait"] else 0
 		for n, b in enumerate(self.orientButtons):
 			if n == on:
