@@ -49,6 +49,16 @@ public class GameSessionService extends Service {
         return START_NOT_STICKY;
     }
 
+    /** Swiping the game away kills the process; stop the server first so it saves players. */
+    @Override
+    public void onTaskRemoved(Intent rootIntent) {
+        new Thread(() -> {
+            MainActivity.stopEmbeddedServer();
+            stopSelf();
+            android.os.Process.killProcess(android.os.Process.myPid());
+        }, "M2ServerStop").start();
+    }
+
     @Override
     public IBinder onBind(Intent intent) {
         return null;

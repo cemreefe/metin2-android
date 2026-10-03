@@ -27,6 +27,12 @@ if [ "$MODE" = "embedded" ] && [ "$BUNDLED" = "true" ]; then
   [ -f "$SERVER_PACK/server/share/conf/game.txt" ] || { echo "no server pack in $SERVER_PACK"; exit 1; }
   ZIP="$OUT/m2data-$VERSION-bundled.zip"
 fi
+# Installed copies only re-extract when m2.dataVersion changes, so new data under an old
+# version would never reach them.
+if [ -f "$ZIP" ] && [ -n "$(find "$DATA" ${SERVER_PACK:+"$SERVER_PACK/server"} -newer "$ZIP" -not -path '*/logs/*' -print -quit)" ]; then
+  echo "client data changed since $ZIP was built: bump m2.dataVersion in profiles/$PROFILE.properties" >&2
+  exit 1
+fi
 if [ ! -f "$ZIP" ]; then
   echo "building $ZIP"
   (cd "$DATA" && zip -q -1 -r "$ZIP.tmp" . -x 'syserr.txt' 'stderr.txt' 'm2profile.py*' '.m2data_version')

@@ -95,6 +95,7 @@ public:
 	void							SetDefaultConfig();
 #ifdef __ANDROID__
 	void							FitUIToAndroidSurface();
+	static float					GetAndroidDisplayConfig(const char* c_szKey, float fDefault);
 #endif
 	bool							LoadConfig();
 	bool							SaveConfig();

@@ -290,10 +290,27 @@ void CPythonSystem::SetConfig(TConfig* pNewConfig)
 }
 
 #ifdef __ANDROID__
+float CPythonSystem::GetAndroidDisplayConfig(const char* c_szKey, float fDefault)
+{
+	float fValue = fDefault;
+	if (FILE* fp = fopen("display.cfg", "r"))
+	{
+		char szKey[32];
+		char szValue[32];
+		while (fscanf(fp, "%31s %31s", szKey, szValue) == 2)
+			if (!strcmp(szKey, c_szKey))
+				fValue = (float)atof(szValue);
+		fclose(fp);
+	}
+	return fValue;
+}
+
 // The UI is laid out at a logical resolution and stretched to the surface, keeping the
 // surface aspect ratio so glyphs are not stretched. display.cfg (written by the in-game
-// display options) holds "ui_scale <1.0-1.2>": the logical height is 600 / scale, so a
-// larger scale means bigger widgets. Layouts need at least 800 logical px of width.
+// display options) holds "ui_scale <1.0-1.2>"; a larger scale shrinks the logical canvas,
+// so widgets get bigger. Landscape scales the 600 px logical height and needs at least
+// 800 logical px of width; portrait scales a 720 px logical width instead, because an
+// 800 px floor there would leave the UI smaller than in landscape and ignore the scale.
 void CPythonSystem::FitUIToAndroidSurface()
 {
 	extern int g_iAndroidSurfaceWidth;
@@ -301,26 +318,25 @@ void CPythonSystem::FitUIToAndroidSurface()
 	if (g_iAndroidSurfaceWidth <= 0 || g_iAndroidSurfaceHeight <= 0)
 		return;
 
-	float fScale = 1.0f;
-	if (FILE* fp = fopen("display.cfg", "r"))
-	{
-		char szKey[32];
-		char szValue[32];
-		while (fscanf(fp, "%31s %31s", szKey, szValue) == 2)
-			if (!strcmp(szKey, "ui_scale"))
-				fScale = (float)atof(szValue);
-		fclose(fp);
-	}
-	fScale = fMAX(1.0f, fMIN(1.2f, fScale));
-
+	const float fScale = fMAX(1.0f, fMIN(1.2f, GetAndroidDisplayConfig("ui_scale", 1.0f)));
 	const int iW = g_iAndroidSurfaceWidth;
 	const int iH = g_iAndroidSurfaceHeight;
-	int iUIHeight = int(600.0f / fScale + 0.5f);
-	int iUIWidth = (iUIHeight * iW + iH / 2) / iH;
-	if (iUIWidth < 800)
+	int iUIWidth;
+	int iUIHeight;
+	if (iH > iW)
 	{
-		iUIWidth = 800;
-		iUIHeight = (800 * iH + iW / 2) / iW;
+		iUIWidth = int(720.0f / fScale + 0.5f);
+		iUIHeight = (iUIWidth * iH + iW / 2) / iW;
+	}
+	else
+	{
+		iUIHeight = int(600.0f / fScale + 0.5f);
+		iUIWidth = (iUIHeight * iW + iH / 2) / iH;
+		if (iUIWidth < 800)
+		{
+			iUIWidth = 800;
+			iUIHeight = (800 * iH + iW / 2) / iW;
+		}
 	}
 	m_Config.width = iUIWidth;
 	m_Config.height = iUIHeight;

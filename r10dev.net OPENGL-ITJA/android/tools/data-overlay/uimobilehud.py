@@ -254,10 +254,17 @@ class HudOption:
 DISPLAY_CONFIG = "display.cfg"
 UI_SCALE_MIN = 1.0
 UI_SCALE_MAX = 1.2
+CAMERA_MIN = 0.25
+CAMERA_MAX = 2.0
+
+
+def _Clamp(value, low, high):
+	return max(low, min(high, value))
 
 
 def LoadDisplayConfig():
-	conf = {"ui_scale": "1.0", "orientation": "landscape"}
+	"""display.cfg holds 'key value' lines; the engine reads ui_scale and camera_sensitivity."""
+	conf = {"ui_scale": "1.0", "orientation": "landscape", "camera_sensitivity": "1.0"}
 	try:
 		f = open(DISPLAY_CONFIG, "r")
 		try:
@@ -269,51 +276,145 @@ def LoadDisplayConfig():
 			f.close()
 	except IOError:
 		pass
-	try:
-		scale = float(conf["ui_scale"])
-	except ValueError:
-		scale = 1.0
-	scale = max(UI_SCALE_MIN, min(UI_SCALE_MAX, scale))
-	return scale, conf["orientation"] == "portrait"
+	for key, low, high in (("ui_scale", UI_SCALE_MIN, UI_SCALE_MAX), ("camera_sensitivity", CAMERA_MIN, CAMERA_MAX)):
+		try:
+			conf[key] = _Clamp(float(conf[key]), low, high)
+		except ValueError:
+			conf[key] = 1.0
+	conf["portrait"] = conf["orientation"] == "portrait"
+	return conf
 
 
-def SaveDisplayConfig(scale, portrait):
+def SaveDisplayConfig(conf):
 	try:
 		f = open(DISPLAY_CONFIG, "w")
 		try:
-			f.write("ui_scale %.2f\norientation %s\n" % (scale, "portrait" if portrait else "landscape"))
+			f.write("ui_scale %.2f\norientation %s\ncamera_sensitivity %.2f\n" % (
+				_Clamp(conf["ui_scale"], UI_SCALE_MIN, UI_SCALE_MAX),
+				"portrait" if conf["portrait"] else "landscape",
+				_Clamp(conf["camera_sensitivity"], CAMERA_MIN, CAMERA_MAX)))
 		finally:
 			f.close()
 	except IOError:
 		pass
 
 
+class _NextFrame(ui.Window):
+	"""Runs a callback on the next UI update, outside the event handler that requested it."""
+
+	def __init__(self, func):
+		ui.Window.__init__(self)
+		self.func = func
+		self.Show()
+
+	def OnUpdate(self):
+		func, self.func = self.func, None
+		self.Hide()
+		global _pending
+		_pending = None
+		if func:
+			func()
+
+
+_pending = None
+
+
+def _RunNextFrame(func):
+	global _pending
+	_pending = _NextFrame(func)
+
+
+def _RebuildGameUI(game, reopenOptions):
+	"""Resizes the logical canvas and recreates the game UI in place; the connection,
+	world and player state stay as they are and the windows refill from them."""
+	import gc
+	import interfaceModule, uiTarget
+	old = game.interface
+	quests = [(btn.index, btn.name) for btn in old.questButtonList]
+	if game.mobileHud:
+		game.mobileHud.Destroy()
+		game.mobileHud = None
+	mouseModule.mouseController.DeattachObject()
+	old.HideAllWindows()
+	old.Close()
+	game.interface = None
+	old = None
+	gc.collect()
+
+	app.ApplyUIScale()
+	w, h = wndMgr.GetScreenWidth(), wndMgr.GetScreenHeight()
+	game.SetSize(w, h)
+
+	interface = interfaceModule.Interface()
+	interface.MakeInterface()
+	interface.ShowDefaultWindows()
+	game.interface = interface
+	for index, name in reversed(quests):
+		interface.RecvQuest(index, name)
+
+	if game.targetBoard:
+		game.targetBoard.Hide()
+		game.targetBoard.Destroy()
+	game.targetBoard = uiTarget.TargetBoard()
+	game.targetBoard.SetWhisperEvent(ui.__mem_func__(interface.OpenWhisperDialog))
+	game.targetBoard.Hide()
+	game.console.SetConsoleSize(w, 200)
+	game.mobileHud = MobileHud(game)
+
+	game.StartGame()
+	game.RefreshStatus()
+	game.RefreshQuest()
+	if reopenOptions:
+		interface.ToggleSystemDialog()
+		interface.dlgSystem._SystemDialog__ClickGameOptionButton()
+
+
+def ApplyUIScaleLive():
+	"""True when the current phase can be rescaled in place (it is rebuilt next frame)."""
+	if not _hud or not _hud.game or not _hud.game.interface:
+		return False
+	game = _hud.game
+
+	def rebuild():
+		try:
+			_RebuildGameUI(game, True)
+		except Exception:
+			import dbg, sys
+			dbg.TraceError("live UI rescale failed: %s; restarting" % str(sys.exc_info()[1]))
+			app.RestartApplication()
+	_RunNextFrame(rebuild)
+	return True
+
+
 class DisplayOption:
+	"""Game option rows: UI size (applied in place), camera sensitivity (applied on the next
+	drag) and orientation (needs a restart, the activity orientation is fixed at launch)."""
 	ROOT = "d:/ymir work/ui/public/"
+	ROWS = 4
 
 	def __init__(self, board, y, labelX, dataX, buttonWidth):
-		self.running = LoadDisplayConfig()
-		self.scale, self.portrait = self.running
+		self.conf = LoadDisplayConfig()
+		self.appliedScale = self.conf["ui_scale"]
+		self.runningPortrait = self.conf["portrait"]
 		self.children = []
 
 		self.sizeLabel = self.__Text(board, labelX, y + 2, "")
-		self.slider = ui.SliderBar()
-		self.slider.SetParent(board)
-		self.slider.SetPosition(dataX, y + 2)
-		self.slider.SetSliderPos((self.scale - UI_SCALE_MIN) / (UI_SCALE_MAX - UI_SCALE_MIN))
-		self.slider.SetEvent(ui.__mem_func__(self.__OnSlide))
-		self.slider.Show()
-		self.children.append(self.slider)
+		self.sizeSlider = self.__Slider(board, dataX, y + 2,
+			(self.conf["ui_scale"] - UI_SCALE_MIN) / (UI_SCALE_MAX - UI_SCALE_MIN), self.__OnSlideSize)
 
-		self.__Text(board, labelX, y + 27, "Screen")
+		self.cameraLabel = self.__Text(board, labelX, y + 27, "")
+		self.cameraSlider = self.__Slider(board, dataX, y + 27,
+			(self.conf["camera_sensitivity"] - CAMERA_MIN) / (CAMERA_MAX - CAMERA_MIN), self.__OnSlideCamera)
+
+		self.__Text(board, labelX, y + 52, "Screen")
 		self.orientButtons = []
 		for n, (text, portrait) in enumerate((("Landscape", False), ("Portrait", True))):
-			b = self.__Button(board, dataX + buttonWidth * n, y + 25, text, ui.RadioButton())
+			b = self.__Button(board, dataX + buttonWidth * n, y + 50, text, ui.RadioButton())
 			b.SetEvent(self.__SelectOrientation, portrait)
 			self.orientButtons.append(b)
 
-		self.restart = self.__Button(board, dataX, y + 50, "Restart to apply", ui.Button())
-		self.restart.SetEvent(ui.__mem_func__(self.__Restart))
+		self.apply = self.__Button(board, dataX, y + 75, "Apply", ui.Button())
+		self.apply.SetEvent(ui.__mem_func__(self.__Apply))
 		self.__Refresh()
 
 	def __Text(self, board, x, y, text):
@@ -336,39 +437,68 @@ class DisplayOption:
 		self.children.append(b)
 		return b
 
-	def __OnSlide(self):
-		pos = self.slider.GetSliderPos()
-		self.scale = round(UI_SCALE_MIN + pos * (UI_SCALE_MAX - UI_SCALE_MIN), 2)
-		SaveDisplayConfig(self.scale, self.portrait)
+	def __Slider(self, board, x, y, pos, event):
+		slider = ui.SliderBar()
+		slider.SetParent(board)
+		slider.SetPosition(x, y)
+		slider.SetSliderPos(_Clamp(pos, 0.0, 1.0))
+		slider.SetEvent(ui.__mem_func__(event))
+		slider.Show()
+		self.children.append(slider)
+		return slider
+
+	def __OnSlideSize(self):
+		pos = _Clamp(self.sizeSlider.GetSliderPos(), 0.0, 1.0)
+		self.conf["ui_scale"] = round(UI_SCALE_MIN + pos * (UI_SCALE_MAX - UI_SCALE_MIN), 2)
+		self.__Refresh()
+
+	def __OnSlideCamera(self):
+		pos = _Clamp(self.cameraSlider.GetSliderPos(), 0.0, 1.0)
+		self.conf["camera_sensitivity"] = round(CAMERA_MIN + pos * (CAMERA_MAX - CAMERA_MIN), 2)
+		SaveDisplayConfig(self.conf)
 		self.__Refresh()
 
 	def __SelectOrientation(self, portrait):
-		self.portrait = portrait
-		SaveDisplayConfig(self.scale, self.portrait)
+		self.conf["portrait"] = portrait
 		self.__Refresh()
 
-	def __Restart(self):
-		app.RestartApplication()
+	def __Apply(self):
+		SaveDisplayConfig(self.conf)
+		if self.conf["portrait"] != self.runningPortrait:
+			app.RestartApplication()
+			return
+		if ApplyUIScaleLive():
+			self.appliedScale = self.conf["ui_scale"]
+			self.apply.Hide()
+		else:
+			app.RestartApplication()
 
 	def __Refresh(self):
-		self.sizeLabel.SetText("UI size %d%%" % int(self.scale * 100 + 0.5))
-		on = 1 if self.portrait else 0
+		self.sizeLabel.SetText("UI size %d%%" % int(self.conf["ui_scale"] * 100 + 0.5))
+		self.cameraLabel.SetText("Camera %d%%" % int(self.conf["camera_sensitivity"] * 100 + 0.5))
+		on = 1 if self.conf["portrait"] else 0
 		for n, b in enumerate(self.orientButtons):
 			if n == on:
 				b.Down()
 			else:
 				b.SetUp()
-		if (self.scale, self.portrait) != self.running:
-			self.restart.Show()
+		if self.conf["portrait"] != self.runningPortrait:
+			self.apply.SetText("Restart to apply")
+			self.apply.Show()
+		elif abs(self.conf["ui_scale"] - self.appliedScale) > 0.001:
+			self.apply.SetText("Apply")
+			self.apply.Show()
 		else:
-			self.restart.Hide()
+			self.apply.Hide()
 
 	def Destroy(self):
 		self.children = []
 		self.orientButtons = []
-		self.slider = None
-		self.restart = None
+		self.sizeSlider = None
+		self.cameraSlider = None
+		self.apply = None
 		self.sizeLabel = None
+		self.cameraLabel = None
 
 
 class MobileHud(ui.Window):

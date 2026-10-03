@@ -337,6 +337,14 @@ PyObject* appRestartApplication(PyObject* poSelf, PyObject* poArgs)
 	return Py_BuildNone();
 }
 
+PyObject* appApplyUIScale(PyObject* poSelf, PyObject* poArgs)
+{
+#ifdef __ANDROID__
+	CPythonApplication::Instance().ApplyAndroidUIScale();
+#endif
+	return Py_BuildNone();
+}
+
 PyObject* appGetDefaultCodePage(PyObject* poSelf, PyObject* poArgs)
 {
 	return Py_BuildValue("i", LocaleService_GetCodePage());
@@ -1329,6 +1337,7 @@ void initapp()
 		{ "GetLocaleName",				appGetLocaleName,				METH_VARARGS },
 		{ "GetLocalePath",				appGetLocalePath,				METH_VARARGS },
 		{ "RestartApplication",			appRestartApplication,			METH_VARARGS },
+		{ "ApplyUIScale",				appApplyUIScale,				METH_VARARGS },
 		{ "ForceSetLocale",				appForceSetLocale,				METH_VARARGS },
 		// END_OF_LOCALE
 

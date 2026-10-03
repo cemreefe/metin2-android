@@ -427,7 +427,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
         activity.startActivity(restart);
     }
 
-    private static void stopEmbeddedServer() {
+    static void stopEmbeddedServer() {
         EmbeddedServer server;
         synchronized (MainActivity.class) {
             server = sServer;

@@ -351,6 +351,22 @@ namespace
 	}
 }
 
+// Re-reads display.cfg and resizes the logical UI canvas in place; Python then rebuilds
+// the windows that cached the old screen size.
+void CPythonApplication::ApplyAndroidUIScale()
+{
+	m_pySystem.FitUIToAndroidSurface();
+	const int iWidth = m_pySystem.GetWidth();
+	const int iHeight = m_pySystem.GetHeight();
+	m_dwWidth = iWidth;
+	m_dwHeight = iHeight;
+	AdjustSize(iWidth, iHeight);
+	CGraphicBase::SetLogicalScreenSize(iWidth, iHeight);
+	UI::CWindowManager& rkWndMgr = UI::CWindowManager::Instance();
+	rkWndMgr.SetResolution(iWidth, iHeight);
+	rkWndMgr.SetScreenSize(iWidth, iHeight);
+}
+
 // Touches on UI windows behave like the left mouse button. On the world, a quick tap is a
 // click, holding still is a held click (walk/attack), and dragging rotates the camera like
 // the right mouse button does on desktop.
@@ -400,12 +416,15 @@ void CPythonApplication::OnTouchEvent(int action, int x, int y)
 
 	case 2:
 		if (m_eTouchMode == TOUCH_WORLD_PENDING && (abs(x - m_iTouchStartX) > iSlop || abs(y - m_iTouchStartY) > iSlop))
+		{
 			m_eTouchMode = TOUCH_CAMERA;
+			m_fTouchCameraSensitivity = fMAX(0.25f, fMIN(2.0f, CPythonSystem::GetAndroidDisplayConfig("camera_sensitivity", 1.0f)));
+		}
 		if (m_eTouchMode == TOUCH_CAMERA)
 		{
 			CCamera* pkCmrCur = CCameraManager::Instance().GetCurrentCamera();
 			if (pkCmrCur)
-				pkCmrCur->DragBy(x - m_iTouchLastX, y - m_iTouchLastY);
+				pkCmrCur->DragBy((x - m_iTouchLastX) * m_fTouchCameraSensitivity, (y - m_iTouchLastY) * m_fTouchCameraSensitivity);
 			m_iTouchLastX = x;
 			m_iTouchLastY = y;
 			return;
