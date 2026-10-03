@@ -24,6 +24,7 @@ for pack in $(cd "$A" && LC_ALL=C ls -d */ | sed 's#/$##'); do
 done
 rsync -a "$A/root/" "$OUT/"
 rsync -a "$SRC/lib/" "$OUT/lib/"
+rsync -a "$SRC/bgm/" "$OUT/bgm/"
 cp "$SRC"/config/*.cfg "$SRC/channel.inf" "$OUT/"
 printf '1252 %s\n' "$LOCALE" > "$OUT/loca.cfg"
 
