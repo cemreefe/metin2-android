@@ -142,6 +142,7 @@ static EGLDisplay s_eglDisplay = EGL_NO_DISPLAY;
 static EGLConfig s_eglConfig = NULL;
 static EGLContext s_eglContext = EGL_NO_CONTEXT;
 static EGLSurface s_eglSurface = EGL_NO_SURFACE;
+static EGLSurface s_eglIdleSurface = EGL_NO_SURFACE;
 
 // The Java side hands the game thread a new window (or none while backgrounded); the game
 // thread swaps it in at the next Present so the game loop and its connection keep running.
@@ -163,7 +164,7 @@ static bool CreateEGLContext(ANativeWindow* pWindow)
 
 	const EGLint aConfigAttribs[] = {
 		EGL_RENDERABLE_TYPE, 0x40 /* EGL_OPENGL_ES3_BIT_KHR */,
-		EGL_SURFACE_TYPE, EGL_WINDOW_BIT,
+		EGL_SURFACE_TYPE, EGL_WINDOW_BIT | EGL_PBUFFER_BIT,
 		EGL_RED_SIZE, 8, EGL_GREEN_SIZE, 8, EGL_BLUE_SIZE, 8,
 		EGL_DEPTH_SIZE, 16,
 		EGL_NONE
@@ -203,7 +204,13 @@ static void ApplyPendingWindow()
 		}
 		if (s_eglSurface != EGL_NO_SURFACE)
 		{
-			eglMakeCurrent(s_eglDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, s_eglContext);
+			if (s_eglIdleSurface == EGL_NO_SURFACE)
+			{
+				const EGLint aPbufferAttribs[] = { EGL_WIDTH, 1, EGL_HEIGHT, 1, EGL_NONE };
+				s_eglIdleSurface = eglCreatePbufferSurface(s_eglDisplay, s_eglConfig, aPbufferAttribs);
+			}
+			if (!eglMakeCurrent(s_eglDisplay, s_eglIdleSurface, s_eglIdleSurface, s_eglContext))
+				LOGE("EGL idle surface bind failed: 0x%x", eglGetError());
 			eglDestroySurface(s_eglDisplay, s_eglSurface);
 			s_eglSurface = EGL_NO_SURFACE;
 		}

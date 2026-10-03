@@ -180,6 +180,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
     }
 
     private void startGame() {
+        GameSessionService.start(getApplicationContext());
         mView = new GameView(MainActivity.this);
         mView.getHolder().addCallback(MainActivity.this);
         android.widget.FrameLayout root = new android.widget.FrameLayout(MainActivity.this);
@@ -329,6 +330,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
     protected void onDestroy() {
         if (isFinishing() && sCurrent == this) {
             sCurrent = null;
+            GameSessionService.stop(getApplicationContext());
             final int generation = sGeneration;
             new Thread(new Runnable() {
                 public void run() {
