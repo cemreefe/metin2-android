@@ -54,6 +54,7 @@ final class EmbeddedServer {
     private final File mLogs;
     private final File mSqlite;
     private final String mLibDir;
+    private volatile String mFailure = "";
 
     // m2dev-server channels.py MAP_ALLOW_NORMAL cores 1-3 (one per empire) on a single core.
     private static final String MAP_ALLOW =
@@ -79,9 +80,11 @@ final class EmbeddedServer {
 
     /** Blocks until every process accepts connections. */
     synchronized boolean start() {
+        mFailure = "";
         try {
             if (!new File(mPack, "share/conf/game.txt").isFile()) {
-                Log.e(TAG, "server data pack missing: " + mPack + " (run server/tools/push-server-pack.sh)");
+                mFailure = "server data pack missing: " + mPack;
+                Log.e(TAG, mFailure);
                 return false;
             }
             mLogs.mkdirs();
@@ -90,20 +93,61 @@ final class EmbeddedServer {
             for (Node node : mNodes) {
                 File dir = prepareDir(node);
                 if (!waitPortFree(node.port)) {
-                    Log.e(TAG, node.name + ": port " + node.port + " still in use");
+                    mFailure = node.name + ": port " + node.port + " still in use";
+                    Log.e(TAG, mFailure);
                     return false;
                 }
                 node.process = launch(node, dir);
                 if (!waitListening(node)) {
-                    Log.e(TAG, node.name + " did not come up; see " + new File(mLogs, node.name + ".out"));
+                    mFailure = describeFailure(node);
+                    Log.e(TAG, mFailure);
                     return false;
                 }
                 Log.i(TAG, node.name + " listening on " + HOST + ":" + node.port);
             }
             return true;
         } catch (Exception e) {
+            mFailure = "embedded server start failed: " + e;
             Log.e(TAG, "embedded server start failed", e);
             return false;
+        }
+    }
+
+    /** Why the last start() failed, including the tail of the failing process's output. */
+    String failure() {
+        return mFailure;
+    }
+
+    private String describeFailure(Node node) {
+        StringBuilder sb = new StringBuilder(node.name);
+        if (isAlive(node.process)) {
+            sb.append(" did not open port ").append(node.port).append(" within ").append(START_TIMEOUT_MS / 1000).append(" s");
+        } else {
+            int code = node.process.exitValue();
+            sb.append(" exited with code ").append(code);
+            if (code > 128)
+                sb.append(" (signal ").append(code - 128).append(")");
+        }
+        appendTail(sb, new File(mLogs, node.name + ".out"));
+        appendTail(sb, new File(mLogs, node.name + ".syserr.log"));
+        return sb.toString();
+    }
+
+    private static void appendTail(StringBuilder sb, File f) {
+        if (!f.isFile() || f.length() == 0)
+            return;
+        try {
+            java.io.RandomAccessFile in = new java.io.RandomAccessFile(f, "r");
+            try {
+                long start = Math.max(0, in.length() - 600);
+                byte[] buf = new byte[(int) (in.length() - start)];
+                in.seek(start);
+                in.readFully(buf);
+                sb.append("\n\n").append(f.getName()).append(":\n").append(new String(buf, "UTF-8").trim());
+            } finally {
+                in.close();
+            }
+        } catch (IOException ignored) {
         }
     }
 

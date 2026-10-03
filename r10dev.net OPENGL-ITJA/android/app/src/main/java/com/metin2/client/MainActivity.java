@@ -45,7 +45,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
             showInstaller();
     }
 
-    private void showInstaller() {
+    private void showStatusScreen(String actionLabel, View.OnClickListener action) {
         LinearLayout layout = new LinearLayout(this);
         layout.setOrientation(LinearLayout.VERTICAL);
         layout.setGravity(Gravity.CENTER);
@@ -56,17 +56,21 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
         mProgress = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
         mProgress.setMax(1000);
         mAction = new Button(this);
-        mAction.setText("Retry download");
+        mAction.setText(actionLabel);
         mAction.setVisibility(View.GONE);
-        mAction.setOnClickListener(new View.OnClickListener() {
-            public void onClick(View v) {
-                startDownload();
-            }
-        });
+        mAction.setOnClickListener(action);
         layout.addView(mStatus);
         layout.addView(mProgress, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
         layout.addView(mAction);
         setContentView(layout);
+    }
+
+    private void showInstaller() {
+        showStatusScreen("Retry download", new View.OnClickListener() {
+            public void onClick(View v) {
+                startDownload();
+            }
+        });
         startDownload();
     }
 
@@ -108,6 +112,17 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
     }
 
     private void prepareAndStart() {
+        final boolean embedded = "embedded".equals(BuildConfig.M2_SERVER_MODE);
+        if (embedded) {
+            showStatusScreen("Retry", new View.OnClickListener() {
+                public void onClick(View v) {
+                    prepareAndStart();
+                }
+            });
+            mProgress.setIndeterminate(true);
+            mStatus.setText("Starting local server...");
+            getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        }
         new Thread(new Runnable() {
             public void run() {
                 try {
@@ -115,12 +130,19 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
                 } catch (final Exception e) {
                     android.util.Log.e("Metin2Mobile", "server profile: " + e);
                 }
-                startEmbeddedServer();
+                final boolean serverUp = startEmbeddedServer();
+                final String failure = serverUp || sServer == null ? "" : sServer.failure();
                 DevReporter.uploadPreviousRun(mDataDir);
                 final DevReporter.Update update = DevReporter.checkForUpdate();
                 runOnUiThread(new Runnable() {
                     public void run() {
-                        if (update != null)
+                        getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+                        if (!serverUp) {
+                            mProgress.setIndeterminate(false);
+                            mStatus.setTextSize(13);
+                            mStatus.setText("The local server failed to start.\n\n" + failure);
+                            mAction.setVisibility(View.VISIBLE);
+                        } else if (update != null)
                             offerUpdate(update);
                         else
                             startGame();
@@ -269,15 +291,17 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
         super.onDestroy();
     }
 
-    private void startEmbeddedServer() {
+    private boolean startEmbeddedServer() {
         if (!"embedded".equals(BuildConfig.M2_SERVER_MODE))
-            return;
+            return true;
         synchronized (MainActivity.class) {
             if (sServer == null)
                 sServer = new EmbeddedServer(getApplicationContext(), BuildConfig.M2_AUTH_PORT, BuildConfig.M2_CHANNEL_PORT);
         }
-        if (!sServer.start())
-            android.util.Log.e("Metin2Mobile", "embedded server failed to start; see files/server/logs");
+        if (sServer.start())
+            return true;
+        android.util.Log.e("Metin2Mobile", "embedded server failed to start; see files/server/logs");
+        return false;
     }
 
     private static void stopEmbeddedServer() {

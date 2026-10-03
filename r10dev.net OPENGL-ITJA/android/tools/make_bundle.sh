@@ -2,7 +2,9 @@
 # Build a test bundle: APK for a profile + versioned client-data zip.
 #   tools/make_bundle.sh <profile> [build-number]
 # Env: M2_CLIENT_DATA (extracted client data dir), M2_PYLIB (Python 2.7 stdlib .py dir),
-#      M2_BUNDLE_OUT (output dir served to devices), GRADLE (gradle binary).
+#      M2_BUNDLE_OUT (output dir served to devices), GRADLE (gradle binary),
+#      M2_SERVER_PACK (make-server-pack.sh out dir; required for m2.serverMode=embedded
+#      with m2.dataBundled=true, its server/ dir goes into the data zip).
 set -euo pipefail
 cd "$(dirname "$0")/.."
 PROFILE=${1:?profile name, see profiles/}
@@ -14,9 +16,16 @@ GRADLE=${GRADLE:-/opt/gradle-8.1.1/bin/gradle}
 VERSION=$(sed -n 's/^m2.dataVersion=//p' "profiles/$PROFILE.properties")
 NAME=$(sed -n 's/^m2.versionName=//p' "profiles/$PROFILE.properties")
 BUNDLED=$(sed -n 's/^m2.dataBundled=//p' "profiles/$PROFILE.properties")
+MODE=$(sed -n 's/^m2.serverMode=//p' "profiles/$PROFILE.properties")
 mkdir -p "$OUT"
 
 ZIP="$OUT/m2data-$VERSION.zip"
+SERVER_PACK=
+if [ "$MODE" = "embedded" ] && [ "$BUNDLED" = "true" ]; then
+  SERVER_PACK=${M2_SERVER_PACK:?set M2_SERVER_PACK to the make-server-pack.sh output dir}
+  [ -f "$SERVER_PACK/server/share/conf/game.txt" ] || { echo "no server pack in $SERVER_PACK"; exit 1; }
+  ZIP="$OUT/m2data-$VERSION-offline.zip"
+fi
 if [ ! -f "$ZIP" ]; then
   echo "building $ZIP"
   (cd "$DATA" && zip -q -1 -r "$ZIP.tmp" . -x 'syserr.txt' 'stderr.txt' 'm2profile.py*' '.m2data_version')
@@ -24,6 +33,9 @@ if [ ! -f "$ZIP" ]; then
   ln -s "$PYLIB" "$OVERLAY/lib"
   (cd "$OVERLAY" && zip -q -1 -r "$ZIP.tmp" lib -x '*.pyc')
   rm -rf "$OVERLAY"
+  if [ -n "$SERVER_PACK" ]; then
+    (cd "$SERVER_PACK" && zip -q -1 -r "$ZIP.tmp" server -x 'server/logs/*')
+  fi
   mv "$ZIP.tmp" "$ZIP"
 fi
 

@@ -22,6 +22,8 @@ android {
 
     defaultConfig {
         applicationId "com.metin2.client"
+        applicationIdSuffix m2('applicationIdSuffix')
+        manifestPlaceholders = [m2appLabel: m2('appLabel', 'Metin2 Mobile')]
         minSdkVersion 21
         targetSdkVersion 33
         versionCode m2buildNumber
