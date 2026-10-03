@@ -739,11 +739,36 @@ void CScreen::Show(RECT* pSrcRect, HWND hWnd)
 	ms_lpd3dDevice->Present(pSrcRect, NULL, hWnd, NULL);
 }
 
+#ifdef __ANDROID__
+extern int g_iAndroidSurfaceWidth;
+extern int g_iAndroidSurfaceHeight;
+#endif
+
+// Project/unproject work in UI coordinates (ms_iWidth x ms_iHeight); the device viewport may be
+// in surface pixels when the surface is larger than the UI resolution.
+static D3DVIEWPORT8 GetUIViewport(const D3DVIEWPORT8& rViewport, int iUIWidth, int iUIHeight)
+{
+	D3DVIEWPORT8 vp = rViewport;
+#ifdef __ANDROID__
+	if (g_iAndroidSurfaceWidth > 0 && g_iAndroidSurfaceHeight > 0 && iUIWidth > 0 && iUIHeight > 0)
+	{
+		const float sx = float(iUIWidth) / g_iAndroidSurfaceWidth;
+		const float sy = float(iUIHeight) / g_iAndroidSurfaceHeight;
+		vp.X = DWORD(rViewport.X * sx);
+		vp.Y = DWORD(rViewport.Y * sy);
+		vp.Width = DWORD(rViewport.Width * sx);
+		vp.Height = DWORD(rViewport.Height * sy);
+	}
+#endif
+	return vp;
+}
+
 void CScreen::ProjectPosition(float x, float y, float z, float* pfX, float* pfY)
 {
 	D3DXVECTOR3 Input(x, y, z);
 	D3DXVECTOR3 Output;
-	D3DXVec3Project(&Output, &Input, &ms_Viewport, &ms_matProj, &ms_matView, &ms_matWorld);
+	const D3DVIEWPORT8 vp = GetUIViewport(ms_Viewport, ms_iWidth, ms_iHeight);
+	D3DXVec3Project(&Output, &Input, &vp, &ms_matProj, &ms_matView, &ms_matWorld);
 
 	*pfX = Output.x;
 	*pfY = Output.y;
@@ -753,7 +778,8 @@ void CScreen::ProjectPosition(float x, float y, float z, float* pfX, float* pfY,
 {
 	D3DXVECTOR3 Input(x, y, z);
 	D3DXVECTOR3 Output;
-	D3DXVec3Project(&Output, &Input, &ms_Viewport, &ms_matProj, &ms_matView, &ms_matWorld);
+	const D3DVIEWPORT8 vp = GetUIViewport(ms_Viewport, ms_iWidth, ms_iHeight);
+	D3DXVec3Project(&Output, &Input, &vp, &ms_matProj, &ms_matView, &ms_matWorld);
 
 	*pfX = Output.x;
 	*pfY = Output.y;
@@ -764,7 +790,8 @@ void CScreen::UnprojectPosition(float x, float y, float z, float* pfX, float* pf
 {
 	D3DXVECTOR3 Input(x, y, z);
 	D3DXVECTOR3 Output;
-	D3DXVec3Unproject(&Output, &Input, &ms_Viewport, &ms_matProj, &ms_matView, &ms_matWorld);
+	const D3DVIEWPORT8 vp = GetUIViewport(ms_Viewport, ms_iWidth, ms_iHeight);
+	D3DXVec3Unproject(&Output, &Input, &vp, &ms_matProj, &ms_matView, &ms_matWorld);
 
 	*pfX = Output.x;
 	*pfY = Output.y;
