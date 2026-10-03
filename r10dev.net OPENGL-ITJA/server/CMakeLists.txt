@@ -14,6 +14,9 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 add_compile_options("$<$<CXX_COMPILER_ID:GNU>:-finput-charset=UTF-8>")
+# The server assumes x86 signed char (e.g. `char ch = getopt(...)` compared to -1);
+# on arm64 plain char is unsigned and that loop never ends.
+add_compile_options(-fsigned-char)
 add_compile_definitions(OS_LINUX NOMINMAX WIN32_LEAN_AND_MEAN)
 if(ANDROID)
 	add_compile_definitions(OS_ANDROID)
