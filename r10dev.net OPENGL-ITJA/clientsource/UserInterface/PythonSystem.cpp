@@ -290,20 +290,40 @@ void CPythonSystem::SetConfig(TConfig* pNewConfig)
 }
 
 #ifdef __ANDROID__
-// The UI is laid out at a logical resolution and stretched to the surface. Keeping the
-// logical height at the engine's minimum (600) makes text and widgets as large as the
-// layouts allow, and matching the surface aspect ratio keeps glyphs from stretching.
+// The UI is laid out at a logical resolution and stretched to the surface, keeping the
+// surface aspect ratio so glyphs are not stretched. display.cfg (written by the in-game
+// display options) holds "ui_scale <1.0-1.2>": the logical height is 600 / scale, so a
+// larger scale means bigger widgets. Layouts need at least 800 logical px of width.
 void CPythonSystem::FitUIToAndroidSurface()
 {
 	extern int g_iAndroidSurfaceWidth;
 	extern int g_iAndroidSurfaceHeight;
-	const int c_iUIHeight = 600;
 	if (g_iAndroidSurfaceWidth <= 0 || g_iAndroidSurfaceHeight <= 0)
 		return;
-	m_Config.height = c_iUIHeight;
-	m_Config.width = (c_iUIHeight * g_iAndroidSurfaceWidth + g_iAndroidSurfaceHeight / 2) / g_iAndroidSurfaceHeight;
-	if (m_Config.width < 800)
-		m_Config.width = 800;
+
+	float fScale = 1.0f;
+	if (FILE* fp = fopen("display.cfg", "r"))
+	{
+		char szKey[32];
+		char szValue[32];
+		while (fscanf(fp, "%31s %31s", szKey, szValue) == 2)
+			if (!strcmp(szKey, "ui_scale"))
+				fScale = (float)atof(szValue);
+		fclose(fp);
+	}
+	fScale = fMAX(1.0f, fMIN(1.2f, fScale));
+
+	const int iW = g_iAndroidSurfaceWidth;
+	const int iH = g_iAndroidSurfaceHeight;
+	int iUIHeight = int(600.0f / fScale + 0.5f);
+	int iUIWidth = (iUIHeight * iW + iH / 2) / iH;
+	if (iUIWidth < 800)
+	{
+		iUIWidth = 800;
+		iUIHeight = (800 * iH + iW / 2) / iW;
+	}
+	m_Config.width = iUIWidth;
+	m_Config.height = iUIHeight;
 }
 #endif
 

@@ -1,6 +1,8 @@
 package com.metin2.client;
 
 import android.app.Activity;
+import android.content.Intent;
+import android.content.pm.ActivityInfo;
 import android.os.Bundle;
 import android.content.Context;
 import android.view.KeyEvent;
@@ -15,7 +17,10 @@ import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
 
 public class MainActivity extends Activity implements SurfaceHolder.Callback {
     private static MainActivity sInstance;
@@ -51,6 +56,9 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
 
         sInstance = this;
         mDataDir = getExternalFilesDir(null);
+        setRequestedOrientation(isPortraitConfigured(mDataDir)
+                ? ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
+                : ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
         if (DataInstaller.isInstalled(mDataDir))
             prepareAndStart();
         else
@@ -390,6 +398,33 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
             return true;
         android.util.Log.e("Metin2Mobile", "embedded server failed to start; see files/server/logs");
         return false;
+    }
+
+    /** display.cfg is written by the in-game display options ("orientation portrait"). */
+    private static boolean isPortraitConfigured(File dataDir) {
+        if (dataDir == null)
+            return false;
+        try (BufferedReader reader = new BufferedReader(new FileReader(new File(dataDir, "display.cfg")))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                String[] parts = line.trim().split("\\s+");
+                if (parts.length == 2 && parts[0].equals("orientation"))
+                    return parts[1].equals("portrait");
+            }
+        } catch (IOException e) {
+            return false;
+        }
+        return false;
+    }
+
+    static void restartApp() {
+        final MainActivity activity = sInstance;
+        if (activity == null)
+            return;
+        stopEmbeddedServer();
+        Intent restart = new Intent(activity, RestartActivity.class);
+        restart.putExtra("oldPid", android.os.Process.myPid());
+        activity.startActivity(restart);
     }
 
     private static void stopEmbeddedServer() {

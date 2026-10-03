@@ -18,6 +18,10 @@ public class NativeLib {
         MainActivity.setKeyboardVisible(visible, focusBottom);
     }
 
+    static void restartApp() {
+        MainActivity.restartApp();
+    }
+
     static void setGameControlsVisible(boolean visible) {
         MainActivity.setGameControlsVisible(visible);
     }

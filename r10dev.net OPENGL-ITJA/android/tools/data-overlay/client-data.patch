@@ -88,19 +88,22 @@
  
 --- a/uigameoption.py
 +++ b/uigameoption.py
-@@ -39,8 +39,11 @@
+@@ -39,8 +39,14 @@
  		self.alwaysShowNameButtonList = []
  		self.showDamageButtonList = []
  		self.showsalesTextButtonList = []
 +		self.hudOption = None
++		self.displayOption = None
  
  	def Destroy(self):
 +		if self.hudOption:
 +			self.hudOption.Destroy()
++		if self.displayOption:
++			self.displayOption.Destroy()
  		self.ClearDictionary()
  
  		self.__Initialize()
-@@ -135,6 +138,18 @@
+@@ -135,6 +141,19 @@
  		self.__ClickRadioButton(self.viewTargetBoardButtonList, constInfo.GET_VIEW_OTHER_EMPIRE_PLAYER_TARGET_BOARD())
  		self.__SetPeacePKMode()
  
@@ -112,8 +115,9 @@
 +			import uimobilehud
 +			board = self.GetChild("board")
 +			self.hudOption = uimobilehud.HudOption(board, 265, 30, 90, 65)
-+			board.SetSize(board.GetWidth(), board.GetHeight() + 25)
-+			self.SetSize(self.GetWidth(), self.GetHeight() + 25)
++			self.displayOption = uimobilehud.DisplayOption(board, 290, 30, 90, 65)
++			board.SetSize(board.GetWidth(), board.GetHeight() + 100)
++			self.SetSize(self.GetWidth(), self.GetHeight() + 100)
 +			self.SetCenterPosition()
 +
  	def __ClickRadioButton(self, buttonList, buttonIndex):

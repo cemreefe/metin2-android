@@ -325,6 +325,18 @@ PyObject* appGetLocalePath(PyObject* poSelf, PyObject* poArgs)
 }
 // END_OF_LOCALE
 
+#ifdef __ANDROID__
+void AndroidRestartApp();
+#endif
+
+PyObject* appRestartApplication(PyObject* poSelf, PyObject* poArgs)
+{
+#ifdef __ANDROID__
+	AndroidRestartApp();
+#endif
+	return Py_BuildNone();
+}
+
 PyObject* appGetDefaultCodePage(PyObject* poSelf, PyObject* poArgs)
 {
 	return Py_BuildValue("i", LocaleService_GetCodePage());
@@ -1316,6 +1328,7 @@ void initapp()
 		{ "GetLocaleServiceName",		appGetLocaleServiceName,		METH_VARARGS },
 		{ "GetLocaleName",				appGetLocaleName,				METH_VARARGS },
 		{ "GetLocalePath",				appGetLocalePath,				METH_VARARGS },
+		{ "RestartApplication",			appRestartApplication,			METH_VARARGS },
 		{ "ForceSetLocale",				appForceSetLocale,				METH_VARARGS },
 		// END_OF_LOCALE
 

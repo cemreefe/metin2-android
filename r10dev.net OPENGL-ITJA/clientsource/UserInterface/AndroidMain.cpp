@@ -117,6 +117,17 @@ static void InstallCrashHandler()
 static jclass s_jNativeLib = NULL;
 static jmethodID s_jSetKeyboardVisible = NULL;
 static jmethodID s_jSetGameControlsVisible = NULL;
+static jmethodID s_jRestartApp = NULL;
+
+void AndroidRestartApp()
+{
+	if (!s_pJavaVM || !s_jRestartApp)
+		return;
+	JNIEnv* env = NULL;
+	if (s_pJavaVM->GetEnv((void**)&env, JNI_VERSION_1_6) != JNI_OK || !env)
+		return;
+	env->CallStaticVoidMethod(s_jNativeLib, s_jRestartApp);
+}
 
 void AndroidSetGameControlsVisible(bool bVisible)
 {
@@ -339,6 +350,7 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void*)
 		s_jNativeLib = (jclass)env->NewGlobalRef(cls);
 		s_jSetKeyboardVisible = env->GetStaticMethodID(s_jNativeLib, "setKeyboardVisible", "(ZF)V");
 		s_jSetGameControlsVisible = env->GetStaticMethodID(s_jNativeLib, "setGameControlsVisible", "(Z)V");
+		s_jRestartApp = env->GetStaticMethodID(s_jNativeLib, "restartApp", "()V");
 	}
 	return JNI_VERSION_1_6;
 }

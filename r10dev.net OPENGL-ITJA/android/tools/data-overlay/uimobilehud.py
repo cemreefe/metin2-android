@@ -251,6 +251,126 @@ class HudOption:
 		self.label = None
 
 
+DISPLAY_CONFIG = "display.cfg"
+UI_SCALE_MIN = 1.0
+UI_SCALE_MAX = 1.2
+
+
+def LoadDisplayConfig():
+	conf = {"ui_scale": "1.0", "orientation": "landscape"}
+	try:
+		f = open(DISPLAY_CONFIG, "r")
+		try:
+			for line in f.readlines():
+				parts = line.split()
+				if len(parts) == 2:
+					conf[parts[0]] = parts[1]
+		finally:
+			f.close()
+	except IOError:
+		pass
+	try:
+		scale = float(conf["ui_scale"])
+	except ValueError:
+		scale = 1.0
+	scale = max(UI_SCALE_MIN, min(UI_SCALE_MAX, scale))
+	return scale, conf["orientation"] == "portrait"
+
+
+def SaveDisplayConfig(scale, portrait):
+	try:
+		f = open(DISPLAY_CONFIG, "w")
+		try:
+			f.write("ui_scale %.2f\norientation %s\n" % (scale, "portrait" if portrait else "landscape"))
+		finally:
+			f.close()
+	except IOError:
+		pass
+
+
+class DisplayOption:
+	ROOT = "d:/ymir work/ui/public/"
+
+	def __init__(self, board, y, labelX, dataX, buttonWidth):
+		self.running = LoadDisplayConfig()
+		self.scale, self.portrait = self.running
+		self.children = []
+
+		self.sizeLabel = self.__Text(board, labelX, y + 2, "")
+		self.slider = ui.SliderBar()
+		self.slider.SetParent(board)
+		self.slider.SetPosition(dataX, y + 2)
+		self.slider.SetSliderPos((self.scale - UI_SCALE_MIN) / (UI_SCALE_MAX - UI_SCALE_MIN))
+		self.slider.SetEvent(ui.__mem_func__(self.__OnSlide))
+		self.slider.Show()
+		self.children.append(self.slider)
+
+		self.__Text(board, labelX, y + 27, "Screen")
+		self.orientButtons = []
+		for n, (text, portrait) in enumerate((("Landscape", False), ("Portrait", True))):
+			b = self.__Button(board, dataX + buttonWidth * n, y + 25, text, ui.RadioButton())
+			b.SetEvent(self.__SelectOrientation, portrait)
+			self.orientButtons.append(b)
+
+		self.restart = self.__Button(board, dataX, y + 50, "Restart to apply", ui.Button())
+		self.restart.SetEvent(ui.__mem_func__(self.__Restart))
+		self.__Refresh()
+
+	def __Text(self, board, x, y, text):
+		t = ui.TextLine()
+		t.SetParent(board)
+		t.SetPosition(x, y)
+		t.SetText(text)
+		t.Show()
+		self.children.append(t)
+		return t
+
+	def __Button(self, board, x, y, text, b):
+		b.SetParent(board)
+		b.SetUpVisual(self.ROOT + "middle_button_01.sub")
+		b.SetOverVisual(self.ROOT + "middle_button_02.sub")
+		b.SetDownVisual(self.ROOT + "middle_button_03.sub")
+		b.SetPosition(x, y)
+		b.SetText(text)
+		b.Show()
+		self.children.append(b)
+		return b
+
+	def __OnSlide(self):
+		pos = self.slider.GetSliderPos()
+		self.scale = round(UI_SCALE_MIN + pos * (UI_SCALE_MAX - UI_SCALE_MIN), 2)
+		SaveDisplayConfig(self.scale, self.portrait)
+		self.__Refresh()
+
+	def __SelectOrientation(self, portrait):
+		self.portrait = portrait
+		SaveDisplayConfig(self.scale, self.portrait)
+		self.__Refresh()
+
+	def __Restart(self):
+		app.RestartApplication()
+
+	def __Refresh(self):
+		self.sizeLabel.SetText("UI size %d%%" % int(self.scale * 100 + 0.5))
+		on = 1 if self.portrait else 0
+		for n, b in enumerate(self.orientButtons):
+			if n == on:
+				b.Down()
+			else:
+				b.SetUp()
+		if (self.scale, self.portrait) != self.running:
+			self.restart.Show()
+		else:
+			self.restart.Hide()
+
+	def Destroy(self):
+		self.children = []
+		self.orientButtons = []
+		self.slider = None
+		self.restart = None
+		self.sizeLabel = None
+
+
 class MobileHud(ui.Window):
 	# quick slot index -> keyboard key it mirrors
 	SLOTS = ((0, "1"), (1, "2"), (2, "3"), (3, "4"), (4, "F1"), (5, "F2"), (6, "F3"), (7, "F4"))

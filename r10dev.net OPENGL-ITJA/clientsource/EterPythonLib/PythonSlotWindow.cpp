@@ -844,6 +844,15 @@ BOOL CSlotWindow::OnMouseLeftButtonUp()
 		return TRUE;
 	}
 
+	if (m_dwHoldPickedSlotNumber != SLOT_NUMBER_NONE)
+	{
+		const DWORD dwPicked = m_dwHoldPickedSlotNumber;
+		m_dwHoldPickedSlotNumber = SLOT_NUMBER_NONE;
+		TSlot* pPicked;
+		if (IsIn() && GetPickedSlotPointer(&pPicked) && pPicked->dwSlotNumber == dwPicked)
+			return TRUE;
+	}
+
 	if (UI::CWindowManager::Instance().IsAttaching())
 		if (UI::CWindowManager::Instance().IsDragging())
 			if (IsIn())
@@ -1014,7 +1023,11 @@ void CSlotWindow::OnUpdate()
 		{
 			m_dwHoldSlotNumber = SLOT_NUMBER_NONE;
 			if (pSlot->isItem && !(pSlot->dwState & SLOT_STATE_LOCK))
+			{
 				OnSelectItemSlot(pSlot->dwSlotNumber);
+				if (UI::CWindowManager::Instance().IsAttaching())
+					m_dwHoldPickedSlotNumber = pSlot->dwSlotNumber;
+			}
 		}
 	}
 
@@ -1594,6 +1607,7 @@ void CSlotWindow::__Initialize()
 	m_dwToolTipSlotNumber = SLOT_NUMBER_NONE;
 	m_dwHoldSlotNumber = SLOT_NUMBER_NONE;
 	m_dwHoldStartTime = 0;
+	m_dwHoldPickedSlotNumber = SLOT_NUMBER_NONE;
 
 	m_isUseMode = FALSE;
 	m_isUsableItem = FALSE;

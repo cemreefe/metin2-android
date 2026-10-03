@@ -292,7 +292,7 @@ During development you can skip zipping and push the data once:
 
 ### 4.6 Fully offline APK (embedded server)
 
-The `offline-bundled` profile puts the client data **and** the server inside one APK. On
+The `bundled` profile puts the client data **and** the server inside one APK. On
 launch the app starts db (9000), auth (11000) and one game core (11011) on 127.0.0.1, then
 opens the game. No network, no PC and no adb pushes are needed after install.
 
@@ -307,15 +307,15 @@ opens the game. No network, no PC and no adb pushes are needed after install.
 2. Build and install:
    ```bash
    cd "$ANDROID"
-   M2_SERVER_PACK=~/m2serverpack tools/make_bundle.sh offline-bundled 1
-   adb install -r ~/m2bundle/metin2-offline-1.apk     # emulator: add --abi x86_64
+   M2_SERVER_PACK=~/m2serverpack tools/make_bundle.sh bundled 1
+   adb install -r ~/m2bundle/metin2-bundled-1.apk     # emulator: add --abi x86_64
    ```
 3. On first launch it unpacks about 2 GB of data, shows "Starting local server...", then
    opens the game. Log in with the account from the seed databases.
 
 Notes:
-- The package is `com.metin2.client.offline`, labelled "Metin2 Offline", so it installs next
-  to an online build instead of over it.
+- The package is `com.metin2.client.offline` (labelled "Metin2"), kept from the first
+  bundled builds so installed copies update in place.
 - Characters live in the app's internal storage and survive restarts and updates. The
   server saves every 30 s, so a force-stop can lose up to about 30 s of progress.
 - If a server process fails to start, the app shows which one, its exit status and the end of
