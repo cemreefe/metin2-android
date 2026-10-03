@@ -43,7 +43,7 @@ public:
 	bool Drag(int nMouseX, int nMouseY, LPPOINT lpReturnPoint);
 
 	bool EndDrag();
-	void DragBy(int nDeltaX, int nDeltaY);
+	void DragBy(float fDeltaX, float fDeltaY);
 	void BeginDrag(int nMouseX, int nMouseY);
 
 	bool IsDraging();

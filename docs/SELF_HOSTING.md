@@ -155,7 +155,7 @@ tail -f channels/auth/syslog.log channels/channel1/core*/syslog.log
 ## 3. Preparing the client data
 
 ```bash
-sudo apt install libsodium23 rsync patch
+sudo apt install libsodium23 rsync patch python3-pil
 git clone https://github.com/d1str4ught/m2dev-client ~/m2dev-client
 cd ~/m2dev-client && git checkout 98d2c1af
 "$ANDROID/tools/stage_client_data.sh" ~/m2dev-client ~/m2stage en
@@ -178,8 +178,13 @@ rm -rf ~/m2pylib/{test,lib-tk,idlelib,lib2to3,ensurepip,bsddb,msilib,distutils,c
    but this engine does not export, and applies `tools/data-overlay/client-data.patch`:
    - `system.py` imports `m2compat`;
    - `intrologin.py` reads `loginInfo.py` instead of `.xml`;
-   - `serverinfo.py` reads the server address from `m2profile.py`, which the app
-     writes from the build profile.
+   - `serverinfo.py` builds the login server list from `m2profile.py`, which the app
+     writes at launch from the server list (section 4.3) and the build profile;
+   - `game.py` and `uigameoption.py` load the touch HUD (`uimobilehud.py`) and
+     add its "HUD: Desktop / Mobile" row to the game options window.
+4. Builds the HUD textures into `mobile/` with `tools/data-overlay/make_hud_art.py`
+   (Pillow). They are cut from the client's own `minimap.dds` and `public.dds`,
+   so no extra art ships with the repo.
 
 The engine lowercases only ASCII when it looks up paths, so keep file names
 as they come. Do not lowercase Korean (CP949) names.
@@ -226,7 +231,32 @@ m2.dataVersion=2
 m2.versionName=home
 ```
 
-### 4.3 Build
+### 4.3 Server list
+
+The login screen lists the servers in `$ANDROID/servers/servers.json`, in order:
+
+```json
+{ "version": 1, "servers": [
+  { "name": "Offline", "embedded": true },
+  { "name": "Istanbul", "host": "159.223.110.159", "authPort": 47100, "channelPort": 47111, "gamePortOffset": 36100 }
+] }
+```
+
+- `embedded: true` is the server inside the app (127.0.0.1). It is only listed in
+  builds that ship it (`m2.serverMode=embedded`).
+- Names are `[A-Za-z0-9 _-]`, up to 24 characters; hosts are IPs or DNS names.
+- `gamePortOffset` works as in the profile table above. Only one server can use it.
+- The file is baked into the APK. At every launch the app also fetches the copy on
+  `main` (`m2.serverListUrl`, HTTPS only, 3 s timeout) and keeps it if it parses and its
+  `version` is not lower than the baked one. To add a server for installed apps, edit
+  the file on `main` and bump `version`. Without network the last good copy, or the
+  baked one, is used.
+- A remote profile whose `serverHost` is not in the list shows it first as "Dev".
+
+The current Istanbul entry is a placeholder: a tunnel to a development VM that is
+only up while that VM runs.
+
+### 4.4 Build
 
 ```bash
 cd "$ANDROID"
@@ -247,7 +277,7 @@ saved to `M2_SYMS` (default `~/m2syms`).
 A C++ change takes about 4-5 min per ABI to rebuild, or 1-2 min with
 `ccache` on `PATH`.
 
-### 4.4 Where the app keeps data
+### 4.5 Where the app keeps data
 
 The data is extracted to `/sdcard/Android/data/com.metin2.client/files/`. The
 same folder holds `syserr.txt`, `stderr.txt` and, after a native crash,
@@ -260,9 +290,9 @@ adb shell cat /sdcard/Android/data/com.metin2.client/files/syserr.txt
 During development you can skip zipping and push the data once:
 `adb push ~/m2stage/. /sdcard/Android/data/com.metin2.client/files/`.
 
-### 4.4 Fully offline APK (embedded server)
+### 4.6 Fully offline APK (embedded server)
 
-The `offline-bundled` profile puts the client data **and** the server inside one APK. On
+The `bundled` profile puts the client data **and** the server inside one APK. On
 launch the app starts db (9000), auth (11000) and one game core (11011) on 127.0.0.1, then
 opens the game. No network, no PC and no adb pushes are needed after install.
 
@@ -277,15 +307,15 @@ opens the game. No network, no PC and no adb pushes are needed after install.
 2. Build and install:
    ```bash
    cd "$ANDROID"
-   M2_SERVER_PACK=~/m2serverpack tools/make_bundle.sh offline-bundled 1
-   adb install -r ~/m2bundle/metin2-offline-1.apk     # emulator: add --abi x86_64
+   M2_SERVER_PACK=~/m2serverpack tools/make_bundle.sh bundled 1
+   adb install -r ~/m2bundle/metin2-bundled-1.apk     # emulator: add --abi x86_64
    ```
 3. On first launch it unpacks about 2 GB of data, shows "Starting local server...", then
    opens the game. Log in with the account from the seed databases.
 
 Notes:
-- The package is `com.metin2.client.offline`, labelled "Metin2 Offline", so it installs next
-  to an online build instead of over it.
+- The package is `com.metin2.client.offline` (labelled "Metin2"), kept from the first
+  bundled builds so installed copies update in place.
 - Characters live in the app's internal storage and survive restarts and updates. The
   server saves every 30 s, so a force-stop can lose up to about 30 s of progress.
 - If a server process fails to start, the app shows which one, its exit status and the end of

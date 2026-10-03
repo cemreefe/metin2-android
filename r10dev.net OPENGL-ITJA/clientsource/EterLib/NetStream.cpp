@@ -464,10 +464,11 @@ bool CNetworkStream::Connect(DWORD dwAddr, int port, int limitSec)
 
 #ifdef __ANDROID__
 	// Remote test profiles reach the cores through a tunnel: the server advertises its LAN address, so
-	// redirect to the profile host and shift the port into the tunnel's range.
+	// redirect to the profile host and shift the port into the tunnel's range. Loopback cores are the
+	// embedded server and are never tunnelled.
 	const char* c_szGameHost = getenv("M2_GAME_HOST");
 	const char* c_szPortOffset = getenv("M2_GAME_PORT_OFFSET");
-	if (c_szGameHost && c_szPortOffset)
+	if (c_szGameHost && c_szPortOffset && strncmp(szAddr, "127.", 4) != 0)
 	{
 		Tracenf("game redirect %s:%d -> %s:%d", szAddr, port, c_szGameHost, port + atoi(c_szPortOffset));
 		snprintf(szAddr, sizeof(szAddr), "%s", c_szGameHost);

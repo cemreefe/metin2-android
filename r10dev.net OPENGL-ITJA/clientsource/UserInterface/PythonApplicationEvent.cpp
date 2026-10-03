@@ -323,10 +323,24 @@ void CPythonApplication::OnAndroidKeyEvent(int action, int keyCode, int unicodeC
 }
 
 void AndroidSetGameControlsVisible(bool bVisible);
+void AndroidSetTouchBlockers(const std::vector<RECT>& rects, int iWidth, int iHeight);
 
 namespace
 {
 	const DWORD c_dwTouchHoldMs = 350;
+
+	void CollectTouchBlockers(UI::CWindow* pWindow, std::vector<RECT>& rects)
+	{
+		for (UI::CWindow* pChild : pWindow->GetChildren())
+		{
+			if (!pChild->IsShow() || 0 == strcmp(pChild->GetName(), "game"))
+				continue;
+			if (pChild->IsFlag(UI::CWindow::FLAG_NOT_PICK) || pChild->IsFlag(UI::CWindow::FLAG_IGNORE_SIZE))
+				CollectTouchBlockers(pChild, rects);
+			else
+				rects.push_back(pChild->GetRect());
+		}
+	}
 
 	bool IsTouchOnWorld()
 	{
@@ -335,6 +349,22 @@ namespace
 		UI::CWindow* pWindow = UI::CWindowManager::Instance().GetPointWindow();
 		return pWindow && 0 == strcmp(pWindow->GetName(), "game");
 	}
+}
+
+// Re-reads display.cfg and resizes the logical UI canvas in place; Python then rebuilds
+// the windows that cached the old screen size.
+void CPythonApplication::ApplyAndroidUIScale()
+{
+	m_pySystem.FitUIToAndroidSurface();
+	const int iWidth = m_pySystem.GetWidth();
+	const int iHeight = m_pySystem.GetHeight();
+	m_dwWidth = iWidth;
+	m_dwHeight = iHeight;
+	AdjustSize(iWidth, iHeight);
+	CGraphicBase::SetLogicalScreenSize(iWidth, iHeight);
+	UI::CWindowManager& rkWndMgr = UI::CWindowManager::Instance();
+	rkWndMgr.SetResolution(iWidth, iHeight);
+	rkWndMgr.SetScreenSize(iWidth, iHeight);
 }
 
 // Touches on UI windows behave like the left mouse button. On the world, a quick tap is a
@@ -386,12 +416,15 @@ void CPythonApplication::OnTouchEvent(int action, int x, int y)
 
 	case 2:
 		if (m_eTouchMode == TOUCH_WORLD_PENDING && (abs(x - m_iTouchStartX) > iSlop || abs(y - m_iTouchStartY) > iSlop))
+		{
 			m_eTouchMode = TOUCH_CAMERA;
+			m_fTouchCameraSensitivity = fMAX(0.25f, fMIN(2.0f, CPythonSystem::GetAndroidDisplayConfig("camera_sensitivity", 1.0f)));
+		}
 		if (m_eTouchMode == TOUCH_CAMERA)
 		{
 			CCamera* pkCmrCur = CCameraManager::Instance().GetCurrentCamera();
 			if (pkCmrCur)
-				pkCmrCur->DragBy(x - m_iTouchLastX, y - m_iTouchLastY);
+				pkCmrCur->DragBy((x - m_iTouchLastX) * m_fTouchCameraSensitivity, (y - m_iTouchLastY) * m_fTouchCameraSensitivity);
 			m_iTouchLastX = x;
 			m_iTouchLastY = y;
 			return;
@@ -436,6 +469,15 @@ void CPythonApplication::OnAndroidFrame()
 		m_bGameControlsVisible = bVisible;
 		AndroidSetGameControlsVisible(bVisible);
 	}
+
+	std::vector<RECT> blockers;
+	UI::CWindowManager& rkWndMgr = UI::CWindowManager::Instance();
+	if (rkWndMgr.GetLockWindow())
+		blockers.push_back({ 0, 0, (LONG)m_dwWidth, (LONG)m_dwHeight });
+	else
+		for (UI::CWindow* pLayer : rkWndMgr.GetLayers())
+			CollectTouchBlockers(pLayer, blockers);
+	AndroidSetTouchBlockers(blockers, (int)m_dwWidth, (int)m_dwHeight);
 }
 #endif
 

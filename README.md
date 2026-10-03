@@ -20,9 +20,9 @@ m2dev server, and can even carry that server inside the APK and play fully offli
   aspect ratio, so text isn't stretched.
 - **Combat:** tap a monster or Metin stone to target it; the taskbar sword's auto-attack
   fights it to the death, and the server confirms each kill.
-- **Offline mode:** the `offline-bundled` profile ships the game data *and* the m2dev server
-  (db, auth, game core on SQLite instead of MySQL) inside a single APK. It installs next to the
-  online client as "Metin2 Offline".
+- **Single Player:** the `bundled` profile ships the game data *and* the m2dev server
+  (db, auth, game core on SQLite instead of MySQL) inside one APK. Its server list offers
+  Single Player (the embedded server) next to the remote servers.
 - **Survives real phone use:** switch apps and come back to the same spot. A foreground
   service keeps the session and the local server alive in the background.
 - **On-screen keyboard** for chat and login, with the game sliding up so the field stays visible.
@@ -35,15 +35,15 @@ and testing on more physical phones. See the [porting diary](docs/PORTING_DIARY.
 | You want to… | Read |
 |---|---|
 | Run your own server, prepare game data, build an APK, connect a phone | [docs/SELF_HOSTING.md](docs/SELF_HOSTING.md) |
-| Build the single-file offline APK | [docs/SELF_HOSTING.md § 4.4](docs/SELF_HOSTING.md#44-fully-offline-apk-embedded-server) |
+| Build the single-file offline APK | [docs/SELF_HOSTING.md § 4.6](docs/SELF_HOSTING.md#46-fully-offline-apk-embedded-server) |
 | Understand how the port works / port to another platform | [docs/PORTING_DIARY.md](docs/PORTING_DIARY.md) |
 
 Quick version, once the toolchain, staged data and server pack are in place:
 
 ```bash
 cd "r10dev.net OPENGL-ITJA/android"
-M2_SERVER_PACK=~/m2serverpack tools/make_bundle.sh offline-bundled 1
-adb install -r ~/m2bundle/metin2-offline-1.apk
+M2_SERVER_PACK=~/m2serverpack tools/make_bundle.sh bundled 1
+adb install -r ~/m2bundle/metin2-bundled-1.apk
 ```
 
 Every setup (LAN server, tunnel, emulator, offline) is a small `profiles/*.properties` file,
