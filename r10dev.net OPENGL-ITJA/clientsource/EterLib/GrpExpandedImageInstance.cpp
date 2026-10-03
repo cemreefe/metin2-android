@@ -69,14 +69,19 @@ void CGraphicExpandedImageInstance::OnRender()
 		float fimgWidth = float(pImage->GetWidth()) * m_v2Scale.x;
 		float fimgHeight = float(pImage->GetHeight()) * m_v2Scale.y;
 
-		vertices[0].position.x -= m_RenderingRect.left;
-		vertices[0].position.y -= m_RenderingRect.top;
-		vertices[1].position.x += fimgWidth + m_RenderingRect.right;
-		vertices[1].position.y -= m_RenderingRect.top;
-		vertices[2].position.x -= m_RenderingRect.left;
-		vertices[2].position.y += fimgHeight + m_RenderingRect.bottom;
-		vertices[3].position.x += fimgWidth + m_RenderingRect.right;
-		vertices[3].position.y += fimgHeight + m_RenderingRect.bottom;
+		float fLeft = m_RenderingRect.left * m_v2Scale.x;
+		float fTop = m_RenderingRect.top * m_v2Scale.y;
+		float fRight = m_RenderingRect.right * m_v2Scale.x;
+		float fBottom = m_RenderingRect.bottom * m_v2Scale.y;
+
+		vertices[0].position.x -= fLeft;
+		vertices[0].position.y -= fTop;
+		vertices[1].position.x += fimgWidth + fRight;
+		vertices[1].position.y -= fTop;
+		vertices[2].position.x -= fLeft;
+		vertices[2].position.y += fimgHeight + fBottom;
+		vertices[3].position.x += fimgWidth + fRight;
+		vertices[3].position.y += fimgHeight + fBottom;
 		if ((0.0f < m_v2Scale.x && 0.0f > m_v2Scale.y) || (0.0f > m_v2Scale.x && 0.0f < m_v2Scale.y)) {
 			STATEMANAGER.SetRenderState(D3DRS_CULLMODE, D3DCULL_CCW);
 		}

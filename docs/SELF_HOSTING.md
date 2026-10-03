@@ -155,7 +155,7 @@ tail -f channels/auth/syslog.log channels/channel1/core*/syslog.log
 ## 3. Preparing the client data
 
 ```bash
-sudo apt install libsodium23 rsync patch
+sudo apt install libsodium23 rsync patch python3-pil
 git clone https://github.com/d1str4ught/m2dev-client ~/m2dev-client
 cd ~/m2dev-client && git checkout 98d2c1af
 "$ANDROID/tools/stage_client_data.sh" ~/m2dev-client ~/m2stage en
@@ -179,7 +179,12 @@ rm -rf ~/m2pylib/{test,lib-tk,idlelib,lib2to3,ensurepip,bsddb,msilib,distutils,c
    - `system.py` imports `m2compat`;
    - `intrologin.py` reads `loginInfo.py` instead of `.xml`;
    - `serverinfo.py` reads the server address from `m2profile.py`, which the app
-     writes from the build profile.
+     writes from the build profile;
+   - `game.py` and `uigameoption.py` load the touch HUD (`uimobilehud.py`) and
+     add its "HUD: Desktop / Mobile" row to the game options window.
+4. Builds the HUD textures into `mobile/` with `tools/data-overlay/make_hud_art.py`
+   (Pillow). They are cut from the client's own `minimap.dds` and `public.dds`,
+   so no extra art ships with the repo.
 
 The engine lowercases only ASCII when it looks up paths, so keep file names
 as they come. Do not lowercase Korean (CP949) names.

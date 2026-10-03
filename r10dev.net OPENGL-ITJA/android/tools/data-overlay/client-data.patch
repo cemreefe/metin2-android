@@ -64,3 +64,36 @@
  		global cameraDistance, cameraPitch, cameraRotation, cameraHeight
  		(cameraDistance, cameraPitch, cameraRotation, cameraHeight) = app.GetCamera()
  
+--- a/uigameoption.py
++++ b/uigameoption.py
+@@ -39,8 +39,11 @@
+ 		self.alwaysShowNameButtonList = []
+ 		self.showDamageButtonList = []
+ 		self.showsalesTextButtonList = []
++		self.hudOption = None
+ 
+ 	def Destroy(self):
++		if self.hudOption:
++			self.hudOption.Destroy()
+ 		self.ClearDictionary()
+ 
+ 		self.__Initialize()
+@@ -135,6 +138,18 @@
+ 		self.__ClickRadioButton(self.viewTargetBoardButtonList, constInfo.GET_VIEW_OTHER_EMPIRE_PLAYER_TARGET_BOARD())
+ 		self.__SetPeacePKMode()
+ 
++		try:
++			import m2profile
++		except ImportError:
++			m2profile = None
++		if m2profile:
++			import uimobilehud
++			board = self.GetChild("board")
++			self.hudOption = uimobilehud.HudOption(board, 265, 30, 90, 65)
++			board.SetSize(board.GetWidth(), board.GetHeight() + 25)
++			self.SetSize(self.GetWidth(), self.GetHeight() + 25)
++			self.SetCenterPosition()
++
+ 	def __ClickRadioButton(self, buttonList, buttonIndex):
+ 		try:
+ 			selButton=buttonList[buttonIndex]

@@ -112,6 +112,15 @@ bool CPythonSkill::RegisterSkillTable(const char* c_szFileName)
 
 		std::string strLine = textFileLoader.GetLineString(i);
 
+		static const int c_aiProtoColumn[TABLE_TOKEN_TYPE_MAX_NUM] = { 0, 4, 5, 7, 8, 9, 10, 11, 25 };
+		if (27 == TokenVector.size())
+		{
+			CTokenVector kProto;
+			kProto.swap(TokenVector);
+			for (int j = 0; j < TABLE_TOKEN_TYPE_MAX_NUM; ++j)
+				TokenVector.push_back(kProto[c_aiProtoColumn[j]]);
+		}
+
 		if (TABLE_TOKEN_TYPE_MAX_NUM != TokenVector.size())
 		{
 			Tracef("CPythonSkill::RegisterSkillTable(%s) - Strange Token Count [Line:%d / TokenCount:%d]\n", c_szFileName, i, TokenVector.size());

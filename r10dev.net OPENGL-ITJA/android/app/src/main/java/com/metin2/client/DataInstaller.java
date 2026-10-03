@@ -1,5 +1,7 @@
 package com.metin2.client;
 
+import android.os.Build;
+
 import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -55,7 +57,9 @@ final class DataInstaller {
         try {
             if (conn.getResponseCode() != HttpURLConnection.HTTP_OK)
                 throw new IOException("HTTP " + conn.getResponseCode());
-            extract(conn.getInputStream(), conn.getContentLengthLong(), dataDir, progress);
+            long total = Build.VERSION.SDK_INT >= Build.VERSION_CODES.N
+                    ? conn.getContentLengthLong() : conn.getContentLength();
+            extract(conn.getInputStream(), total, dataDir, progress);
         } finally {
             conn.disconnect();
         }
