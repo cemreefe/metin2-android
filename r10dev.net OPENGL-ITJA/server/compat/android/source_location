@@ -1,0 +1,32 @@
+// NDK r25's libc++ (clang 14) has no <source_location>; minimal C++20 stand-in.
+#pragma once
+#include <cstdint>
+
+namespace std {
+struct source_location
+{
+    static constexpr source_location current(const char *file = __builtin_FILE(),
+                                             const char *func = __builtin_FUNCTION(),
+                                             std::uint_least32_t line = __builtin_LINE(),
+                                             std::uint_least32_t column = __builtin_COLUMN()) noexcept
+    {
+        source_location loc;
+        loc.m_file = file;
+        loc.m_func = func;
+        loc.m_line = line;
+        loc.m_column = column;
+        return loc;
+    }
+    constexpr source_location() noexcept = default;
+    constexpr const char *file_name() const noexcept { return m_file; }
+    constexpr const char *function_name() const noexcept { return m_func; }
+    constexpr std::uint_least32_t line() const noexcept { return m_line; }
+    constexpr std::uint_least32_t column() const noexcept { return m_column; }
+
+private:
+    const char *m_file = "";
+    const char *m_func = "";
+    std::uint_least32_t m_line = 0;
+    std::uint_least32_t m_column = 0;
+};
+}

@@ -247,6 +247,72 @@ DevIL, SpeedTree, Miles.
 - On a user's network, `bore.pub` resolved to 81.99.162.48, while our tunnels are on 159.223.110.159, and the connection timed out. Profiles therefore pin the bore server by IP. Lesson: never rely on a third-party relay's DNS for test bundles.
 - Soft keyboard: the activity uses `adjustNothing`, so the visible frame never shrinks and `getWindowVisibleDisplayFrame` doesn't see the IME. On API 30+, read `WindowInsets.Type.ime()` from the decor view's insets listener instead. Native passes the focused edit window's bottom (as a fraction of the screen) with `setKeyboardVisible(boolean, float)`. Java then translates the game view up so that bottom, plus a 12% margin to cover the next field (password) and the button, sits above the keyboard. Touch Y is corrected by `getTranslationY()`, because the activity receives window coordinates.
 
+## Embedded server (offline profile)
+
+- Layout: `server/` builds the pinned m2dev-server-src (66068c1, unpatched,
+  cloned by Gradle into `server/.src` or `-Pm2serverSrc=`) with NDK r25 into
+  PIE executables `libm2db.so` / `libm2game.so`, packaged as jniLibs so they
+  land executable in `nativeLibraryDir` (exec from app data is blocked on
+  API 29+). `m2.serverMode=embedded` adds them; `remote` builds are unchanged.
+- Database: no MariaDB on the phone. `server/sqlite-mysql` is a drop-in
+  `libmariadbclient` (same `mysql.h` C API) over SQLite 3.50: one file per
+  logical DB (`account/player/common/log/hotbackup.sqlite3`), all ATTACHed so
+  `player.item` style qualified names work. Queries are rewritten from MySQL:
+  NOW()/UNIX_TIMESTAMP/FROM_UNIXTIME/PASSWORD() as SQL functions, REPLACE /
+  INSERT ... SET / ON DUPLICATE KEY UPDATE / INSERT DELAYED|IGNORE, SHOW
+  TABLES / SHOW CREATE TABLE, DATE_ADD/TIMESTAMPDIFF, ENUM/SET (metadata in
+  `_m2_enum`, numeric index semantics via triggers), backslash escapes.
+  `server/tools/mysql2sqlite.py` converts the exact `m2dev-server/sql` dumps.
+  The DB server boots `hotbackup` too; an empty file is enough.
+- Persistence: seed DBs ship in the external server pack
+  (`files/server/sqlite-seed`); the app copies them once to internal
+  `files/m2server/sqlite` and never overwrites, so accounts/characters/items
+  survive restarts and pack re-pushes. Cache flush cycles are cut to 30 s in
+  the pack so a killed app loses little; the launcher SIGTERMs the cores
+  (they save players) before the db on exit.
+- Test account: `test` / `test123` (MySQL double-SHA1 in `account.account`),
+  created only in generated seed files; nothing credential-like is committed.
+- Bionic/NDK breakage and fixes:
+  - libc++ in r25 has no `<source_location>` (C++20, used by the log macros):
+    tiny builtin-based replacement in `server/compat/android`.
+  - `getifaddrs`/`freeifaddrs` only exist from API 24: resolved via `dlsym`
+    at runtime, otherwise no interfaces; the cores always get `-I 127.0.0.1`.
+  - Lua 5.0 aborted at boot with `FORTIFY: strchr: prevented read past end of
+    buffer` (ltable/lgc reads string bytes past the `TString` header, which
+    FORTIFY's object-size check rejects). FORTIFY is off for `liblua` only.
+  - glibc host builds lack `strlcpy/strlcat` (bionic has them): BSD fallback
+    header force-included on the host only. SQLite needs `_GNU_SOURCE` for
+    `mremap`.
+  - `qc` runs on the host while building the pack (quests are data, not code).
+  - Clients connected but never got `GC_HANDSHAKE` ("handshake session has
+    expired"). libthecore's POSIX backend calls `select(0, ...)` (fine on
+    Winsock, which ignores nfds); Linux then checks no fds and leaves the sets
+    untouched, so every socket looks readable, `fdwatch_check_event` always
+    returns READ and output is never flushed (also a 100% CPU busy loop).
+    `compat/select_nfds.h` is force-included into libthecore only and passes
+    `FD_SETSIZE` when nfds is 0; the pinned source stays unpatched.
+  - Pin is 66068c1, not 0cc595b: db87d06 (between them) replaced the Crypto++
+    KEY_AGREEMENT (0xfb/0xfa) with a libsodium KEY_CHALLENGE (0xf8/0xf9/0xf7)
+    the client doesn't speak; auth sent the challenge and timed out.
+    66068c1 is what the Linux server the client was tuned against runs.
+  - cryptopp's CMake does `add_compile_options("${CMAKE_CXX_FLAGS}")` (one
+    quoted argument); harmless on the host where it is empty, fatal with the
+    NDK flags. `CMAKE_CXX_FLAGS` is cleared around its `add_subdirectory`.
+  - The Linux setup's `QueryLocaleSet` connect-wait patch isn't needed: the
+    SQLite shim is connected synchronously and `mysql_set_character_set` is
+    a no-op.
+- Server data pack: `server/tools/make-server-pack.sh <m2dev-server>
+  <m2dev-server-src> <out>` (share/conf,data,locale,mark + compiled quests +
+  seed DBs, ~116 MB), `push-server-pack.sh <out>` puts it at
+  `files/server`. Logs go to `files/server/logs/<process>.{out,syslog.log,syserr.log}`.
+- Process model: `EmbeddedServer` starts db -> auth -> channel1 core
+  carrying all three empires' normal maps (upstream splits them over cores
+  1-3; with only empire 1's maps the seeded empire-3 character got
+  "cannot find server for mapindex 41"), waiting until each port
+  accepts, before the game view is created; stale processes from a killed
+  app are found via their `pid` files and terminated.
+
+
 ### Phone kicked back to server select after Start; character-select offset
 
 - Symptom: on the phone (tunnel profile), Start on character select returned to the server list. Server logs showed `LOGIN_BY_KEY` on core1, then the socket closed with no `player_select`. The emulator worked because it can reach the LAN address directly.
