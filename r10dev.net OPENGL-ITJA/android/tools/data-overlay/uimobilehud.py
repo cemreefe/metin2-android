@@ -256,6 +256,7 @@ UI_SCALE_MIN = 1.0
 UI_SCALE_MAX = 1.2
 CAMERA_MIN = 0.25
 CAMERA_MAX = 2.0
+VALUE_TEXT_WIDTH = 34
 
 
 def _Clamp(value, low, high):
@@ -412,12 +413,12 @@ class DisplayOption:
 		self.__Text(board, labelX, y + 2, "UI size")
 		self.sizeSlider = self.__Slider(board, dataX, y + 2,
 			(self.conf["ui_scale"] - UI_SCALE_MIN) / (UI_SCALE_MAX - UI_SCALE_MIN), self.__OnSlideSize)
-		self.sizeLabel = self.__Text(board, dataX + self.sizeSlider.GetWidth() + 6, y + 2, "")
+		self.sizeLabel = self.__Text(board, self.__ValueX(board, dataX, self.sizeSlider), y + 2, "")
 
 		self.__Text(board, labelX, y + 27, "Camera")
 		self.cameraSlider = self.__Slider(board, dataX, y + 27,
 			(self.conf["camera_sensitivity"] - CAMERA_MIN) / (CAMERA_MAX - CAMERA_MIN), self.__OnSlideCamera)
-		self.cameraLabel = self.__Text(board, dataX + self.cameraSlider.GetWidth() + 6, y + 27, "")
+		self.cameraLabel = self.__Text(board, self.__ValueX(board, dataX, self.cameraSlider), y + 27, "")
 
 		self.__Text(board, labelX, y + 52, "Screen")
 		self.orientButtons = []
@@ -429,6 +430,9 @@ class DisplayOption:
 		self.apply = self.__Button(board, dataX, y + 75, "Apply", ui.Button())
 		self.apply.SetEvent(ui.__mem_func__(self.__Apply))
 		self.__Refresh()
+
+	def __ValueX(self, board, dataX, slider):
+		return min(dataX + slider.GetWidth() + 6, board.GetWidth() - VALUE_TEXT_WIDTH)
 
 	def __Text(self, board, x, y, text):
 		t = ui.TextLine()

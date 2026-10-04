@@ -152,13 +152,14 @@
  
  		self.questButtonList = []
  		self.whisperButtonList = []
-@@ -964,6 +970,9 @@
+@@ -964,6 +970,10 @@
  			if False == self.wndInventory.IsShow():
  				self.wndInventory.Show()
  				self.wndInventory.SetTop()
 +				x, y = self.wndInventory.GetGlobalPosition()
 +				x = max(0, min(x, wndMgr.GetScreenWidth() - self.wndInventory.GetWidth()))
-+				self.wndInventory.SetPosition(x, max(0, y))
++				y = max(0, min(y, wndMgr.GetScreenHeight() - self.wndInventory.GetHeight()))
++				self.wndInventory.SetPosition(x, y)
  			else:
  				self.wndInventory.OverOutItem()
  				self.wndInventory.Close()
