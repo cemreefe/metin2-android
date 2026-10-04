@@ -81,6 +81,7 @@ namespace UI
 		bool			HasParent() { return m_pParent ? true : false; }
 		bool			HasChild() { return m_pChildList.empty() ? false : true; }
 		int				GetChildCount() { return m_pChildList.size(); }
+		const TWindowContainer& GetChildren() { return m_pChildList; }
 
 		CWindow* GetRoot();
 		CWindow* GetParent();

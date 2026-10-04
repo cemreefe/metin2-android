@@ -29,7 +29,7 @@ final class EmbeddedServer {
     private static final String TAG = "Metin2Server";
     private static final String HOST = "127.0.0.1";
     private static final int DB_PORT = 9000;
-    private static final int START_TIMEOUT_MS = 120000;
+    private static final int START_TIMEOUT_MS = 90000;
     private static final String[] SHARE_DIRS = { "conf", "data", "locale", "mark", "package" };
     private static final String[] DATABASES = { "account", "player", "common", "log", "hotbackup" };
 
@@ -46,6 +46,10 @@ final class EmbeddedServer {
             this.port = port;
             this.config = config;
         }
+    }
+
+    interface Progress {
+        void onPhase(String phase);
     }
 
     private final List<Node> mNodes = new ArrayList<Node>();
@@ -79,7 +83,7 @@ final class EmbeddedServer {
     }
 
     /** Blocks until every process accepts connections. */
-    synchronized boolean start() {
+    synchronized boolean start(Progress progress) {
         mFailure = "";
         if (isRunning()) {
             Log.i(TAG, "already running");
@@ -92,17 +96,20 @@ final class EmbeddedServer {
                 return false;
             }
             mLogs.mkdirs();
+            phase(progress, "clearing old server processes");
             killStale();
+            phase(progress, "preparing databases");
             seedDatabases();
             for (Node node : mNodes) {
                 File dir = prepareDir(node);
+                phase(progress, "freeing port " + node.port + " for " + node.name);
                 if (!waitPortFree(node.port)) {
                     mFailure = node.name + ": port " + node.port + " still in use";
                     Log.e(TAG, mFailure);
                     return false;
                 }
                 node.process = launch(node, dir);
-                if (!waitListening(node)) {
+                if (!waitListening(node, progress)) {
                     mFailure = describeFailure(node);
                     Log.e(TAG, mFailure);
                     return false;
@@ -114,6 +121,22 @@ final class EmbeddedServer {
             mFailure = "embedded server start failed: " + e;
             Log.e(TAG, "embedded server start failed", e);
             return false;
+        }
+    }
+
+    private static void phase(Progress progress, String text) {
+        Log.i(TAG, text);
+        if (progress != null)
+            progress.onPhase(text);
+    }
+
+    /** Asks the server processes to save and exit; returns at once. */
+    synchronized void requestStop() {
+        for (int i = mNodes.size() - 1; i >= 0; --i) {
+            Node node = mNodes.get(i);
+            int pid = readPid(node);
+            if (pid > 0)
+                android.os.Process.sendSignal(pid, 15);
         }
     }
 
@@ -233,11 +256,18 @@ final class EmbeddedServer {
         return pb.start();
     }
 
-    private boolean waitListening(Node node) throws InterruptedException {
-        long deadline = System.currentTimeMillis() + START_TIMEOUT_MS;
+    private boolean waitListening(Node node, Progress progress) throws InterruptedException {
+        long begin = System.currentTimeMillis();
+        long deadline = begin + START_TIMEOUT_MS;
+        long reported = -1;
         while (System.currentTimeMillis() < deadline) {
             if (!isAlive(node.process))
                 return false;
+            long elapsed = (System.currentTimeMillis() - begin) / 1000;
+            if (elapsed != reported) {
+                reported = elapsed;
+                phase(progress, "starting " + node.name + " (" + elapsed + " s)");
+            }
             Socket s = new Socket();
             try {
                 s.connect(new InetSocketAddress(HOST, node.port), 500);

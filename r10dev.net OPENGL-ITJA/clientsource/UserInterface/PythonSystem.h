@@ -59,7 +59,7 @@ public:
 		int				iShadowLevel;
 
 		FLOAT			music_volume;
-		BYTE			voice_volume;
+		FLOAT			voice_volume;
 
 		int				gamma;
 
@@ -95,6 +95,7 @@ public:
 	void							SetDefaultConfig();
 #ifdef __ANDROID__
 	void							FitUIToAndroidSurface();
+	static float					GetAndroidDisplayConfig(const char* c_szKey, float fDefault);
 #endif
 	bool							LoadConfig();
 	bool							SaveConfig();
@@ -158,7 +159,7 @@ public:
 
 	// Sound
 	float							GetMusicVolume();
-	int								GetSoundVolume();
+	float							GetSoundVolume();
 	void							SetMusicVolume(float fVolume);
 	void							SetSoundVolumef(float fVolume);
 

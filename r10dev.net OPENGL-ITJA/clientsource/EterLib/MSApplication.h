@@ -16,7 +16,8 @@ public:
 	bool MessageProcess();
 #ifdef __ANDROID__
 	// Touch actions 0/1/2 are MotionEvent down/up/move; the synthetic ones replay a deferred tap.
-	enum { TOUCH_SYNTHETIC_DOWN = 16, TOUCH_SYNTHETIC_UP = 17 };
+	// TOUCH_WHEEL carries a mouse-wheel delta in x, as a pinch gesture maps to camera distance.
+	enum { TOUCH_SYNTHETIC_DOWN = 16, TOUCH_SYNTHETIC_UP = 17, TOUCH_WHEEL = 18 };
 	static void PushTouchEvent(int action, int x, int y);
 	virtual void OnTouchEvent(int action, int x, int y) {}
 	static void PushKeyEvent(int action, int keyCode, int unicodeChar);

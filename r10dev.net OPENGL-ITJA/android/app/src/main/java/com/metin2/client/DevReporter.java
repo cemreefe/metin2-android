@@ -32,20 +32,33 @@ final class DevReporter {
     }
 
     static void uploadPreviousRun(File dataDir) {
-        File crash = new File(dataDir, "crash.txt");
         if (!enabled() || !new File(dataDir, "syserr.txt").exists())
             return;
-        boolean crashed = crash.exists();
+        upload(dataDir, new File(dataDir, "crash.txt").exists() ? "crash" : "log", "");
+    }
+
+    /** Posts the current logs under an explicit kind, e.g. a startup that never finished. */
+    static void upload(File dataDir, String kind, String note) {
+        File crash = new File(dataDir, "crash.txt");
+        if (!enabled())
+            return;
+        boolean crashed = "crash".equals(kind);
         StringBuilder report = new StringBuilder();
         report.append("build ").append(BuildConfig.VERSION_NAME)
                 .append(" device ").append(android.os.Build.MANUFACTURER).append(' ').append(android.os.Build.MODEL)
                 .append(" android ").append(android.os.Build.VERSION.RELEASE).append('\n');
+        if (note.length() > 0)
+            report.append(note).append('\n');
         appendTail(report, crash, 64 * 1024);
         appendTail(report, new File(dataDir, "syserr.txt"), 32 * 1024);
         appendTail(report, new File(dataDir, "stderr.txt"), 32 * 1024);
+        File serverLogs = new File(new File(dataDir, "server"), "logs");
+        appendTail(report, new File(serverLogs, "db.out"), 8 * 1024);
+        appendTail(report, new File(serverLogs, "auth.out"), 8 * 1024);
+        appendTail(report, new File(serverLogs, "channel1_core1.out"), 8 * 1024);
         appendLogcat(report);
         try {
-            HttpURLConnection conn = open("/crash?build=" + BuildConfig.VERSION_CODE + "&kind=" + (crashed ? "crash" : "log"));
+            HttpURLConnection conn = open("/crash?build=" + BuildConfig.VERSION_CODE + "&kind=" + kind);
             conn.setRequestMethod("POST");
             conn.setDoOutput(true);
             conn.setRequestProperty("Content-Type", "text/plain; charset=utf-8");

@@ -207,6 +207,7 @@ public:
 
 	void		SetViewport(DWORD dwX, DWORD dwY, DWORD dwWidth, DWORD dwHeight, float fMinZ, float fMaxZ);
 	static void		GetBackBufferSize(UINT* puWidth, UINT* puHeight);
+	static void		SetLogicalScreenSize(int iWidth, int iHeight);
 	static bool		IsTLVertexClipping();
 	static bool		IsFastTNL();
 	static bool		IsLowTextureMemory();

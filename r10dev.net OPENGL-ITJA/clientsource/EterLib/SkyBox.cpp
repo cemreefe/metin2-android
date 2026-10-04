@@ -119,7 +119,7 @@ CSkyObject::CSkyObject() :
 
 CSkyObject::~CSkyObject()
 {
-	Destroy();
+	CSkyObject::Destroy();
 }
 
 void CSkyObject::Destroy()

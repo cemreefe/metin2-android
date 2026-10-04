@@ -212,6 +212,9 @@ public:
 	void	NEW_SetMultiDirKeyState(bool isLeft, bool isRight, bool isUp, bool isDown);
 
 	void	NEW_Attack();
+	// taps act like the mouse's MBF_AUTO function: a tap on an attackable
+	// character keeps attacking it until it dies
+	void	SetTouchAutoAttack(bool isOn);
 	void	NEW_Fishing();
 	bool	NEW_CancelFishing();
 
@@ -557,6 +560,7 @@ protected:
 
 	// Attack
 	DWORD					m_dwAutoAttackTargetVID;
+	bool					m_isTouchAutoAttack;
 
 	// NEW_Move
 	EMode					m_eReservedMode;

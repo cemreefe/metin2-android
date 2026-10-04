@@ -37,6 +37,7 @@ android {
         buildConfigField "int", "M2_AUTH_PORT", m2('authPort', '11000')
         buildConfigField "int", "M2_CHANNEL_PORT", m2('channelPort', '11011')
         buildConfigField "int", "M2_GAME_PORT_OFFSET", m2('gamePortOffset', '0')
+        buildConfigField "String", "M2_SERVER_LIST_URL", "\"${m2('serverListUrl', 'https://raw.githubusercontent.com/cemreefe/metin2-android/main/r10dev.net%20OPENGL-ITJA/android/servers/servers.json')}\""
         buildConfigField "String", "M2_DATA_URL", "\"${m2('dataUrl')}\""
         buildConfigField "int", "M2_DATA_VERSION", m2('dataVersion', '1')
         buildConfigField "boolean", "M2_DATA_BUNDLED", "${m2dataBundled}"
@@ -73,7 +74,7 @@ android {
     sourceSets {
         main {
             jniLibs.srcDirs = m2embedded ? ['src/main/jniLibs', "${buildDir}/m2server/jniLibs"] : ['src/main/jniLibs']
-            assets.srcDirs = m2dataBundled ? ['src/main/assets', m2dataAssets] : ['src/main/assets']
+            assets.srcDirs = m2dataBundled ? ['src/main/assets', '../servers', m2dataAssets] : ['src/main/assets', '../servers']
         }
     }
 

@@ -145,22 +145,22 @@ bool CCamera::Drag(int nMouseX, int nMouseY, LPPOINT lpReturnPoint)
 		return false;
 	}
 
-	DragBy(nMouseX - m_lMousePosX, nMouseY - m_lMousePosY);
+	DragBy(float(nMouseX - m_lMousePosX), float(nMouseY - m_lMousePosY));
 
 	lpReturnPoint->x = m_lMousePosX;
 	lpReturnPoint->y = m_lMousePosY;
 	return true;
 }
 
-// Applies one drag step of (nDeltaX, nDeltaY) pixels; Drag() measures it against the
+// Applies one drag step of (fDeltaX, fDeltaY) pixels; Drag() measures it against the
 // warped-back cursor, touch input against the previous finger position.
-void CCamera::DragBy(int nDeltaX, int nDeltaY)
+void CCamera::DragBy(float fDeltaX, float fDeltaY)
 {
 	if (IsLock())
 		return;
 
-	float fNewPitchVelocity = (float)nDeltaY * m_fResistance;
-	float fNewRotationVelocity = (float)nDeltaX * m_fResistance;
+	float fNewPitchVelocity = fDeltaY * m_fResistance;
+	float fNewRotationVelocity = fDeltaX * m_fResistance;
 
 	m_fPitchSum += fNewPitchVelocity;
 	m_fRollSum += fNewRotationVelocity;

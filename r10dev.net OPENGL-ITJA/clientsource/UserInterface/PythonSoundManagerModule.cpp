@@ -118,12 +118,12 @@ PyObject* sndSetSoundVolumef(PyObject* poSelf, PyObject* poArgs)
 
 PyObject* sndSetSoundVolume(PyObject* poSelf, PyObject* poArgs)
 {
-	int iVolume;
-	if (!PyTuple_GetInteger(poArgs, 0, &iVolume))
+	float fVolume;
+	if (!PyTuple_GetFloat(poArgs, 0, &fVolume))
 		return Py_BuildException();
 
 	CSoundManager& rkSndMgr = CSoundManager::Instance();
-	rkSndMgr.SetSoundVolumeGrade(iVolume);
+	rkSndMgr.SetSoundVolumeRatio(fVolume);
 	return Py_BuildNone();
 }
 

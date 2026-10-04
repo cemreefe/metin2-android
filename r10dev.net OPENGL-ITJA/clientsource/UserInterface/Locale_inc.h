@@ -23,7 +23,7 @@
 // #define ENABLE_PLAYER_PER_ACCOUNT5 // m2dev server sends 4 slots
 #define ENABLE_LEVEL_IN_TRADE
 #define ENABLE_DICE_SYSTEM
-#define ENABLE_EXTEND_INVEN_SYSTEM
+// #define ENABLE_EXTEND_INVEN_SYSTEM // m2dev servers keep INVENTORY_MAX_NUM at 90; 4 pages shift every equipment slot by 90
 #define ENABLE_LVL115_ARMOR_EFFECT
 #define ENABLE_SLOT_WINDOW_EX
 #define ENABLE_TEXT_LEVEL_REFRESH

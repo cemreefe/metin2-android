@@ -25,7 +25,13 @@ SERVER_PACK=
 if [ "$MODE" = "embedded" ] && [ "$BUNDLED" = "true" ]; then
   SERVER_PACK=${M2_SERVER_PACK:?set M2_SERVER_PACK to the make-server-pack.sh output dir}
   [ -f "$SERVER_PACK/server/share/conf/game.txt" ] || { echo "no server pack in $SERVER_PACK"; exit 1; }
-  ZIP="$OUT/m2data-$VERSION-offline.zip"
+  ZIP="$OUT/m2data-$VERSION-bundled.zip"
+fi
+# Installed copies only re-extract when m2.dataVersion changes, so new data under an old
+# version would never reach them.
+if [ -f "$ZIP" ] && [ -n "$(find "$DATA" ${SERVER_PACK:+"$SERVER_PACK/server"} -newer "$ZIP" -not -path '*/logs/*' -print -quit)" ]; then
+  echo "client data changed since $ZIP was built: bump m2.dataVersion in profiles/$PROFILE.properties" >&2
+  exit 1
 fi
 if [ ! -f "$ZIP" ]; then
   echo "building $ZIP"
@@ -47,6 +53,9 @@ if [ "$BUNDLED" = "true" ]; then
   ln -f "$ZIP" "$ASSETS/m2data.zip"
   EXTRA=(-Pm2dataAssets="$ASSETS")
 fi
+# Incremental packaging leaves the old asset bytes in place when the data zip changes,
+# doubling the APK; always package from scratch.
+rm -f app/build/outputs/apk/debug/app-debug.apk
 "$GRADLE" assembleDebug -Pm2profile="$PROFILE" -Pm2build="$BUILD" "${EXTRA[@]}" -q
 cp app/build/outputs/apk/debug/app-debug.apk "$OUT/metin2-$NAME-$BUILD.apk"
 SYMS=${M2_SYMS:-$HOME/m2syms}/$NAME-$BUILD

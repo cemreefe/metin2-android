@@ -134,6 +134,11 @@ void CPythonPlayer::NEW_SetMouseSmartState(int eMBS, bool isAuto)
 	}
 }
 
+void CPythonPlayer::SetTouchAutoAttack(bool isOn)
+{
+	m_isTouchAutoAttack = isOn;
+}
+
 void CPythonPlayer::__OnPressSmart(CInstanceBase& rkInstMain, bool isAuto)
 {
 	DWORD dwPickedItemID;
@@ -248,7 +253,7 @@ bool CPythonPlayer::NEW_SetMouseState(int eMBT, int eMBS)
 		}
 		else
 		{
-			NEW_SetMouseSmartState(eMBS, false);
+			NEW_SetMouseSmartState(eMBS, m_isTouchAutoAttack);
 		}
 		break;
 	case MBF_CAMERA:

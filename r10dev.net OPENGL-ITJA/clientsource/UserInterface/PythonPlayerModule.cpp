@@ -451,6 +451,24 @@ PyObject* playerSetMouseState(PyObject* poSelf, PyObject* poArgs)
 	return Py_BuildNone();
 }
 
+// Touch builds treat a tap on an attackable character as the desktop client's
+// auto-attack mouse function, so the tap keeps attacking that target until it dies.
+PyObject* playerSetTouchAutoAttack(PyObject* poSelf, PyObject* poArgs)
+{
+	int isOn;
+	if (!PyTuple_GetInteger(poArgs, 0, &isOn))
+		return Py_BuildException();
+
+	CPythonPlayer::Instance().SetTouchAutoAttack(isOn ? true : false);
+	return Py_BuildNone();
+}
+
+PyObject* playerAttackOnce(PyObject* poSelf, PyObject* poArgs)
+{
+	CPythonPlayer::Instance().NEW_Attack();
+	return Py_BuildNone();
+}
+
 PyObject* playerSetMouseFunc(PyObject* poSelf, PyObject* poArgs)
 {
 	int eMBT;
@@ -2216,6 +2234,8 @@ void initPlayer()
 		{ "RegisterEffect",				playerRegisterEffect,				METH_VARARGS },
 		{ "RegisterCacheEffect",		playerRegisterCacheEffect,			METH_VARARGS },
 		{ "SetMouseState",				playerSetMouseState,				METH_VARARGS },
+		{ "SetTouchAutoAttack",			playerSetTouchAutoAttack,			METH_VARARGS },
+		{ "AttackOnce",					playerAttackOnce,					METH_VARARGS },
 		{ "SetMouseFunc",				playerSetMouseFunc,					METH_VARARGS },
 		{ "GetMouseFunc",				playerGetMouseFunc,					METH_VARARGS },
 		{ "SetMouseMiddleButtonState",	playerSetMouseMiddleButtonState,	METH_VARARGS },

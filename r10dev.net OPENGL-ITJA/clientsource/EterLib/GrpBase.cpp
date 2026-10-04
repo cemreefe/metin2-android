@@ -135,6 +135,14 @@ void CGraphicBase::GetBackBufferSize(UINT* puWidth, UINT* puHeight)
 	*puHeight = ms_d3dPresentParameter.BackBufferHeight;
 }
 
+void CGraphicBase::SetLogicalScreenSize(int iWidth, int iHeight)
+{
+	ms_iWidth = iWidth;
+	ms_iHeight = iHeight;
+	ms_d3dPresentParameter.BackBufferWidth = iWidth;
+	ms_d3dPresentParameter.BackBufferHeight = iHeight;
+}
+
 void CGraphicBase::SetDefaultIndexBuffer(UINT eDefIB)
 {
 	if (eDefIB >= DEFAULT_IB_NUM)

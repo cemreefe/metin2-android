@@ -279,8 +279,9 @@ void CSoundManager::SetSoundVolumeRatio(float fRatio)
 
 void CSoundManager::SetMusicVolume(float fVolume)
 {
-	//float fVolume = __ConvertRatioVolumeToApplyVolume(fRatio);
-	__SetMusicVolume(fVolume);
+	// Sliders are linear in position; loudness is not, so map position to gain cubically.
+	fVolume = fMAX(0.0f, fMIN(1.0f, fVolume));
+	__SetMusicVolume(fVolume * fVolume * fVolume);
 }
 
 float CSoundManager::GetSoundVolume()

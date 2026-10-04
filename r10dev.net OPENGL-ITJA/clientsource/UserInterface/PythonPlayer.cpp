@@ -1723,6 +1723,8 @@ CPythonPlayer::CPythonPlayer(void)
 	m_aeMBFButton[MBT_RIGHT] = CPythonPlayer::MBF_CAMERA;
 	m_aeMBFButton[MBT_MIDDLE] = CPythonPlayer::MBF_CAMERA;
 
+	m_isTouchAutoAttack = false;
+
 	memset(m_adwEffect, 0, sizeof(m_adwEffect));
 
 	m_isDestPosition = FALSE;
