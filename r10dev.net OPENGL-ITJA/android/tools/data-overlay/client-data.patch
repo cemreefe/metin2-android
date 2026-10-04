@@ -222,3 +222,88 @@
  GAMMA						1
  IS_SAVE_ID					0
  SAVE_ID					0
+--- a/uiscript/loginwindow.py
++++ b/uiscript/loginwindow.py
+@@ -15,6 +15,12 @@
+ ID_LIMIT_COUNT = 19
+ PW_LIMIT_COUNT = 16
+ 
++# The artwork is 1024x768; scale it uniformly to cover the screen and centre it,
++# so narrow or tall screens crop it instead of stretching it.
++BG_SCALE = max(float(SCREEN_WIDTH) / 1024.0, float(SCREEN_HEIGHT) / 768.0)
++BG_X = int((SCREEN_WIDTH - 1024 * BG_SCALE) / 2)
++BG_Y = int((SCREEN_HEIGHT - 768 * BG_SCALE) / 2)
++
+ window = {
+ 	"name" : "LoginWindow",
+ 	"sytle" : ("movable",),
+@@ -30,13 +36,13 @@
+ 
+ 		## Board
+ 		{
+-			"name" : "bg1", "type" : "expanded_image", "x" : 0, "y" : 0,
+-			"x_scale" : float(SCREEN_WIDTH) / 1024.0, "y_scale" : float(SCREEN_HEIGHT) / 768.0,
++			"name" : "bg1", "type" : "expanded_image", "x" : BG_X, "y" : BG_Y,
++			"x_scale" : BG_SCALE, "y_scale" : BG_SCALE,
+ 			"image" : ROOT_PATH + "login/login.sub",
+ 		},
+ 		{
+-			"name" : "bg2", "type" : "expanded_image", "x" : 0, "y" : 0,
+-			"x_scale" : float(SCREEN_WIDTH) / 1024.0, "y_scale" : float(SCREEN_HEIGHT) / 768.0,
++			"name" : "bg2", "type" : "expanded_image", "x" : BG_X, "y" : BG_Y,
++			"x_scale" : BG_SCALE, "y_scale" : BG_SCALE,
+ 			"image" : ROOT_PATH + "login/login.sub",
+ 		},
+ 
+--- a/uiscript/selectcharacterwindow.py
++++ b/uiscript/selectcharacterwindow.py
+@@ -8,6 +8,12 @@
+ 
+ BOARD_ITEM_ADD_POSITION = -40
+ 
++# The artwork is 1024x768; scale it uniformly to cover the screen and centre it,
++# so narrow or tall screens crop it instead of stretching it.
++BG_SCALE = max(float(SCREEN_WIDTH) / 1024.0, float(SCREEN_HEIGHT) / 768.0)
++BG_X = int((SCREEN_WIDTH - 1024 * BG_SCALE) / 2)
++BG_Y = int((SCREEN_HEIGHT - 768 * BG_SCALE) / 2)
++
+ window = {
+ 	"name" : "SelectCharacterWindow",
+ 
+@@ -21,8 +27,8 @@
+ 	(
+ 		## Board
+ 		{
+-			"name" : "BackGround", "type" : "expanded_image", "x" : 0, "y" : 0,
+-			"x_scale" : float(SCREEN_WIDTH) / 1024.0, "y_scale" : float(SCREEN_HEIGHT) / 768.0,
++			"name" : "BackGround", "type" : "expanded_image", "x" : BG_X, "y" : BG_Y,
++			"x_scale" : BG_SCALE, "y_scale" : BG_SCALE,
+ 			"image" : "d:/ymir work/ui/intro/select/select.sub",
+ 		},
+ 		## Name
+--- a/uiscript/createcharacterwindow.py
++++ b/uiscript/createcharacterwindow.py
+@@ -8,6 +8,12 @@
+ PLUS_BUTTON_WIDTH = 20
+ TEMPORARY_HEIGHT = 24 + 5
+ 
++# The artwork is 1024x768; scale it uniformly to cover the screen and centre it,
++# so narrow or tall screens crop it instead of stretching it.
++BG_SCALE = max(float(SCREEN_WIDTH) / 1024.0, float(SCREEN_HEIGHT) / 768.0)
++BG_X = int((SCREEN_WIDTH - 1024 * BG_SCALE) / 2)
++BG_Y = int((SCREEN_HEIGHT - 768 * BG_SCALE) / 2)
++
+ window = {
+ 	"name" : "CreateCharacterWindow",
+ 
+@@ -21,8 +27,8 @@
+ 	(
+ 		## Board
+ 		{
+-			"name" : "BackGround", "type" : "expanded_image", "x" : 0, "y" : 0,
+-			"x_scale" : float(SCREEN_WIDTH) / 1024.0, "y_scale" : float(SCREEN_HEIGHT) / 768.0,
++			"name" : "BackGround", "type" : "expanded_image", "x" : BG_X, "y" : BG_Y,
++			"x_scale" : BG_SCALE, "y_scale" : BG_SCALE,
+ 			"image" : "d:/ymir work/ui/intro/select/select.sub",
+ 		},
+ 		## Name

@@ -14,6 +14,7 @@
 #include "mysqld_error.h"
 #include "sqlite3.h"
 
+#include <algorithm>
 #include <cctype>
 #include <cstdint>
 #include <cstdio>
@@ -119,6 +120,15 @@ std::string Lower(std::string s)
 	for (auto &ch : s)
 		ch = static_cast<char>(tolower(static_cast<unsigned char>(ch)));
 	return s;
+}
+
+std::string Trim(const std::string &s)
+{
+	size_t b = s.find_first_not_of(" \t\r\n");
+	if (b == std::string::npos)
+		return "";
+	size_t e = s.find_last_not_of(" \t\r\n");
+	return s.substr(b, e - b + 1);
 }
 
 std::string QuoteText(const std::string &s)
@@ -634,6 +644,148 @@ const char *IntervalUnitSeconds(const std::string &unitIn)
 	return nullptr;
 }
 
+// ------------------------------------------------------------ enum columns
+// MySQL enums are stored as text here, so SQLite compares them against the
+// numbers the game uses by storage class: text always sorts above integers and
+// `WHERE window < 3` matches nothing. Every place a number meets an enum column
+// is therefore translated to the matching enum semantics.
+
+const EnumDef *FindEnumColumn(m2sql_conn *c, const std::string &name)
+{
+	std::string bare = name;
+	bare.erase(std::remove(bare.begin(), bare.end(), '"'), bare.end());
+	size_t dot = bare.rfind('.');
+	if (dot != std::string::npos)
+		bare = bare.substr(dot + 1);
+	auto it = c->enumColumns.find(Lower(Trim(bare)));
+	return it == c->enumColumns.end() ? nullptr : &it->second;
+}
+
+std::string EnumCall(const char *fn, const EnumDef &def, const std::string &arg)
+{
+	return std::string(fn) + "(" + arg + ", '" + def.values + "', " + std::to_string(def.isSet) + ")";
+}
+
+std::vector<std::string> SplitTopLevel(const std::string &in)
+{
+	std::vector<std::string> out;
+	std::string cur;
+	int depth = 0;
+	for (char ch : in)
+	{
+		if (ch == '(')
+			++depth;
+		else if (ch == ')')
+			--depth;
+		if (ch == ',' && depth == 0)
+		{
+			out.push_back(cur);
+			cur.clear();
+		}
+		else
+			cur += ch;
+	}
+	out.push_back(cur);
+	return out;
+}
+
+// enum_col = <number> inside a SET clause: store what MySQL would store.
+std::string RewriteEnumAssignments(m2sql_conn *c, const std::string &in)
+{
+	static const regex reSet(R"re(\bSET\b)re", kIcase);
+	static const regex reWhere(R"re(\bWHERE\b)re", kIcase);
+	static const regex reAssign(R"re(("?\w+"?)\s*=\s*(-?\d+)\b)re", kIcase);
+	std::string out;
+	size_t last = 0;
+	for (auto it = std::sregex_iterator(in.begin(), in.end(), reSet); it != std::sregex_iterator(); ++it)
+	{
+		size_t start = (size_t)(it->position(0) + it->length(0));
+		if (start < last)
+			continue;
+		size_t end = in.size();
+		std::string rest = in.substr(start);
+		std::smatch mw;
+		if (std::regex_search(rest, mw, reWhere))
+			end = start + (size_t)mw.position(0);
+		out.append(in, last, start - last);
+		out += ReplaceCallback(in.substr(start, end - start), reAssign, [c](const std::smatch &mm) {
+			const EnumDef *def = FindEnumColumn(c, mm[1].str());
+			if (!def)
+				return mm[0].str();
+			return mm[1].str() + " = " + EnumCall("m2_enum_text", *def, mm[2].str());
+		});
+		last = end;
+	}
+	out.append(in, last, std::string::npos);
+	return out;
+}
+
+// INSERT INTO t (a, window, b) VALUES (1, 2, 3), (...)
+std::string RewriteEnumInsertValues(m2sql_conn *c, const std::string &in)
+{
+	static const regex reHead(R"re(^(\s*(?:INSERT|REPLACE)(?:\s+OR\s+\w+)?\s+INTO\s+(?:"?\w+"?\.)?"?\w+"?\s*\(([^()]*)\)\s*VALUES\s*))re", kIcase);
+	static const regex reNumber(R"re(^\s*(-?\d+)\s*$)re");
+	std::smatch m;
+	if (!std::regex_search(in, m, reHead) || m.position(0) != 0)
+		return in;
+
+	std::vector<const EnumDef *> defs;
+	bool any = false;
+	for (const std::string &col : SplitTopLevel(m[2].str()))
+	{
+		const EnumDef *def = FindEnumColumn(c, col);
+		defs.push_back(def);
+		any = any || def != nullptr;
+	}
+	if (!any)
+		return in;
+
+	std::string out = m[1].str();
+	size_t pos = (size_t)m.length(0);
+	while (pos < in.size() && in[pos] == '(')
+	{
+		int depth = 0;
+		size_t start = pos;
+		for (; pos < in.size(); ++pos)
+		{
+			if (in[pos] == '(')
+				++depth;
+			else if (in[pos] == ')' && --depth == 0)
+			{
+				++pos;
+				break;
+			}
+		}
+		if (depth != 0)
+			return in;
+		std::vector<std::string> vals = SplitTopLevel(in.substr(start + 1, pos - start - 2));
+		if (vals.size() != defs.size())
+			return in;
+		std::string tuple;
+		for (size_t i = 0; i < vals.size(); ++i)
+		{
+			std::smatch mn;
+			bool isEnumNumber = defs[i] && std::regex_match(vals[i], mn, reNumber);
+			tuple += (i ? ", " : "") + (isEnumNumber ? EnumCall("m2_enum_text", *defs[i], mn[1].str()) : vals[i]);
+		}
+		out += "(" + tuple + ")";
+		size_t skip = pos;
+		while (skip < in.size() && isspace((unsigned char)in[skip]))
+			++skip;
+		if (skip < in.size() && in[skip] == ',')
+		{
+			out += ", ";
+			pos = skip + 1;
+			while (pos < in.size() && isspace((unsigned char)in[pos]))
+				++pos;
+		}
+		else
+			break;
+	}
+	out.append(in, pos, std::string::npos);
+	return out;
+}
+
 // Returns false if the statement should be skipped (no-op in SQLite).
 bool RewriteStatement(m2sql_conn *c, std::string &s, Lexed &lx)
 {
@@ -659,6 +811,8 @@ bool RewriteStatement(m2sql_conn *c, std::string &s, Lexed &lx)
 	static const regex reTimestampDiff(R"re(\bTIMESTAMPDIFF\s*\(\s*(SECOND|MINUTE|HOUR|DAY)\s*,\s*((?:[^(),]|\([^()]*\))+?)\s*,\s*((?:[^(),]|\([^()]*\))+?)\s*\))re", kIcase);
 	static const regex reExprInterval(R"re(((?:\bNOW\s*\(\s*\)|\bCURRENT_TIMESTAMP\b(?:\s*\(\s*\))?|"?\w+"?))\s*([+-])\s*INTERVAL\s+(-?[\w\x01.]+|\([^()]*\))\s+(SECOND|MINUTE|HOUR|DAY|WEEK|MONTH|YEAR)\b)re", kIcase);
 	static const regex reEnumPlus0(R"re(((?:"?\w+"?\.)?"?(\w+)"?)\s*\+\s*0\b)re", kIcase);
+	static const regex reEnumCompare(R"re(((?:"?\w+"?\.)?"?(\w+)"?)\s*(<=|>=|<>|!=|=|<|>)\s*(-?\d+)\b)re", kIcase);
+	static const regex reEnumOrderBy(R"re(\b(ORDER\s+BY)\s+((?:"?\w+"?\.)?"?\w+"?)(?!\s*\())re", kIcase);
 	static const regex reUserVar(R"re(@(\w+))re", kIcase);
 	static const regex reLimitOffset(R"re(\bLIMIT\s+(\d+)\s*,\s*(\d+))re", kIcase);
 	static const regex reIf(R"re(\bIF\s*\()re", kIcase);
@@ -779,6 +933,21 @@ bool RewriteStatement(m2sql_conn *c, std::string &s, Lexed &lx)
 			if (it == c->enumColumns.end())
 				return mm[0].str();
 			return "m2_enum_num(" + mm[1].str() + ", '" + it->second.values + "', " + std::to_string(it->second.isSet) + ")";
+		});
+		// Writes first, so their numbers are gone before the comparison pass.
+		s = RewriteEnumInsertValues(c, s);
+		s = RewriteEnumAssignments(c, s);
+		s = ReplaceCallback(s, reEnumCompare, [c](const std::smatch &mm) {
+			const EnumDef *def = FindEnumColumn(c, mm[1].str());
+			if (!def)
+				return mm[0].str();
+			return EnumCall("m2_enum_num", *def, mm[1].str()) + " " + mm[3].str() + " " + mm[4].str();
+		});
+		s = ReplaceCallback(s, reEnumOrderBy, [c](const std::smatch &mm) {
+			const EnumDef *def = FindEnumColumn(c, mm[2].str());
+			if (!def)
+				return mm[0].str();
+			return mm[1].str() + " " + EnumCall("m2_enum_num", *def, mm[2].str());
 		});
 	}
 
