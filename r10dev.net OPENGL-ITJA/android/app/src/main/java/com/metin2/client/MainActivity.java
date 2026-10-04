@@ -204,6 +204,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
         stickParams.leftMargin = (int) (24 * dp);
         stickParams.bottomMargin = (int) (40 * dp);
         root.addView(mJoystick, stickParams);
+        mView.setJoystick(mJoystick);
         mJoystick.setVisibility(sGameControlsVisible ? View.VISIBLE : View.GONE);
         setContentView(root);
         mView.requestFocus();

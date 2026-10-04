@@ -93,6 +93,10 @@ public class JoystickView extends View {
         return true;
     }
 
+    boolean isActive() {
+        return mPointerId != -1;
+    }
+
     void release() {
         mPointerId = -1;
         setDirections(false, false, false, false);

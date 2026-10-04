@@ -21,6 +21,7 @@ public class GameView extends SurfaceView {
     private int mPointerId = -1;
     private boolean mPinching;
     private float mPinchSpan;
+    private JoystickView mJoystick;
 
     // A wheel delta of 120 is one notch of the desktop mouse wheel, which the camera reads as
     // one zoom step; spreading the fingers this far apart zooms in by one step.
@@ -29,6 +30,10 @@ public class GameView extends SurfaceView {
     private static final int WHEEL_NOTCH = 120;
     private static final float PINCH_PIXELS_PER_NOTCH = 90.0f;
     private static final float PINCH_SLOP = 12.0f;
+
+    void setJoystick(JoystickView joystick) {
+        mJoystick = joystick;
+    }
 
     // The engine follows a single pointer: the first finger that lands on the game view.
     // Other fingers (e.g. one on the joystick) are handled by their own views.
@@ -40,7 +45,7 @@ public class GameView extends SurfaceView {
         switch (action) {
         case MotionEvent.ACTION_DOWN:
         case MotionEvent.ACTION_POINTER_DOWN:
-            if (event.getPointerCount() >= 2) {
+            if (pinchPointers(event) >= 2) {
                 if (!mPinching) {
                     mPinching = true;
                     mPinchSpan = span(event);
@@ -48,14 +53,14 @@ public class GameView extends SurfaceView {
                 }
                 return true;
             }
-            if (mPinching || mPointerId != -1)
+            if (mPinching || mPointerId != -1 || isJoystickPointer(event, index))
                 return true;
             mPointerId = event.getPointerId(index);
             NativeLib.touchEvent(MotionEvent.ACTION_DOWN, event.getX(index), event.getY(index));
             return true;
         case MotionEvent.ACTION_MOVE: {
             if (mPinching) {
-                if (event.getPointerCount() >= 2) {
+                if (pinchPointers(event) >= 2) {
                     float newSpan = span(event);
                     float delta = newSpan - mPinchSpan;
                     if (Math.abs(delta) >= PINCH_SLOP) {
@@ -79,6 +84,8 @@ public class GameView extends SurfaceView {
                     mPinching = false;
                 return true;
             }
+            if (isJoystickPointer(event, index))
+                return true;
             if (event.getPointerId(index) == mPointerId) {
                 NativeLib.touchEvent(MotionEvent.ACTION_UP, event.getX(index), event.getY(index));
                 mPointerId = -1;
@@ -92,10 +99,39 @@ public class GameView extends SurfaceView {
         return true;
     }
 
-    private static float span(MotionEvent event) {
-        float dx = event.getX(0) - event.getX(1);
-        float dy = event.getY(0) - event.getY(1);
-        return (float) Math.hypot(dx, dy);
+    // Fingers that steer the joystick must not pinch: holding the stick and dragging the
+    // camera with a second finger has to keep working. Split touch delivery usually keeps
+    // those pointers out of this view's events, but not on every device.
+    private boolean isJoystickPointer(MotionEvent event, int index) {
+        if (mJoystick == null || mJoystick.getVisibility() != VISIBLE)
+            return false;
+        float x = event.getX(index) + getLeft(), y = event.getY(index) + getTop();
+        return x >= mJoystick.getLeft() && x < mJoystick.getRight()
+            && y >= mJoystick.getTop() && y < mJoystick.getBottom();
+    }
+
+    private int pinchPointers(MotionEvent event) {
+        if (mJoystick != null && mJoystick.isActive())
+            return 0;
+        int count = 0;
+        for (int i = 0; i < event.getPointerCount(); ++i)
+            if (!isJoystickPointer(event, i))
+                ++count;
+        return count;
+    }
+
+    private float span(MotionEvent event) {
+        int first = -1;
+        for (int i = 0; i < event.getPointerCount(); ++i) {
+            if (isJoystickPointer(event, i))
+                continue;
+            if (first == -1) {
+                first = i;
+                continue;
+            }
+            return (float) Math.hypot(event.getX(first) - event.getX(i), event.getY(first) - event.getY(i));
+        }
+        return mPinchSpan;
     }
 
     void releaseTouch() {
