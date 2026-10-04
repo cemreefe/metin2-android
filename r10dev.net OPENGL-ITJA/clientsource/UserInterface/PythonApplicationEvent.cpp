@@ -374,6 +374,11 @@ void CPythonApplication::OnTouchEvent(int action, int x, int y)
 {
 	extern int g_iAndroidSurfaceWidth;
 	extern int g_iAndroidSurfaceHeight;
+	if (action == TOUCH_WHEEL)
+	{
+		OnMouseWheel(x);
+		return;
+	}
 	if (g_iAndroidSurfaceWidth > 0 && g_iAndroidSurfaceHeight > 0 && m_dwWidth && m_dwHeight)
 	{
 		x = x * (int)m_dwWidth / g_iAndroidSurfaceWidth;

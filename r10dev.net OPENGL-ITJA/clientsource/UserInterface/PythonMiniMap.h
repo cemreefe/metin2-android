@@ -250,4 +250,7 @@ protected:
 	vector<TSignalPoint>				m_SignalPointVector;
 
 	PyObject* m_poHandler;
+
+	// Balances Create/Destroy so a rebuilt minimap window survives the old wrapper's destructor.
+	int								m_iCreateCount;
 };

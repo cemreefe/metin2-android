@@ -19,9 +19,20 @@ public class GameView extends SurfaceView {
     }
 
     private int mPointerId = -1;
+    private boolean mPinching;
+    private float mPinchSpan;
+
+    // A wheel delta of 120 is one notch of the desktop mouse wheel, which the camera reads as
+    // one zoom step; spreading the fingers this far apart zooms in by one step.
+    // Matches CMSApplication::TOUCH_WHEEL; its x argument is the wheel delta.
+    private static final int ACTION_WHEEL = 18;
+    private static final int WHEEL_NOTCH = 120;
+    private static final float PINCH_PIXELS_PER_NOTCH = 90.0f;
+    private static final float PINCH_SLOP = 12.0f;
 
     // The engine follows a single pointer: the first finger that lands on the game view.
     // Other fingers (e.g. one on the joystick) are handled by their own views.
+    // Two fingers on the game view pinch instead, which zooms the camera.
     @Override
     public boolean onTouchEvent(MotionEvent event) {
         int action = event.getActionMasked();
@@ -29,12 +40,31 @@ public class GameView extends SurfaceView {
         switch (action) {
         case MotionEvent.ACTION_DOWN:
         case MotionEvent.ACTION_POINTER_DOWN:
-            if (mPointerId != -1)
+            if (event.getPointerCount() >= 2) {
+                if (!mPinching) {
+                    mPinching = true;
+                    mPinchSpan = span(event);
+                    releaseTouch();
+                }
+                return true;
+            }
+            if (mPinching || mPointerId != -1)
                 return true;
             mPointerId = event.getPointerId(index);
             NativeLib.touchEvent(MotionEvent.ACTION_DOWN, event.getX(index), event.getY(index));
             return true;
         case MotionEvent.ACTION_MOVE: {
+            if (mPinching) {
+                if (event.getPointerCount() >= 2) {
+                    float newSpan = span(event);
+                    float delta = newSpan - mPinchSpan;
+                    if (Math.abs(delta) >= PINCH_SLOP) {
+                        mPinchSpan = newSpan;
+                        NativeLib.touchEvent(ACTION_WHEEL, delta * WHEEL_NOTCH / PINCH_PIXELS_PER_NOTCH, 0.0f);
+                    }
+                }
+                return true;
+            }
             int i = event.findPointerIndex(mPointerId);
             if (i >= 0)
                 NativeLib.touchEvent(MotionEvent.ACTION_MOVE, event.getX(i), event.getY(i));
@@ -42,16 +72,30 @@ public class GameView extends SurfaceView {
         }
         case MotionEvent.ACTION_UP:
         case MotionEvent.ACTION_POINTER_UP:
+            if (mPinching) {
+                // Stay in pinch mode until every finger is gone, so lifting one of them does not
+                // turn the remaining one into a camera drag.
+                if (action == MotionEvent.ACTION_UP || event.getPointerCount() <= 1)
+                    mPinching = false;
+                return true;
+            }
             if (event.getPointerId(index) == mPointerId) {
                 NativeLib.touchEvent(MotionEvent.ACTION_UP, event.getX(index), event.getY(index));
                 mPointerId = -1;
             }
             return true;
         case MotionEvent.ACTION_CANCEL:
+            mPinching = false;
             releaseTouch();
             return true;
         }
         return true;
+    }
+
+    private static float span(MotionEvent event) {
+        float dx = event.getX(0) - event.getX(1);
+        float dy = event.getY(0) - event.getY(1);
+        return (float) Math.hypot(dx, dy);
     }
 
     void releaseTouch() {
