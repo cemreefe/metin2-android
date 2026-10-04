@@ -292,7 +292,8 @@ void CPythonMiniMap::Render(float fScreenX, float fScreenY)
 
 	STATEMANAGER.SaveRenderState(D3DRS_TEXTUREFACTOR, 0xFF000000);
 
-	STATEMANAGER.SetTexture(1, m_MiniMapFilterGraphicImageInstance.GetTexturePointer()->GetD3DTexture());
+	if (!m_MiniMapFilterGraphicImageInstance.IsEmpty())
+		STATEMANAGER.SetTexture(1, m_MiniMapFilterGraphicImageInstance.GetTexturePointer()->GetD3DTexture());
 	STATEMANAGER.SetTransform(D3DTS_TEXTURE1, &m_matMiniMapCover);
 
 	STATEMANAGER.SetVertexShader(D3DFVF_XYZ | D3DFVF_TEX1);
@@ -319,12 +320,14 @@ void CPythonMiniMap::Render(float fScreenX, float fScreenY)
 
 	STATEMANAGER.RestoreRenderState(D3DRS_TEXTUREFACTOR);
 
-	STATEMANAGER.RestoreTextureStageState(1, D3DTSS_ALPHAARG2);
-	STATEMANAGER.RestoreTextureStageState(1, D3DTSS_ALPHAARG1);
-	STATEMANAGER.RestoreTextureStageState(1, D3DTSS_ALPHAOP);
-	STATEMANAGER.RestoreTextureStageState(1, D3DTSS_COLORARG1);
-	STATEMANAGER.RestoreTextureStageState(1, D3DTSS_COLORARG2);
-	STATEMANAGER.RestoreTextureStageState(1, D3DTSS_COLOROP);
+	{
+		STATEMANAGER.RestoreTextureStageState(1, D3DTSS_ALPHAARG2);
+		STATEMANAGER.RestoreTextureStageState(1, D3DTSS_ALPHAARG1);
+		STATEMANAGER.RestoreTextureStageState(1, D3DTSS_ALPHAOP);
+		STATEMANAGER.RestoreTextureStageState(1, D3DTSS_COLORARG1);
+		STATEMANAGER.RestoreTextureStageState(1, D3DTSS_COLORARG2);
+		STATEMANAGER.RestoreTextureStageState(1, D3DTSS_COLOROP);
+	}
 
 	STATEMANAGER.RestoreTextureStageState(0, D3DTSS_ALPHAARG2);
 	STATEMANAGER.RestoreTextureStageState(0, D3DTSS_ALPHAARG1);
@@ -524,6 +527,8 @@ typedef struct _MINIMAPVERTEX
 
 bool CPythonMiniMap::Create()
 {
+	++m_iCreateCount;
+
 	const std::string strImageRoot = "D:/ymir work/ui/";
 	const std::string strImageFilter = strImageRoot + "minimap_image_filter.dds";
 	const std::string strImageCamera = strImageRoot + "minimap_camera.dds";
@@ -536,8 +541,6 @@ bool CPythonMiniMap::Create()
 	pImage = (CGraphicImage*)CResourceManager::Instance().GetResourcePointer(strImageCamera.c_str());
 	m_MiniMapCameraraphicImageInstance.SetImagePointer(pImage);
 
-	m_matMiniMapCover._11 = 1.0f / ((float)m_MiniMapFilterGraphicImageInstance.GetWidth());
-	m_matMiniMapCover._22 = 1.0f / ((float)m_MiniMapFilterGraphicImageInstance.GetHeight());
 	m_matMiniMapCover._33 = 0.0f;
 
 	// ĳ���� ��ũ
@@ -659,6 +662,8 @@ bool CPythonMiniMap::Create()
 		m_IndexBuffer.Unlock();
 	}
 
+	__SetPosition();
+
 	return true;
 }
 
@@ -671,10 +676,17 @@ void CPythonMiniMap::__SetPosition()
 	m_matWorld._41 = (1.0f + m_fScale) * m_fWidth * 0.5f - m_fCenterCellX * m_fScale + m_fScreenX;
 	m_matWorld._42 = (1.0f + m_fScale) * m_fHeight * 0.5f - m_fCenterCellY * m_fScale + m_fScreenY;
 
-	if (!m_MiniMapFilterGraphicImageInstance.IsEmpty())
+	// The cover texture maps the filter image over the minimap's screen rect, so it follows
+	// the filter's own size; a missing image would otherwise divide by zero and sample
+	// nothing, leaving the minimap blank.
+	const float fFilterWidth = (float)m_MiniMapFilterGraphicImageInstance.GetWidth();
+	const float fFilterHeight = (float)m_MiniMapFilterGraphicImageInstance.GetHeight();
+	if (fFilterWidth > 0.0f && fFilterHeight > 0.0f)
 	{
-		m_matMiniMapCover._41 = -(m_fScreenX) / ((float)m_MiniMapFilterGraphicImageInstance.GetWidth());
-		m_matMiniMapCover._42 = -(m_fScreenY) / ((float)m_MiniMapFilterGraphicImageInstance.GetHeight());
+		m_matMiniMapCover._11 = 1.0f / fFilterWidth;
+		m_matMiniMapCover._22 = 1.0f / fFilterHeight;
+		m_matMiniMapCover._41 = -(m_fScreenX) / fFilterWidth;
+		m_matMiniMapCover._42 = -(m_fScreenY) / fFilterHeight;
 	}
 
 	if (!m_PlayerMark.IsEmpty())
@@ -1474,6 +1486,11 @@ void CPythonMiniMap::__Initialize()
 
 void CPythonMiniMap::Destroy()
 {
+	// A new minimap window can be built before the previous wrapper is collected, and its
+	// destructor would otherwise tear down the live one.
+	if (m_iCreateCount > 0 && --m_iCreateCount > 0)
+		return;
+
 	ClearAllSignalPoint();
 	m_poHandler = 0;
 
@@ -1503,6 +1520,7 @@ void CPythonMiniMap::Destroy()
 }
 
 CPythonMiniMap::CPythonMiniMap()
+	: m_iCreateCount(0)
 {
 	__Initialize();
 }

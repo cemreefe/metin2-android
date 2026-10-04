@@ -286,11 +286,13 @@ public:
 	void OnAndroidKeyEvent(int action, int keyCode, int unicodeChar) override;
 	void OnTouchEvent(int action, int x, int y) override;
 	void OnAndroidFrame();
+	void ApplyAndroidUIScale();
 
 	enum ETouchMode { TOUCH_NONE, TOUCH_UI, TOUCH_WORLD_PENDING, TOUCH_WORLD_HOLD, TOUCH_CAMERA };
 	ETouchMode m_eTouchMode = TOUCH_NONE;
 	int m_iTouchStartX = 0, m_iTouchStartY = 0, m_iTouchLastX = 0, m_iTouchLastY = 0;
 	DWORD m_dwTouchStartTime = 0;
+	float m_fTouchCameraSensitivity = 1.0f;
 	bool m_bGameControlsVisible = false;
 #endif
 

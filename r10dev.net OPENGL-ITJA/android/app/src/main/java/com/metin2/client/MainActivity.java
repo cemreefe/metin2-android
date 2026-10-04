@@ -1,6 +1,8 @@
 package com.metin2.client;
 
 import android.app.Activity;
+import android.content.Intent;
+import android.content.pm.ActivityInfo;
 import android.os.Bundle;
 import android.content.Context;
 import android.view.KeyEvent;
@@ -15,7 +17,10 @@ import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
 
 public class MainActivity extends Activity implements SurfaceHolder.Callback {
     private static MainActivity sInstance;
@@ -29,6 +34,8 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
     private File mDataDir;
     private float mFocusBottom = -1.0f;
     private int mImeHeight;
+    private static volatile boolean sStartupDone;
+    private static volatile String sPhase = "";
     private TextView mStatus;
     private ProgressBar mProgress;
     private Button mAction;
@@ -51,6 +58,9 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
 
         sInstance = this;
         mDataDir = getExternalFilesDir(null);
+        setRequestedOrientation(isPortraitConfigured(mDataDir)
+                ? ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
+                : ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
         if (DataInstaller.isInstalled(mDataDir))
             prepareAndStart();
         else
@@ -138,14 +148,18 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
         }
         new Thread(new Runnable() {
             public void run() {
+                DevReporter.uploadPreviousRun(mDataDir);
                 try {
-                    DataInstaller.writeServerProfile(mDataDir);
+                    ServerCatalog.refresh(getApplicationContext());
+                    DataInstaller.writeServerProfile(getApplicationContext(), mDataDir);
                 } catch (final Exception e) {
                     android.util.Log.e("Metin2Mobile", "server profile: " + e);
                 }
+                startStallWatchdog();
                 final boolean serverUp = startEmbeddedServer();
+                sStartupDone = true;
                 final String failure = serverUp || sServer == null ? "" : sServer.failure();
-                DevReporter.uploadPreviousRun(mDataDir);
+                setStatus("Checking for updates...");
                 final DevReporter.Update update = DevReporter.checkForUpdate();
                 runOnUiThread(new Runnable() {
                     public void run() {
@@ -157,12 +171,40 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
                             mAction.setVisibility(View.VISIBLE);
                         } else if (update != null)
                             offerUpdate(update);
-                        else
+                        else {
+                            mStatus.setText("Loading game...");
                             startGame();
+                        }
                     }
                 });
             }
         }, "M2Prepare").start();
+    }
+
+    /** A local server that never comes up is invisible from here, so ship its logs. */
+    private void startStallWatchdog() {
+        sStartupDone = false;
+        new Thread(new Runnable() {
+            public void run() {
+                try {
+                    Thread.sleep(45000);
+                } catch (InterruptedException e) {
+                    return;
+                }
+                if (sStartupDone)
+                    return;
+                DevReporter.upload(mDataDir, "startup-stall", "embedded server still starting: " + sPhase);
+            }
+        }, "M2Stall").start();
+    }
+
+    private void setStatus(final String text) {
+        runOnUiThread(new Runnable() {
+            public void run() {
+                if (mStatus != null)
+                    mStatus.setText(text);
+            }
+        });
     }
 
     private void offerUpdate(final DevReporter.Update update) {
@@ -195,6 +237,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
         stickParams.leftMargin = (int) (24 * dp);
         stickParams.bottomMargin = (int) (40 * dp);
         root.addView(mJoystick, stickParams);
+        mView.setJoystick(mJoystick);
         mJoystick.setVisibility(sGameControlsVisible ? View.VISIBLE : View.GONE);
         setContentView(root);
         mView.requestFocus();
@@ -339,6 +382,12 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
     @Override
     public void surfaceChanged(final SurfaceHolder holder, int format, final int width, final int height) {
         if (sGameThread != null) {
+            // The engine runs once per process; a finished loop leaves nothing to draw, so
+            // reattaching its surface would only show black.
+            if (!sGameThread.isAlive()) {
+                restartApp();
+                return;
+            }
             NativeLib.setSurface(holder.getSurface());
             return;
         }
@@ -385,13 +434,54 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
             if (sServer == null)
                 sServer = new EmbeddedServer(getApplicationContext(), BuildConfig.M2_AUTH_PORT, BuildConfig.M2_CHANNEL_PORT);
         }
-        if (sServer.start())
+        if (sServer.start(new EmbeddedServer.Progress() {
+            public void onPhase(String phase) {
+                sPhase = phase;
+                setStatus("Starting local server...\n" + phase);
+            }
+        }))
             return true;
         android.util.Log.e("Metin2Mobile", "embedded server failed to start; see files/server/logs");
         return false;
     }
 
-    private static void stopEmbeddedServer() {
+    /** display.cfg is written by the in-game display options ("orientation portrait"). */
+    private static boolean isPortraitConfigured(File dataDir) {
+        if (dataDir == null)
+            return false;
+        try (BufferedReader reader = new BufferedReader(new FileReader(new File(dataDir, "display.cfg")))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                String[] parts = line.trim().split("\\s+");
+                if (parts.length == 2 && parts[0].equals("orientation"))
+                    return parts[1].equals("portrait");
+            }
+        } catch (IOException e) {
+            return false;
+        }
+        return false;
+    }
+
+    static void restartApp() {
+        final MainActivity activity = sInstance;
+        if (activity == null)
+            return;
+        stopEmbeddedServer();
+        Intent restart = new Intent(activity, RestartActivity.class);
+        restart.putExtra("oldPid", android.os.Process.myPid());
+        activity.startActivity(restart);
+    }
+
+    static void requestEmbeddedServerStop() {
+        EmbeddedServer server;
+        synchronized (MainActivity.class) {
+            server = sServer;
+        }
+        if (server != null)
+            server.requestStop();
+    }
+
+    static void stopEmbeddedServer() {
         EmbeddedServer server;
         synchronized (MainActivity.class) {
             server = sServer;

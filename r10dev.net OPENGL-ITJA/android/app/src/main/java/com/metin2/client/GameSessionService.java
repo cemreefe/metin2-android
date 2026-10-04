@@ -49,6 +49,18 @@ public class GameSessionService extends Service {
         return START_NOT_STICKY;
     }
 
+    /**
+     * Swiping the game away kills the client process at once; the server processes are
+     * separate, so they finish saving on their own after the signal and a relaunch starts
+     * from a clean process instead of a half-torn-down one.
+     */
+    @Override
+    public void onTaskRemoved(Intent rootIntent) {
+        MainActivity.requestEmbeddedServerStop();
+        stopSelf();
+        android.os.Process.killProcess(android.os.Process.myPid());
+    }
+
     @Override
     public IBinder onBind(Intent intent) {
         return null;

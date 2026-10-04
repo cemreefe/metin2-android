@@ -224,7 +224,7 @@ float CPythonSystem::GetMusicVolume()
 	return m_Config.music_volume;
 }
 
-int CPythonSystem::GetSoundVolume()
+float CPythonSystem::GetSoundVolume()
 {
 	return m_Config.voice_volume;
 }
@@ -236,7 +236,7 @@ void CPythonSystem::SetMusicVolume(float fVolume)
 
 void CPythonSystem::SetSoundVolumef(float fVolume)
 {
-	m_Config.voice_volume = int(5 * fVolume);
+	m_Config.voice_volume = fMAX(0.0f, fMIN(1.0f, fVolume));
 }
 
 int CPythonSystem::GetDistance()
@@ -290,20 +290,56 @@ void CPythonSystem::SetConfig(TConfig* pNewConfig)
 }
 
 #ifdef __ANDROID__
-// The UI is laid out at a logical resolution and stretched to the surface. Keeping the
-// logical height at the engine's minimum (600) makes text and widgets as large as the
-// layouts allow, and matching the surface aspect ratio keeps glyphs from stretching.
+float CPythonSystem::GetAndroidDisplayConfig(const char* c_szKey, float fDefault)
+{
+	float fValue = fDefault;
+	if (FILE* fp = fopen("display.cfg", "r"))
+	{
+		char szKey[32];
+		char szValue[32];
+		while (fscanf(fp, "%31s %31s", szKey, szValue) == 2)
+			if (!strcmp(szKey, c_szKey))
+				fValue = (float)atof(szValue);
+		fclose(fp);
+	}
+	return fValue;
+}
+
+// The UI is laid out at a logical resolution and stretched to the surface, keeping the
+// surface aspect ratio so glyphs are not stretched. display.cfg (written by the in-game
+// display options) holds "ui_scale <1.0-1.5>"; a larger scale shrinks the logical canvas,
+// so widgets get bigger. Landscape scales the 600 px logical height and needs at least
+// 800 logical px of width; portrait scales a 720 px logical width instead, because an
+// 800 px floor there would leave the UI smaller than in landscape and ignore the scale.
 void CPythonSystem::FitUIToAndroidSurface()
 {
 	extern int g_iAndroidSurfaceWidth;
 	extern int g_iAndroidSurfaceHeight;
-	const int c_iUIHeight = 600;
 	if (g_iAndroidSurfaceWidth <= 0 || g_iAndroidSurfaceHeight <= 0)
 		return;
-	m_Config.height = c_iUIHeight;
-	m_Config.width = (c_iUIHeight * g_iAndroidSurfaceWidth + g_iAndroidSurfaceHeight / 2) / g_iAndroidSurfaceHeight;
-	if (m_Config.width < 800)
-		m_Config.width = 800;
+
+	const float fScale = fMAX(1.0f, fMIN(1.5f, GetAndroidDisplayConfig("ui_scale", 1.0f)));
+	const int iW = g_iAndroidSurfaceWidth;
+	const int iH = g_iAndroidSurfaceHeight;
+	int iUIWidth;
+	int iUIHeight;
+	if (iH > iW)
+	{
+		iUIWidth = int(720.0f / fScale + 0.5f);
+		iUIHeight = (iUIWidth * iH + iW / 2) / iW;
+	}
+	else
+	{
+		iUIHeight = int(600.0f / fScale + 0.5f);
+		iUIWidth = (iUIHeight * iW + iH / 2) / iH;
+		if (iUIWidth < 800)
+		{
+			iUIWidth = 800;
+			iUIHeight = (800 * iH + iW / 2) / iW;
+		}
+	}
+	m_Config.width = iUIWidth;
+	m_Config.height = iUIHeight;
 }
 #endif
 
@@ -327,7 +363,7 @@ void CPythonSystem::SetDefaultConfig()
 
 	m_Config.gamma = 3;
 	m_Config.music_volume = 1.0f;
-	m_Config.voice_volume = 5;
+	m_Config.voice_volume = 1.0f;
 
 	m_Config.bDecompressDDS = 0;
 	m_Config.bSoftwareTiling = 0;
@@ -479,7 +515,12 @@ bool CPythonSystem::LoadConfig()
 			} else
 				m_Config.music_volume = atof(value);
 		} else if (!stricmp(command, "VOICE_VOLUME"))
-			m_Config.voice_volume = (char)atoi(value);
+		{
+			if (strchr(value, '.') == 0) // legacy 0-5 grade
+				m_Config.voice_volume = atoi(value) / 5.0f;
+			else
+				m_Config.voice_volume = atof(value);
+		}
 		else if (!stricmp(command, "GAMMA"))
 			m_Config.gamma = atoi(value);
 		else if (!stricmp(command, "IS_SAVE_ID"))
@@ -572,7 +613,7 @@ bool CPythonSystem::SaveConfig()
 		"OBJECT_CULLING				%d\n"
 		"VISIBILITY					%d\n"
 		"MUSIC_VOLUME				%.3f\n"
-		"VOICE_VOLUME				%d\n"
+		"VOICE_VOLUME				%.3f\n"
 		"GAMMA						%d\n"
 		"IS_SAVE_ID					%d\n"
 		"SAVE_ID					%s\n"
@@ -722,7 +763,7 @@ void CPythonSystem::ChangeSystem()
 	else
 		fVoiceVolume = (float)pow(10.0f, (-1.0f + (float)m_Config.voice_volume / 5.0f));
 	*/
-	rkSndMgr.SetSoundVolumeGrade(m_Config.voice_volume);
+	rkSndMgr.SetSoundVolumeRatio(m_Config.voice_volume);
 }
 
 void CPythonSystem::Clear()

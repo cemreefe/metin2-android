@@ -213,6 +213,9 @@ namespace UI
 		std::list<DWORD> m_dwSelectedSlotIndexList;
 		TSlotList m_SlotList;
 		DWORD m_dwToolTipSlotNumber;
+		DWORD m_dwHoldSlotNumber;
+		DWORD m_dwHoldStartTime;
+		DWORD m_dwHoldPickedSlotNumber;
 
 		BOOL m_isUseMode;
 		BOOL m_isUsableItem;

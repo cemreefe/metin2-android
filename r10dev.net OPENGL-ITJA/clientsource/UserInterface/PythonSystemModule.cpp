@@ -95,8 +95,8 @@ PyObject* systemGetConfig(PyObject* poSelf, PyObject* poArgs)
 		iFrequency,
 		tmp->is_software_cursor,
 		tmp->is_object_culling,
-		tmp->music_volume,
-		tmp->voice_volume,
+		int(tmp->music_volume * 5.0f),
+		int(tmp->voice_volume * 5.0f),
 		tmp->gamma,
 		tmp->iDistance);
 }
@@ -134,7 +134,7 @@ PyObject* systemGetMusicVolume(PyObject* poSelf, PyObject* poArgs)
 
 PyObject* systemGetSoundVolume(PyObject* poSelf, PyObject* poArgs)
 {
-	return Py_BuildValue("i", CPythonSystem::Instance().GetSoundVolume());
+	return Py_BuildValue("f", CPythonSystem::Instance().GetSoundVolume());
 }
 
 PyObject* systemSetMusicVolume(PyObject* poSelf, PyObject* poArgs)
@@ -339,8 +339,8 @@ PyObject* systemSetConfig(PyObject* poSelf, PyObject* poArgs)
 	tmp.frequency = frequency;
 	tmp.is_software_cursor = software_cursor ? true : false;
 	tmp.is_object_culling = object_culling ? true : false;
-	tmp.music_volume = (char)music_volume;
-	tmp.voice_volume = (char)voice_volume;
+	tmp.music_volume = music_volume / 5.0f;
+	tmp.voice_volume = voice_volume / 5.0f;
 	tmp.gamma = gamma;
 	tmp.iDistance = distance;
 
@@ -463,6 +463,7 @@ void initsystemSetting()
 
 		{ "SetMusicVolume",				systemSetMusicVolume,			METH_VARARGS },
 		{ "SetSoundVolumef",			systemSetSoundVolumef,			METH_VARARGS },
+		{ "SetSoundVolume",				systemSetSoundVolumef,			METH_VARARGS },
 		{ "IsSoftwareCursor",			systemIsSoftwareCursor,			METH_VARARGS },
 
 		{ "SetViewChatFlag",			systemSetViewChatFlag,			METH_VARARGS },

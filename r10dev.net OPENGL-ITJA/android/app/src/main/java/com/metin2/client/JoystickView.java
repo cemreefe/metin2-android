@@ -56,6 +56,8 @@ public class JoystickView extends View {
         case MotionEvent.ACTION_POINTER_DOWN:
             if (mPointerId != -1)
                 return true;
+            if (event.getActionMasked() == MotionEvent.ACTION_DOWN && NativeLib.isUiAt(getLeft() + event.getX(index), getTop() + event.getY(index)))
+                return false;
             mPointerId = event.getPointerId(index);
             mOriginX = mKnobX = event.getX(index);
             mOriginY = mKnobY = event.getY(index);
@@ -89,6 +91,10 @@ public class JoystickView extends View {
         }
         invalidate();
         return true;
+    }
+
+    boolean isActive() {
+        return mPointerId != -1;
     }
 
     void release() {

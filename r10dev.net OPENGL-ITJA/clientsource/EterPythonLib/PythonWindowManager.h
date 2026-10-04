@@ -35,6 +35,7 @@ namespace UI
 
 		CWindow* GetLockWindow() { return m_pLockWindow; }
 		CWindow* GetPointWindow() { return m_pPointWindow; }
+		const TWindowContainer& GetLayers() { return m_LayerWindowList; }
 		bool		IsFocus() { return (m_pActiveWindow || m_pLockWindow); }
 		bool		IsFocusWindow(CWindow* pWindow) { return pWindow == m_pActiveWindow; }
 
