@@ -44,6 +44,10 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
         requestWindowFeature(Window.FEATURE_NO_TITLE);
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
                 WindowManager.LayoutParams.FLAG_FULLSCREEN);
+        if (android.os.Build.VERSION.SDK_INT >= 28)
+            getWindow().getAttributes().layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
+        getWindow().getDecorView().setBackgroundColor(0xFF000000);
+        hideSystemBars();
 
         sInstance = this;
         mDataDir = getExternalFilesDir(null);
@@ -186,10 +190,10 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
         android.widget.FrameLayout root = new android.widget.FrameLayout(MainActivity.this);
         root.addView(mView);
         mJoystick = new JoystickView(MainActivity.this);
-        int stick = (int) (getResources().getDisplayMetrics().density * 140);
-        android.widget.FrameLayout.LayoutParams stickParams = new android.widget.FrameLayout.LayoutParams(stick, stick, Gravity.BOTTOM | Gravity.START);
-        stickParams.leftMargin = stick / 3;
-        stickParams.bottomMargin = stick / 2;
+        float dp = getResources().getDisplayMetrics().density;
+        android.widget.FrameLayout.LayoutParams stickParams = new android.widget.FrameLayout.LayoutParams((int) (170 * dp), (int) (150 * dp), Gravity.BOTTOM | Gravity.START);
+        stickParams.leftMargin = (int) (24 * dp);
+        stickParams.bottomMargin = (int) (40 * dp);
         root.addView(mJoystick, stickParams);
         mJoystick.setVisibility(sGameControlsVisible ? View.VISIBLE : View.GONE);
         setContentView(root);
@@ -291,12 +295,41 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
         super.onPause();
         if (mJoystick != null)
             mJoystick.release();
+        if (mView != null)
+            mView.releaseTouch();
+        NativeLib.setAudioPaused(true);
     }
 
     @Override
-    public boolean onTouchEvent(MotionEvent event) {
-        NativeLib.touchEvent(event.getAction(), event.getX(), event.getY() - (mView != null ? mView.getTranslationY() : 0));
-        return true;
+    protected void onResume() {
+        super.onResume();
+        hideSystemBars();
+        NativeLib.setAudioPaused(false);
+    }
+
+    @Override
+    public void onWindowFocusChanged(boolean hasFocus) {
+        super.onWindowFocusChanged(hasFocus);
+        if (hasFocus)
+            hideSystemBars();
+    }
+
+    // Draw under the status/navigation bars and the camera cutout; bars reappear on swipe.
+    @SuppressWarnings("deprecation")
+    private void hideSystemBars() {
+        View decor = getWindow().getDecorView();
+        if (android.os.Build.VERSION.SDK_INT >= 30) {
+            getWindow().setDecorFitsSystemWindows(false);
+            android.view.WindowInsetsController controller = decor.getWindowInsetsController();
+            if (controller != null) {
+                controller.hide(android.view.WindowInsets.Type.systemBars());
+                controller.setSystemBarsBehavior(android.view.WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
+            }
+        } else {
+            decor.setSystemUiVisibility(View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY | View.SYSTEM_UI_FLAG_FULLSCREEN
+                    | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION | View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                    | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN);
+        }
     }
 
     @Override

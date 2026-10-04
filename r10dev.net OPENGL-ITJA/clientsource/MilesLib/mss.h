@@ -1,7 +1,7 @@
 #ifndef __MSS_H__
 #define __MSS_H__
 
-// Android / OpenAL stub for Miles Sound System
+// Android implementation of the Miles Sound System API subset the client uses
 #ifdef __ANDROID__
 typedef unsigned int U32;
 typedef int S32;
@@ -18,63 +18,74 @@ typedef int HSAMPLE;
 typedef int HSTREAM;
 typedef int H3DSAMPLE;
 typedef int HDIGDRIVER;
-#define AIL_shutdown() {}
-#define AIL_set_redist_directory(x) {}
-#define AIL_startup() {}
-#define AIL_file_read(x,y) 0
-#define AIL_file_type(x,y) 0
-#define AIL_WAV_info(x,y) {}
-#define AIL_decompress_ADPCM(x,y,z) 0
-#define AIL_mem_free_lock(x) {}
-#define AIL_decompress_ASI(a,b,c,d,e,f) 0
-#define AIL_set_file_callbacks(a,b,c,d) {}
-#define AIL_release_sample_handle(x) {}
-#define AIL_allocate_sample_handle(x) 0
-#define AIL_init_sample(x) {}
-#define AIL_set_sample_file(x,y,z) 0
-#define AIL_last_error() "No Error"
-#define AIL_sample_status(x) 0
-#define AIL_set_sample_loop_count(x,y) {}
-#define AIL_start_sample(x) {}
-#define AIL_stop_sample(x) {}
-#define AIL_resume_sample(x) {}
-#define AIL_end_sample(x) {}
-#define AIL_sample_volume_pan(x,y,z) {}
-#define AIL_set_sample_volume_pan(x,y,z) {}
+typedef int HPROENUM;
+typedef U32 (*AIL_file_open_callback)(char const* filename, U32* file_handle);
+typedef void (*AIL_file_close_callback)(U32 file_handle);
+typedef S32 (*AIL_file_seek_callback)(U32 file_handle, S32 offset, U32 type);
+typedef U32 (*AIL_file_read_callback)(U32 file_handle, void* buffer, U32 bytes);
+struct _AILSOUNDINFO;
 
-#define AIL_release_3D_sample_handle(x) {}
-#define AIL_allocate_3D_sample_handle(x) 0
-#define AIL_set_3D_sample_file(x,y) 0
-#define AIL_set_3D_position(x,y,z,w) {}
-#define AIL_auto_update_3D_position(x,y) {}
-#define AIL_3D_sample_status(x) 0
-#define AIL_set_3D_sample_loop_count(x,y) {}
-#define AIL_start_3D_sample(x) {}
-#define AIL_stop_3D_sample(x) {}
-#define AIL_resume_3D_sample(x) {}
-#define AIL_end_3D_sample(x) {}
-#define AIL_3D_sample_volume(x) 0
-#define AIL_set_3D_sample_volume(x,y) {}
-#define AIL_set_3D_orientation(a,b,c,d,e,f,g) {}
-#define AIL_set_3D_velocity(x,y,z,w,a) {}
-#define AIL_update_3D_position(x,y) {}
+// Implemented on miniaudio in mss_android.cpp. Sample data handed to the sample functions
+// is always a complete WAV/MP3 file image; decoding happens at playback.
+void AIL_startup();
+void AIL_shutdown();
+void AIL_set_redist_directory(const char* dir);
+void AIL_set_file_callbacks(AIL_file_open_callback o, AIL_file_close_callback c, AIL_file_seek_callback s, AIL_file_read_callback r);
+void* AIL_file_read(const char* filename, int flags);
+S32 AIL_file_type(const void* data, U32 size);
+void AIL_WAV_info(const void* data, struct _AILSOUNDINFO* info);
+S32 AIL_decompress_ADPCM(const struct _AILSOUNDINFO* info, void** out, U32* outSize);
+S32 AIL_decompress_ASI(const void* data, U32 size, const char* filename, void** out, U32* outSize, void* callback);
+void AIL_mem_free_lock(void* p);
+const char* AIL_last_error();
+void AIL_android_set_paused(int paused);
 
-#define AIL_close_stream(x) {}
-#define AIL_stream_status(x) 0
-#define AIL_set_stream_loop_count(x,y) {}
-#define AIL_start_stream(x) {}
-#define AIL_pause_stream(x,y) {}
-#define AIL_stream_volume_levels(x,y,z) {}
-#define AIL_set_stream_volume_levels(x,y,z) {}
+HDIGDRIVER AIL_open_digital_driver(U32 rate, S32 bits, S32 channels, U32 flags);
+void AIL_close_digital_driver(HDIGDRIVER driver);
 
-#define AIL_open_digital_driver(x,y,z,w) 0
-#define AIL_close_digital_driver(x) {}
-#define AIL_enumerate_3D_providers(x,y,z) 0
-#define AIL_open_3D_provider(x) 0
-#define AIL_open_3D_listener(x) 0
-#define AIL_close_3D_listener(x) {}
-#define AIL_close_3D_provider(x) {}
-#define AIL_open_stream(a,b,c) 0
+HSAMPLE AIL_allocate_sample_handle(HDIGDRIVER driver);
+void AIL_release_sample_handle(HSAMPLE s);
+void AIL_init_sample(HSAMPLE s);
+S32 AIL_set_sample_file(HSAMPLE s, const void* data, S32 size);
+S32 AIL_sample_status(HSAMPLE s);
+void AIL_set_sample_loop_count(HSAMPLE s, S32 count);
+void AIL_start_sample(HSAMPLE s);
+void AIL_stop_sample(HSAMPLE s);
+void AIL_resume_sample(HSAMPLE s);
+void AIL_end_sample(HSAMPLE s);
+void AIL_sample_volume_pan(HSAMPLE s, float* volume, float* pan);
+void AIL_set_sample_volume_pan(HSAMPLE s, float volume, float pan);
+
+S32 AIL_enumerate_3D_providers(HPROENUM* next, HPROVIDER* provider, char** name);
+S32 AIL_open_3D_provider(HPROVIDER provider);
+void AIL_close_3D_provider(HPROVIDER provider);
+H3DPOBJECT AIL_open_3D_listener(HPROVIDER provider);
+void AIL_close_3D_listener(H3DPOBJECT listener);
+H3DSAMPLE AIL_allocate_3D_sample_handle(HPROVIDER provider);
+void AIL_release_3D_sample_handle(H3DSAMPLE s);
+S32 AIL_set_3D_sample_file(H3DSAMPLE s, const void* data);
+S32 AIL_3D_sample_status(H3DSAMPLE s);
+void AIL_set_3D_sample_loop_count(H3DSAMPLE s, S32 count);
+void AIL_start_3D_sample(H3DSAMPLE s);
+void AIL_stop_3D_sample(H3DSAMPLE s);
+void AIL_resume_3D_sample(H3DSAMPLE s);
+void AIL_end_3D_sample(H3DSAMPLE s);
+float AIL_3D_sample_volume(H3DSAMPLE s);
+void AIL_set_3D_sample_volume(H3DSAMPLE s, float volume);
+void AIL_set_3D_position(H3DPOBJECT obj, float x, float y, float z);
+void AIL_set_3D_orientation(H3DPOBJECT obj, float fx, float fy, float fz, float ux, float uy, float uz);
+void AIL_set_3D_velocity(H3DPOBJECT obj, float dx, float dy, float dz, float magnitude);
+void AIL_auto_update_3D_position(H3DPOBJECT obj, S32 enable);
+void AIL_update_3D_position(H3DPOBJECT obj, float elapsed);
+
+HSTREAM AIL_open_stream(HDIGDRIVER driver, const char* filename, S32 memory);
+void AIL_close_stream(HSTREAM s);
+S32 AIL_stream_status(HSTREAM s);
+void AIL_set_stream_loop_count(HSTREAM s, S32 count);
+void AIL_start_stream(HSTREAM s);
+void AIL_pause_stream(HSTREAM s, S32 onoff);
+void AIL_stream_volume_levels(HSTREAM s, float* left, float* right);
+void AIL_set_stream_volume_levels(HSTREAM s, float left, float right);
 
 #define SMP_DONE 0
 #define SMP_PLAYING 1
@@ -112,7 +123,6 @@ typedef struct _AILSOUNDINFO {
     void* initial_ptr;
 } AILSOUNDINFO;
 
-typedef int HPROENUM;
 #define HPROENUM_FIRST 0
 #define HPROENUM_NEXT 1
 #define M3D_NOERR 0
