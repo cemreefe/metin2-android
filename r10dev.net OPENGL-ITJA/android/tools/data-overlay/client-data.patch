@@ -417,3 +417,14 @@
  					"x_step" : 32,
  					"y_step" : 32,
  
+--- a/uiinventory.py
++++ b/uiinventory.py
+@@ -157,7 +157,7 @@
+ 	## Calculate and return BASE position based on current inventory position. Hard-coded numbers are unavoidable.
+ 	def GetBasePosition(self):
+ 		x, y = self.wndInventory.GetGlobalPosition()
+-		return x - 148, y + 241
++		return x - 148, y + min(241, max(0, self.wndInventory.GetHeight() - self.GetHeight()))
+ 		
+ 	def AdjustPositionAndSize(self):
+ 		bx, by = self.GetBasePosition()
