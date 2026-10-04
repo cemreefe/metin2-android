@@ -43,6 +43,14 @@ void CPythonPlayer::NEW_SetSingleDIKKeyState(int eDIKKey, bool isPress)
 
 void CPythonPlayer::NEW_SetSingleDirKeyState(int eDirKey, bool isPress)
 {
+	// steering by hand (keyboard or the touch joystick) gives up the auto-attack target
+	if (isPress)
+	{
+		__ClearAutoAttackTargetActorID();
+		if (MODE_CLICK_ACTOR == m_eReservedMode)
+			__ClearReservedAction();
+	}
+
 	switch (eDirKey)
 	{
 	case DIR_UP:

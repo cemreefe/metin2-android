@@ -60,7 +60,7 @@
 +		MARKADDR_DICT[_id*10] = { "ip":_ip, "tcp_port":_port, "mark":"%d.tga" % (_id*10), "symbol_path":"%d" % (_id*10), }
 --- a/game.py
 +++ b/game.py
-@@ -85,6 +85,14 @@
+@@ -85,6 +85,17 @@
  		self.interface = interfaceModule.Interface()
  		self.interface.MakeInterface()
  		self.interface.ShowDefaultWindows()
@@ -72,10 +72,13 @@
 +		if m2profile:
 +			import uimobilehud
 +			self.mobileHud = uimobilehud.MobileHud(self)
++			# a tap on a monster keeps attacking it until it dies; the HUD's attack
++			# button is the single swing instead
++			player.SetTouchAutoAttack(True)
  
  		self.curtain = uiPhaseCurtain.PhaseCurtain()
  		self.curtain.speed = 0.03
-@@ -222,6 +230,10 @@
+@@ -222,6 +233,10 @@
  	def Close(self):
  		self.Hide()
  
@@ -163,7 +166,7 @@
  			else:
  				self.wndInventory.OverOutItem()
  				self.wndInventory.Close()
-@@ -1359,6 +1368,30 @@
+@@ -1359,6 +1369,30 @@
  			else:
  				btn.Show()
  
@@ -194,7 +197,7 @@
  	def __StartQuest(self, btn):
  		event.QuestButtonClick(btn.index)
  		self.__DestroyQuestButton(btn)
-@@ -1378,10 +1411,14 @@
+@@ -1378,10 +1412,14 @@
  	def HideAllQuestButton(self):
  		for btn in self.questButtonList:
  			btn.Hide()
@@ -307,3 +310,110 @@
  			"image" : "d:/ymir work/ui/intro/select/select.sub",
  		},
  		## Name
+--- a/uiscript/inventorywindow.py
++++ b/uiscript/inventorywindow.py
+@@ -3,17 +3,35 @@
+ 
+ EQUIPMENT_START_INDEX = 90
+ 
++# The tall layout stacks the item grid under the equipment panel and needs 565 px.
++# Screens that cannot show it get a wide layout instead: the grid moves next to the
++# equipment panel and holds the same 45 slots as 9 columns of 5 rows.
++WIDE = SCREEN_HEIGHT < 565 + 37
++
++if WIDE:
++	WINDOW_WIDTH = 476
++	WINDOW_HEIGHT = 262
++	GRID_X, GRID_Y = 178, 40
++	GRID_COLUMNS, GRID_ROWS = 9, 5
++	TAB_X, TAB_Y = 178, 206
++else:
++	WINDOW_WIDTH = 176
++	WINDOW_HEIGHT = 565
++	GRID_X, GRID_Y = 8, 246
++	GRID_COLUMNS, GRID_ROWS = 5, 9
++	TAB_X, TAB_Y = 10, 33 + 191
++
+ window = {
+ 	"name" : "InventoryWindow",
+ 
+ 	## 600 - (width + żŔ¸ĄÂĘŔ¸·Î şÎĹÍ ¶çżě±â 24 px)
+-	"x" : SCREEN_WIDTH - 176,
+-	"y" : SCREEN_HEIGHT - 37 - 565,
++	"x" : SCREEN_WIDTH - WINDOW_WIDTH,
++	"y" : SCREEN_HEIGHT - 37 - WINDOW_HEIGHT,
+ 
+ 	"style" : ("movable", "float",),
+ 
+-	"width" : 176,
+-	"height" : 565,
++	"width" : WINDOW_WIDTH,
++	"height" : WINDOW_HEIGHT,
+ 
+ 	"children" :
+ 	(
+@@ -26,8 +44,8 @@
+ 			"x" : 0,
+ 			"y" : 0,
+ 
+-			"width" : 176,
+-			"height" : 565,
++			"width" : WINDOW_WIDTH,
++			"height" : WINDOW_HEIGHT,
+ 
+ 			"children" :
+ 			(
+@@ -40,12 +58,12 @@
+ 					"x" : 8,
+ 					"y" : 7,
+ 
+-					"width" : 161,
++					"width" : WINDOW_WIDTH - 15,
+ 					"color" : "yellow",
+ 
+ 					"children" :
+ 					(
+-						{ "name":"TitleName", "type":"text", "x":77, "y":3, "text":uiScriptLocale.INVENTORY_TITLE, "text_horizontal_align":"center" },
++						{ "name":"TitleName", "type":"text", "x":(WINDOW_WIDTH - 15) / 2 - 3, "y":3, "text":uiScriptLocale.INVENTORY_TITLE, "text_horizontal_align":"center" },
+ 					),
+ 				},
+ 
+@@ -195,8 +213,8 @@
+ 					"name" : "Inventory_Tab_01",
+ 					"type" : "radio_button",
+ 
+-					"x" : 10,
+-					"y" : 33 + 191,
++					"x" : TAB_X,
++					"y" : TAB_Y,
+ 
+ 					"default_image" : "d:/ymir work/ui/game/windows/tab_button_large_01.sub",
+ 					"over_image" : "d:/ymir work/ui/game/windows/tab_button_large_02.sub",
+@@ -222,8 +240,8 @@
+ 					"name" : "Inventory_Tab_02",
+ 					"type" : "radio_button",
+ 
+-					"x" : 10 + 78,
+-					"y" : 33 + 191,
++					"x" : TAB_X + 78,
++					"y" : TAB_Y,
+ 
+ 					"default_image" : "d:/ymir work/ui/game/windows/tab_button_large_01.sub",
+ 					"over_image" : "d:/ymir work/ui/game/windows/tab_button_large_02.sub",
+@@ -251,12 +269,12 @@
+ 					"name" : "ItemSlot",
+ 					"type" : "grid_table",
+ 
+-					"x" : 8,
+-					"y" : 246,
++					"x" : GRID_X,
++					"y" : GRID_Y,
+ 
+ 					"start_index" : 0,
+-					"x_count" : 5,
+-					"y_count" : 9,
++					"x_count" : GRID_COLUMNS,
++					"y_count" : GRID_ROWS,
+ 					"x_step" : 32,
+ 					"y_step" : 32,
+ 

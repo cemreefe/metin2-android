@@ -253,7 +253,7 @@ class HudOption:
 
 DISPLAY_CONFIG = "display.cfg"
 UI_SCALE_MIN = 1.0
-UI_SCALE_MAX = 1.2
+UI_SCALE_MAX = 1.5
 CAMERA_MIN = 0.25
 CAMERA_MAX = 2.0
 VALUE_TEXT_WIDTH = 34
@@ -531,7 +531,7 @@ class MobileHud(ui.Window):
 		self.AddFlag("not_pick")
 
 		cx, cy = w - 78, h - 82
-		self.attack = self.__Disc(ATTACK, None, cx - ATTACK / 2, cy - ATTACK / 2, self.__Attack)
+		self.attack = self.__Disc(ATTACK, self.__Attack, cx - ATTACK / 2, cy - ATTACK / 2)
 		self.attack.SetIcon(T + "mouse_button_attack_01.sub", 0.6, FRAMED)
 
 		self.slots = []
@@ -563,8 +563,9 @@ class MobileHud(ui.Window):
 		d.SetPosition(x, y)
 		return d
 
-	def __Attack(self, down):
-		player.SetAttackKeyState(down)
+	# one swing per tap; tapping a monster is what keeps attacking it
+	def __Attack(self):
+		player.AttackOnce()
 
 	def __UseSlot(self, index):
 		if app.IsRTL():

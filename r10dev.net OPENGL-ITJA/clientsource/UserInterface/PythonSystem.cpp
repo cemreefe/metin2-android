@@ -307,7 +307,7 @@ float CPythonSystem::GetAndroidDisplayConfig(const char* c_szKey, float fDefault
 
 // The UI is laid out at a logical resolution and stretched to the surface, keeping the
 // surface aspect ratio so glyphs are not stretched. display.cfg (written by the in-game
-// display options) holds "ui_scale <1.0-1.2>"; a larger scale shrinks the logical canvas,
+// display options) holds "ui_scale <1.0-1.5>"; a larger scale shrinks the logical canvas,
 // so widgets get bigger. Landscape scales the 600 px logical height and needs at least
 // 800 logical px of width; portrait scales a 720 px logical width instead, because an
 // 800 px floor there would leave the UI smaller than in landscape and ignore the scale.
@@ -318,7 +318,7 @@ void CPythonSystem::FitUIToAndroidSurface()
 	if (g_iAndroidSurfaceWidth <= 0 || g_iAndroidSurfaceHeight <= 0)
 		return;
 
-	const float fScale = fMAX(1.0f, fMIN(1.2f, GetAndroidDisplayConfig("ui_scale", 1.0f)));
+	const float fScale = fMAX(1.0f, fMIN(1.5f, GetAndroidDisplayConfig("ui_scale", 1.0f)));
 	const int iW = g_iAndroidSurfaceWidth;
 	const int iH = g_iAndroidSurfaceHeight;
 	int iUIWidth;
