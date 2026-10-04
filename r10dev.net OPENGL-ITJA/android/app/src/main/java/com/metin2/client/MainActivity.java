@@ -34,6 +34,8 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
     private File mDataDir;
     private float mFocusBottom = -1.0f;
     private int mImeHeight;
+    private static volatile boolean sStartupDone;
+    private static volatile String sPhase = "";
     private TextView mStatus;
     private ProgressBar mProgress;
     private Button mAction;
@@ -146,15 +148,18 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
         }
         new Thread(new Runnable() {
             public void run() {
+                DevReporter.uploadPreviousRun(mDataDir);
                 try {
                     ServerCatalog.refresh(getApplicationContext());
                     DataInstaller.writeServerProfile(getApplicationContext(), mDataDir);
                 } catch (final Exception e) {
                     android.util.Log.e("Metin2Mobile", "server profile: " + e);
                 }
+                startStallWatchdog();
                 final boolean serverUp = startEmbeddedServer();
+                sStartupDone = true;
                 final String failure = serverUp || sServer == null ? "" : sServer.failure();
-                DevReporter.uploadPreviousRun(mDataDir);
+                setStatus("Checking for updates...");
                 final DevReporter.Update update = DevReporter.checkForUpdate();
                 runOnUiThread(new Runnable() {
                     public void run() {
@@ -166,12 +171,40 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
                             mAction.setVisibility(View.VISIBLE);
                         } else if (update != null)
                             offerUpdate(update);
-                        else
+                        else {
+                            mStatus.setText("Loading game...");
                             startGame();
+                        }
                     }
                 });
             }
         }, "M2Prepare").start();
+    }
+
+    /** A local server that never comes up is invisible from here, so ship its logs. */
+    private void startStallWatchdog() {
+        sStartupDone = false;
+        new Thread(new Runnable() {
+            public void run() {
+                try {
+                    Thread.sleep(45000);
+                } catch (InterruptedException e) {
+                    return;
+                }
+                if (sStartupDone)
+                    return;
+                DevReporter.upload(mDataDir, "startup-stall", "embedded server still starting: " + sPhase);
+            }
+        }, "M2Stall").start();
+    }
+
+    private void setStatus(final String text) {
+        runOnUiThread(new Runnable() {
+            public void run() {
+                if (mStatus != null)
+                    mStatus.setText(text);
+            }
+        });
     }
 
     private void offerUpdate(final DevReporter.Update update) {
@@ -349,6 +382,12 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
     @Override
     public void surfaceChanged(final SurfaceHolder holder, int format, final int width, final int height) {
         if (sGameThread != null) {
+            // The engine runs once per process; a finished loop leaves nothing to draw, so
+            // reattaching its surface would only show black.
+            if (!sGameThread.isAlive()) {
+                restartApp();
+                return;
+            }
             NativeLib.setSurface(holder.getSurface());
             return;
         }
@@ -395,7 +434,12 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
             if (sServer == null)
                 sServer = new EmbeddedServer(getApplicationContext(), BuildConfig.M2_AUTH_PORT, BuildConfig.M2_CHANNEL_PORT);
         }
-        if (sServer.start())
+        if (sServer.start(new EmbeddedServer.Progress() {
+            public void onPhase(String phase) {
+                sPhase = phase;
+                setStatus("Starting local server...\n" + phase);
+            }
+        }))
             return true;
         android.util.Log.e("Metin2Mobile", "embedded server failed to start; see files/server/logs");
         return false;
@@ -426,6 +470,15 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
         Intent restart = new Intent(activity, RestartActivity.class);
         restart.putExtra("oldPid", android.os.Process.myPid());
         activity.startActivity(restart);
+    }
+
+    static void requestEmbeddedServerStop() {
+        EmbeddedServer server;
+        synchronized (MainActivity.class) {
+            server = sServer;
+        }
+        if (server != null)
+            server.requestStop();
     }
 
     static void stopEmbeddedServer() {
