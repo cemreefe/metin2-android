@@ -4,15 +4,13 @@ A native Android client for the classic Metin2 experience, with touch controls, 
 and a bundled Single Player server. The project is delivered as one Android application: users
 choose **Single Player** or a remotely hosted server from the in-game server list.
 
-![Metin2 running on Android with the current mobile HUD, minimap and touch controls](docs/media/world.jpg)
+![Full-frame gameplay capture showing the mobile HUD, minimap, joystick and touch controls](docs/media/world-full.png)
 
 ## Current snapshot
 
-![Current inventory with equipped fan and bag items](docs/media/inventory.jpg)
+![Full-frame server selection showing Single Player and Istanbul](docs/media/server-list-full.png)
 
-| Mobile HUD | Inventory | Equipment |
-|---|---|---|
-| ![Mobile HUD](docs/media/joystick.jpg) | ![Inventory](docs/media/inventory.jpg) | ![Equipment](docs/media/equipment.jpg) |
+![Full-frame character selection capture](docs/media/character-select-full.png)
 
 ### Playable client
 
@@ -33,10 +31,6 @@ choose **Single Player** or a remotely hosted server from the in-game server lis
   background/foreground cycles.
 - Quest-notice bulk dismissal, chat input and an Android on-screen keyboard.
 - Audio playback through the Android backend, with separate music and effects volume controls.
-
-![Equipped Fan+0 in the weapon slot](docs/media/equipment.jpg)
-
-![Inventory restored after relaunch](docs/media/relaunch.jpg)
 
 ## Getting started
 
