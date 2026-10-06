@@ -1,7 +1,7 @@
 #pragma once
 
 // OpenGL Headers for Mobile (GLES2 default for high compatibility)
-#ifdef ANDROID
+#ifdef M2_PORT
     #include <GLES2/gl2.h>
     #include <GLES2/gl2ext.h>
 #else
@@ -1331,13 +1331,13 @@ inline GLCOLOR* D3DXColorModulate(GLCOLOR* pOut, const GLCOLOR* pC1, const GLCOL
     };
 
     struct IDirect3DDevice8 {
-#ifndef ANDROID
+#ifndef M2_PORT
         HDC m_hDC;
 #endif
         ULONG AddRef() { return 1; }
         ULONG Release() { return 0; }
         IDirect3DDevice8() {
-#ifndef ANDROID
+#ifndef M2_PORT
             m_hDC = NULL;
 #endif
         }
@@ -1358,7 +1358,7 @@ inline GLCOLOR* D3DXColorModulate(GLCOLOR* pOut, const GLCOLOR* pC1, const GLCOL
         HRESULT Clear(DWORD n, const void* pRects, DWORD flags, D3DCOLOR color, float z, DWORD stencil); 
 #if 0
             if (flags & 2) { // D3DCLEAR_ZBUFFER
-                #ifndef ANDROID
+                #ifndef M2_PORT
                     glClearDepth(z);
                 #else
                     glClearDepthf(z);
@@ -1456,10 +1456,10 @@ inline GLCOLOR* D3DXColorModulate(GLCOLOR* pOut, const GLCOLOR* pC1, const GLCOL
         void ApplyDrawState(const BYTE* pVertexBase, UINT uStride);
     };
 
-#ifndef ANDROID
+#ifndef M2_PORT
     inline HRESULT IDirect3D8::CreateDevice(UINT, int, HWND hWnd, DWORD, D3DPRESENT_PARAMETERS*, IDirect3DDevice8** ppDevice) {
 
-#ifndef ANDROID
+#ifndef M2_PORT
         HDC hDC = GetDC(hWnd);
         static PIXELFORMATDESCRIPTOR pfd = {
             sizeof(PIXELFORMATDESCRIPTOR), 1,

@@ -6,7 +6,7 @@
 
 CPythonLauncher::CPythonLauncher()
 {
-#ifdef __ANDROID__
+#ifdef M2_PORT
 	Py_NoSiteFlag = 1;
 #endif
 	Py_Initialize();
@@ -27,7 +27,7 @@ int	g_nCurTraceN = 0;
 
 void Traceback()
 {
-#ifdef __ANDROID__
+#ifdef M2_PORT
 	PyErr_Print();
 	fflush(stderr);
 	return;

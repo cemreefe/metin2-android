@@ -1,9 +1,9 @@
 #pragma once
 
-#ifndef __ANDROID__
+#ifndef M2_PORT
 #include <imm.h>
 
-#ifndef __ANDROID__
+#ifndef M2_PORT
 #pragma comment(lib, "imm32.lib")
 #endif
 

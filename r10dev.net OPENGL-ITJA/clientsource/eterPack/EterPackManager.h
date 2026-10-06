@@ -1,6 +1,6 @@
 #pragma once
 
-#ifndef __ANDROID__
+#ifndef M2_PORT
 #include <windows.h>
 #endif
 #include <boost/unordered_map.hpp>

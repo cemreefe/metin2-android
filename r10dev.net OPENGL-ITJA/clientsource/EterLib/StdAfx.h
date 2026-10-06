@@ -1,6 +1,6 @@
 #pragma once
 
-#ifdef __ANDROID__
+#ifdef M2_PORT
     #define ENABLE_OPENGL
     #define _UNICODE
     #define UNICODE
@@ -36,7 +36,7 @@
 
 #define DIRECTINPUT_VERSION 0x0800
 
-#ifndef __ANDROID__
+#ifndef M2_PORT
 #include <dinput.h>
 #pragma warning ( disable : 4201 )
 #include <mmsystem.h>
@@ -54,13 +54,13 @@
 #include <malloc.h>
 
 #ifndef ENABLE_OPENGL
-#ifndef __ANDROID__
+#ifndef M2_PORT
 #pragma comment(lib, "winmm.lib")
 #endif
-#ifndef __ANDROID__
+#ifndef M2_PORT
 #pragma comment(lib, "d3d8.lib")
 #endif
-#ifndef __ANDROID__
+#ifndef M2_PORT
 #pragma comment(lib, "d3dx8.lib")
 #endif
 #endif
@@ -70,7 +70,7 @@
 #include "../EterLocale/CodePageId.h"
 
 #if !defined(VC_EXTRALEAN)
-#ifndef __ANDROID__
+#ifndef M2_PORT
 #include <winsock.h>
 #else
 #include <sys/socket.h>

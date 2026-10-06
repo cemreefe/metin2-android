@@ -1,4 +1,4 @@
-#ifdef __ANDROID__
+#ifdef M2_PORT
 #include "windows.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -26,13 +26,11 @@ namespace
 		if (s_fontLoaded)
 			return true;
 
-		static const char* sc_aszFontPaths[] = {
-			"/system/fonts/Roboto-Regular.ttf",
-			"/system/fonts/DroidSans.ttf",
-		};
-
-		for (const char* c_szPath : sc_aszFontPaths)
+		const char* c_szPaths[] = { M2Plat::FontFilePath() };
+		for (const char* c_szPath : c_szPaths)
 		{
+			if (!c_szPath)
+				continue;
 			FILE* fp = fopen(c_szPath, "rb");
 			if (!fp)
 				continue;

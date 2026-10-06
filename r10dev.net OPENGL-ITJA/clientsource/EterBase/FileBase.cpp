@@ -1,13 +1,15 @@
 #include "StdAfx.h"
 #include "FileBase.h"
 
-#ifdef __ANDROID__
+#ifdef M2_PORT
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/stat.h>
+#include "../platform/m2platform.h"
+#ifdef __ANDROID__
 #include <android/asset_manager.h>
-
 AAssetManager* g_pAssetManager = nullptr;
+#endif
 #endif
 
 CFileBase::CFileBase() : m_hFile(NULL), m_dwSize(0)
@@ -44,7 +46,7 @@ void CFileBase::Close()
 #endif
 	if (m_hFile)
 	{
-#ifdef __ANDROID__
+#ifdef M2_PORT
 		if ((int)(intptr_t)m_hFile != -1)
 			close((int)(intptr_t)m_hFile);
 #else
@@ -60,6 +62,7 @@ BOOL CFileBase::Create(const char* filename, EFileMode mode)
 
 	strncpy(m_filename, filename, MAX_PATH);
 
+#ifdef M2_PORT
 #ifdef __ANDROID__
 	if (mode == FILEMODE_READ && g_pAssetManager)
 	{
@@ -77,13 +80,14 @@ BOOL CFileBase::Create(const char* filename, EFileMode mode)
 			return true;
 		}
 	}
+#endif
 
 	int flags = (mode == FILEMODE_WRITE) ? (O_RDWR | O_CREAT) : O_RDONLY;
 	int fd = open(filename, flags, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 	if (fd == -1 && mode == FILEMODE_READ)
 	{
 		char szLower[MAX_PATH];
-		android_normalize_path(filename, szLower, sizeof(szLower));
+		M2Plat::NormalizePath(filename, szLower, sizeof(szLower));
 		fd = open(szLower, flags);
 	}
 	m_hFile = (HANDLE)(intptr_t)fd;
@@ -133,11 +137,13 @@ DWORD CFileBase::Size()
 
 void CFileBase::SeekCur(DWORD size)
 {
+#ifdef M2_PORT
 #ifdef __ANDROID__
 	if (m_pAsset) {
 		AAsset_seek((AAsset*)m_pAsset, size, SEEK_CUR);
 		return;
 	}
+#endif
 	lseek((int)(intptr_t)m_hFile, size, SEEK_CUR);
 #else
 	SetFilePointer(m_hFile, size, NULL, FILE_CURRENT);
@@ -149,11 +155,13 @@ void CFileBase::Seek(DWORD offset)
 	if (offset > m_dwSize)
 		offset = m_dwSize;
 
+#ifdef M2_PORT
 #ifdef __ANDROID__
 	if (m_pAsset) {
 		AAsset_seek((AAsset*)m_pAsset, offset, SEEK_SET);
 		return;
 	}
+#endif
 	lseek((int)(intptr_t)m_hFile, offset, SEEK_SET);
 #else
 	SetFilePointer(m_hFile, offset, NULL, FILE_BEGIN);
@@ -162,10 +170,12 @@ void CFileBase::Seek(DWORD offset)
 
 DWORD CFileBase::GetPosition()
 {
+#ifdef M2_PORT
 #ifdef __ANDROID__
 	if (m_pAsset) {
 		return AAsset_getLength((AAsset*)m_pAsset) - AAsset_getRemainingLength((AAsset*)m_pAsset);
 	}
+#endif
 	return lseek((int)(intptr_t)m_hFile, 0, SEEK_CUR);
 #else
 	return SetFilePointer(m_hFile, 0, NULL, FILE_CURRENT);
@@ -174,8 +184,10 @@ DWORD CFileBase::GetPosition()
 
 BOOL CFileBase::Write(const void* src, int bytes)
 {
+#ifdef M2_PORT
 #ifdef __ANDROID__
 	if (m_pAsset) return false;
+#endif
 	ssize_t ret = write((int)(intptr_t)m_hFile, src, bytes);
 	if (ret < 0) return false;
 	struct stat st;
@@ -196,11 +208,13 @@ BOOL CFileBase::Write(const void* src, int bytes)
 
 BOOL CFileBase::Read(void* dest, int bytes)
 {
+#ifdef M2_PORT
 #ifdef __ANDROID__
 	if (m_pAsset) {
 		int readBytes = AAsset_read((AAsset*)m_pAsset, dest, bytes);
 		return readBytes >= 0 ? true : false;
 	}
+#endif
 	ssize_t ret = read((int)(intptr_t)m_hFile, dest, bytes);
 	return ret >= 0 ? true : false;
 #else
@@ -211,8 +225,10 @@ BOOL CFileBase::Read(void* dest, int bytes)
 
 BOOL CFileBase::IsNull()
 {
+#ifdef M2_PORT
 #ifdef __ANDROID__
 	if (m_pAsset) return false;
+#endif
 	return ((int)(intptr_t)m_hFile == -1 || m_hFile == NULL) ? true : false;
 #else
 	return !m_hFile ? true : false;

@@ -93,9 +93,9 @@ public:
 
 	// Config
 	void							SetDefaultConfig();
-#ifdef __ANDROID__
-	void							FitUIToAndroidSurface();
-	static float					GetAndroidDisplayConfig(const char* c_szKey, float fDefault);
+#ifdef M2_PORT
+	void							FitUIToPortSurface();
+	static float					GetPortDisplayConfig(const char* c_szKey, float fDefault);
 #endif
 	bool							LoadConfig();
 	bool							SaveConfig();

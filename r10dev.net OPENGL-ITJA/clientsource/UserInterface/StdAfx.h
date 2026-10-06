@@ -26,7 +26,7 @@
 #define __D3DRM_H__
 #endif
 
-#ifndef __ANDROID__
+#ifndef M2_PORT
 #include <dshow.h>
 #include <qedit.h>
 #endif

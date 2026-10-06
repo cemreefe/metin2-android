@@ -1,4 +1,4 @@
-#ifndef __ANDROID__
+#ifndef M2_PORT
 #include "StdAfx.h"
 #include "PythonApplication.h"
 
@@ -235,4 +235,4 @@ void CPythonApplication::OnLogoClose()
 	STATEMANAGER.SetTextureStageState(0, D3DTSS_MINFILTER, D3DTEXF_POINT);
 	STATEMANAGER.SetTextureStageState(0, D3DTSS_MAGFILTER, D3DTEXF_POINT);
 }
-#endif // __ANDROID__
+#endif // M2_PORT

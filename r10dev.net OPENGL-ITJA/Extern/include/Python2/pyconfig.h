@@ -2,7 +2,13 @@
 #define Py_CONFIG_H
 
 
-#if defined(__ANDROID__) || defined(__linux__)
+#if defined(__EMSCRIPTEN__)
+
+/* wasm32 ILP32 config; lives beside this dir so the quoted include in
+   Python.h still finds this file first. */
+#include <Python2-web/pyconfig.h>
+
+#elif defined(__ANDROID__) || defined(__linux__)
 
 /* Android/Linux LP64 configuration for Python 2.7 (hand-filled). */
 

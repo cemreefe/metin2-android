@@ -2,7 +2,7 @@
 
 #pragma warning(disable:4786)	// character 255 �Ѿ�°� ����
 
-#ifndef __ANDROID__
+#ifndef M2_PORT
 #include <windows.h>
 #endif
 #include <vector>

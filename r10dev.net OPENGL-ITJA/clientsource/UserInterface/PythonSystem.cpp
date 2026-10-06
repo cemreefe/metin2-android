@@ -37,7 +37,7 @@ void CPythonSystem::GetDisplaySettings()
 	m_ResolutionCount = 0;
 
 	LPDIRECT3D8 lpD3D = NULL;
-#ifndef __ANDROID__
+#ifndef M2_PORT
 	lpD3D = CPythonGraphic::Instance().GetD3D();
 #else
     m_ResolutionList[0].width = m_Config.width;
@@ -289,8 +289,8 @@ void CPythonSystem::SetConfig(TConfig* pNewConfig)
 	m_Config = *pNewConfig;
 }
 
-#ifdef __ANDROID__
-float CPythonSystem::GetAndroidDisplayConfig(const char* c_szKey, float fDefault)
+#ifdef M2_PORT
+float CPythonSystem::GetPortDisplayConfig(const char* c_szKey, float fDefault)
 {
 	float fValue = fDefault;
 	if (FILE* fp = fopen("display.cfg", "r"))
@@ -311,16 +311,16 @@ float CPythonSystem::GetAndroidDisplayConfig(const char* c_szKey, float fDefault
 // so widgets get bigger. Landscape scales the 600 px logical height and needs at least
 // 800 logical px of width; portrait scales a 720 px logical width instead, because an
 // 800 px floor there would leave the UI smaller than in landscape and ignore the scale.
-void CPythonSystem::FitUIToAndroidSurface()
+void CPythonSystem::FitUIToPortSurface()
 {
-	extern int g_iAndroidSurfaceWidth;
-	extern int g_iAndroidSurfaceHeight;
-	if (g_iAndroidSurfaceWidth <= 0 || g_iAndroidSurfaceHeight <= 0)
+	const int iSurfW = M2Plat::SurfaceWidth();
+	const int iSurfH = M2Plat::SurfaceHeight();
+	if (iSurfW <= 0 || iSurfH <= 0)
 		return;
 
-	const float fScale = fMAX(1.0f, fMIN(1.5f, GetAndroidDisplayConfig("ui_scale", 1.0f)));
-	const int iW = g_iAndroidSurfaceWidth;
-	const int iH = g_iAndroidSurfaceHeight;
+	const float fScale = fMAX(1.0f, fMIN(1.5f, GetPortDisplayConfig("ui_scale", 1.0f)));
+	const int iW = iSurfW;
+	const int iH = iSurfH;
 	int iUIWidth;
 	int iUIHeight;
 	if (iH > iW)
@@ -563,7 +563,7 @@ bool CPythonSystem::LoadConfig()
 
 	if (m_Config.bWindowed)
 	{
-#ifndef __ANDROID__
+#ifndef M2_PORT
 		unsigned screen_width = GetSystemMetrics(SM_CXFULLSCREEN);
 		unsigned screen_height = GetSystemMetrics(SM_CYFULLSCREEN);
 #else
@@ -781,8 +781,8 @@ CPythonSystem::CPythonSystem()
 
 	LoadConfig();
 
-#ifdef __ANDROID__
-	FitUIToAndroidSurface();
+#ifdef M2_PORT
+	FitUIToPortSurface();
 #endif
 
 	ChangeSystem();

@@ -1,7 +1,7 @@
 #ifndef __INC_ETERIMAGELIB_IMAGE_H__
 #define __INC_ETERIMAGELIB_IMAGE_H__
 
-#ifndef __ANDROID__
+#ifndef M2_PORT
 #include <windows.h>
 #endif
 #include <string>

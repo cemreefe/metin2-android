@@ -1,6 +1,6 @@
 #include "StdAfx.h"
 
-#ifndef __ANDROID__
+#ifndef M2_PORT
 #include <windows.h>
 #include <mmsystem.h>
 #include <io.h>

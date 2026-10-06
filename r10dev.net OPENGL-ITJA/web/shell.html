@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>metin2</title>
+<style>
+  html, body { margin: 0; padding: 0; height: 100%; background: #000; overflow: hidden; }
+  #canvas { width: 100vw; height: 100vh; display: block; }
+  #status {
+    position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%);
+    color: #888; font: 14px monospace; pointer-events: none; white-space: pre;
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+<canvas id="canvas"></canvas>
+<div id="status">loading…</div>
+<script>
+// main() runs on a pthread worker (PROXY_TO_PTHREAD). In a pthreads build
+// every file syscall is proxied to the main JS thread, so the real filesystem
+// lives HERE — on the main thread — which also means lazy files can't work
+// (their reads are synchronous XHRs, banned outside workers). Instead the
+// client-data set is downloaded into MEMFS at boot:
+//
+//   manifest.json lists every file (path + size). We fetch the boot-critical
+//   tier first and hold main() on it (addRunDependency), then stream the rest
+//   in the background while the engine is already up. Files not yet fetched
+//   are simply missing — the boot tier must cover everything to the login UI.
+//
+//   URL query params become process env vars (see WebMain.cpp ApplyQueryEnv):
+//     ?m2_game_host=10.0.0.5&m2_ws_bridge=ws://host:8080/ws
+//   Set ?m2_boot=1 to wait for EVERY file before starting (debug).
+//
+// serve.py provides COOP/COEP (required for pthreads) and plain GETs.
+var statusEl = document.getElementById('status');
+var M2_BOOTTIER = [
+  // loose root files: config, python scripts, fonts
+  function (p) { return p.indexOf('/') === -1; },
+  // python stdlib pyc's and ui script bodies
+  function (p) { return p.indexOf('lib/') === 0 || p.indexOf('uiscript/') === 0; },
+  // locale text/ui resources
+  function (p) { return p.indexOf('locale/') === 0; },
+];
+var M2_CONCURRENCY = 8;
+
+var Module = {
+  canvas: document.getElementById('canvas'),
+  print: function (s) { console.log(s); },
+  printErr: function (s) { console.warn(s); },
+  preRun: [
+    function () {
+      FS.mkdir('/data');
+      addRunDependency('m2data');
+    },
+  ],
+  postRun: [
+    function () {
+      statusEl.style.display = 'none';
+    },
+  ],
+  // Optional shell hooks the adapter calls (desktop no-ops; a mobile shell
+  // could back these with an on-screen keyboard / joystick overlay).
+  m2ShowKeyboard: function (visible, focusFrac) {},
+  m2SetGameControls: function (visible) {},
+};
+
+// Report every ENOENT under /data so missing boot-tier files are obvious in
+// the console while iterating on the list.
+(function () {
+  var origOpen;
+  Module.onRuntimeInitialized = function () {
+    origOpen = FS.open;
+    FS.open = function (path, flags, mode) {
+      try {
+        return origOpen(path, flags, mode);
+      } catch (e) {
+        if (e && e.errno === 44 /*ENOENT*/ && path.indexOf('/data/') === 0)
+          console.warn('[m2] missing file: ' + path.slice(6));
+        throw e;
+      }
+    };
+  };
+})();
+
+// ---- data downloader ----
+
+async function m2DownloadFiles() {
+  var bootAll = new URLSearchParams(location.search).get('m2_boot') === '1';
+  var manifest;
+  try {
+    manifest = await (await fetch('manifest.json')).json();
+  } catch (e) {
+    statusEl.textContent = 'manifest.json: ' + e;
+    throw e;
+  }
+  var bootSet = new Set();
+  var boot = [], rest = [];
+  manifest.forEach(function (e) {
+    var isBoot = M2_BOOTTIER.some(function (f) { return f(e.path); });
+    (isBoot ? boot : rest).push(e);
+    if (isBoot) bootSet.add(e.path);
+  });
+
+  var done = 0, total = boot.length;
+  function label() {
+    statusEl.textContent = 'downloading ' + done + ' / ' + total;
+  }
+  label();
+
+  async function fetchOne(e) {
+    var resp = await fetch(e.path);
+    if (!resp.ok) throw new Error(resp.status + ' ' + e.path);
+    var buf = await resp.arrayBuffer();
+    var parts = e.path.split('/');
+    var dir = '/data';
+    for (var i = 0; i < parts.length - 1; i++) {
+      dir += '/' + parts[i];
+      try { FS.mkdir(dir); } catch (err) {}
+    }
+    FS.writeFile(dir + '/' + parts[parts.length - 1], new Uint8Array(buf));
+    done++;
+    if ((done & 31) === 0) label();
+  }
+
+  var queue = boot.slice();
+  async function pump(list) {
+    while (list.length) {
+      var e = list.shift();
+      if (!e) return;
+      try { await fetchOne(e); }
+      catch (err) { console.warn('fetch failed: ' + err.message || err); }
+    }
+  }
+  var workers = [];
+  for (var i = 0; i < M2_CONCURRENCY; i++) workers.push(pump(queue));
+  await Promise.all(workers);
+
+  // Background: the rest of the client, while the game is already starting.
+  var bg = rest.slice();
+  var n = 0;
+  async function bgpump() {
+    while (bg.length) {
+      var e = bg.shift();
+      if (!e) return;
+      try {
+        var resp = await fetch(e.path);
+        if (!resp.ok) continue;
+        var buf = await resp.arrayBuffer();
+        var parts = e.path.split('/');
+        var dir = '/data';
+        for (var i = 0; i < parts.length - 1; i++) {
+          dir += '/' + parts[i];
+          try { FS.mkdir(dir); } catch (err) {}
+        }
+        FS.writeFile(dir + '/' + parts[parts.length - 1], new Uint8Array(buf));
+      } catch (err) {}
+      if (++n % 64 === 0) {
+        if (bootAll) label();
+        await new Promise(function (r) { setTimeout(r, 0); });
+      }
+    }
+  }
+  var bgworkers = [];
+  for (var i = 0; i < M2_CONCURRENCY; i++) bgworkers.push(bgpump());
+  if (bootAll) {
+    total = manifest.length;
+    await Promise.all(bgworkers);
+    console.log('[m2] all ' + manifest.length + ' data files downloaded');
+  }
+  removeRunDependency('m2data');
+}
+
+m2DownloadFiles();
+
+document.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+</script>
+{{{ SCRIPT }}}
+</body>
+</html>

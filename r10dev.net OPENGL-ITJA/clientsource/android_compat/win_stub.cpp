@@ -5,7 +5,6 @@
 #include "windows.h"
 #include "io.h"
 #include <pthread.h>
-#include <android/log.h>
 #include <mutex>
 #include <fnmatch.h>
 #include <dirent.h>
@@ -14,8 +13,8 @@
 #include <unordered_map>
 
 #define LOG_TAG "Metin2WinStub"
-#define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
-#define LOGW(...) __android_log_print(ANDROID_LOG_WARN, LOG_TAG, __VA_ARGS__)
+#define LOGI(...) M2Plat::Log(M2Plat::LOG_INFO, LOG_TAG, __VA_ARGS__)
+#define LOGW(...) M2Plat::Log(M2Plat::LOG_WARN, LOG_TAG, __VA_ARGS__)
 
 extern "C" {
 
@@ -749,9 +748,9 @@ char* _ecvt(double value, int count, int* dec, int* sign) {
 }
 
 BOOL SystemParametersInfoA(unsigned, unsigned, void*, unsigned) { return TRUE; }
-volatile int g_iAndroidCursorX = 0;
-volatile int g_iAndroidCursorY = 0;
-BOOL GetCursorPos(POINT* p) { if (p) { p->x = g_iAndroidCursorX; p->y = g_iAndroidCursorY; } return TRUE; }
+volatile int g_iPortCursorX = 0;
+volatile int g_iPortCursorY = 0;
+BOOL GetCursorPos(POINT* p) { if (p) { p->x = g_iPortCursorX; p->y = g_iPortCursorY; } return TRUE; }
 void* CreateSemaphoreA(void*, long, long, const char*) { return (void*)1; }
 unsigned timeGetDevCaps(TIMECAPS* p, unsigned) {
     if (p) { p->wPeriodMin = 1; p->wPeriodMax = 1000; }
@@ -763,7 +762,7 @@ int EnumFontFamiliesExA(void*, const void*, FONTENUMPROCA, long, unsigned long) 
 
 BOOL SetThreadPriority(void*, int) { return TRUE; }
 
-BOOL SHGetSpecialFolderPathA(void*, char* p, int, BOOL) { if (p) { strcpy(p, "/sdcard"); } return p != NULL; }
+BOOL SHGetSpecialFolderPathA(void*, char* p, int, BOOL) { if (p) { strcpy(p, M2Plat::DataDir()); } return p != NULL; }
 LPTOP_LEVEL_EXCEPTION_FILTER SetUnhandledExceptionFilter(LPTOP_LEVEL_EXCEPTION_FILTER) { return NULL; }
 
 BOOL SetCursorPos(int, int) { return TRUE; }
@@ -801,25 +800,4 @@ void WebBrowser_Move(const void* rc) {}
 int WebBrowser_IsVisible() { return 0; }
 }
 
-extern "C" void android_normalize_path(const char* c_szPath, char* szOut, size_t uOutSize)
-{
-    if (!uOutSize)
-        return;
-    if (c_szPath[0] && c_szPath[1] == ':')
-        c_szPath += 2;
-    while (*c_szPath == '/' || *c_szPath == '\\')
-        ++c_szPath;
-    size_t i = 0;
-    for (; c_szPath[i] && i < uOutSize - 1; ++i)
-        szOut[i] = c_szPath[i] == '\\' ? '/' : (char)tolower((unsigned char)c_szPath[i]);
-    szOut[i] = '\0';
-}
 
-extern "C" int android_access(const char* c_szPath, int iMode)
-{
-    if (access(c_szPath, iMode) == 0)
-        return 0;
-    char szNormalized[MAX_PATH];
-    android_normalize_path(c_szPath, szNormalized, sizeof(szNormalized));
-    return access(szNormalized, iMode);
-}

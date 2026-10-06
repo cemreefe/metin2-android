@@ -1,9 +1,9 @@
 #include "StdAfx.h"
 #include "PythonPlayer.h"
 #include "PythonApplication.h"
-#ifdef __ANDROID__
-#include <android/log.h>
-#define M2_INPUT_LOG(...) __android_log_print(ANDROID_LOG_INFO, "M2Input", __VA_ARGS__)
+#ifdef M2_PORT
+#include "../platform/m2platform.h"
+#define M2_INPUT_LOG(...) M2Plat::Log(M2Plat::LOG_INFO, "M2Input", __VA_ARGS__)
 #else
 #define M2_INPUT_LOG(...)
 #endif

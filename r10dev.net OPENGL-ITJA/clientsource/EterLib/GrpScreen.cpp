@@ -739,21 +739,20 @@ void CScreen::Show(RECT* pSrcRect, HWND hWnd)
 	ms_lpd3dDevice->Present(pSrcRect, NULL, hWnd, NULL);
 }
 
-#ifdef __ANDROID__
-extern int g_iAndroidSurfaceWidth;
-extern int g_iAndroidSurfaceHeight;
-#endif
+
 
 // Project/unproject work in UI coordinates (ms_iWidth x ms_iHeight); the device viewport may be
 // in surface pixels when the surface is larger than the UI resolution.
 static D3DVIEWPORT8 GetUIViewport(const D3DVIEWPORT8& rViewport, int iUIWidth, int iUIHeight)
 {
 	D3DVIEWPORT8 vp = rViewport;
-#ifdef __ANDROID__
-	if (g_iAndroidSurfaceWidth > 0 && g_iAndroidSurfaceHeight > 0 && iUIWidth > 0 && iUIHeight > 0)
+#ifdef M2_PORT
+	const int iSurfW = M2Plat::SurfaceWidth();
+	const int iSurfH = M2Plat::SurfaceHeight();
+	if (iSurfW > 0 && iSurfH > 0 && iUIWidth > 0 && iUIHeight > 0)
 	{
-		const float sx = float(iUIWidth) / g_iAndroidSurfaceWidth;
-		const float sy = float(iUIHeight) / g_iAndroidSurfaceHeight;
+		const float sx = float(iUIWidth) / iSurfW;
+		const float sy = float(iUIHeight) / iSurfH;
 		vp.X = DWORD(rViewport.X * sx);
 		vp.Y = DWORD(rViewport.Y * sy);
 		vp.Width = DWORD(rViewport.Width * sx);

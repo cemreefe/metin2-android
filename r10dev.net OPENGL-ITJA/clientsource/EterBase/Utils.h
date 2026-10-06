@@ -18,7 +18,7 @@
 #endif
 
 #ifndef SAFE_FREE_GLOBAL
-#ifdef __ANDROID__
+#ifdef M2_PORT
 #define SAFE_FREE_GLOBAL(p)		{ if (p) { free(p);	(p) = NULL; } }
 #else
 #define SAFE_FREE_GLOBAL(p)		{ if (p) { ::GlobalFree(p);	(p) = NULL; } }
@@ -26,7 +26,7 @@
 #endif
 
 #ifndef SAFE_FREE_LIBRARY
-#ifdef __ANDROID__
+#ifdef M2_PORT
 #define SAFE_FREE_LIBRARY(p)	{ if (p) { (p) = NULL; } }
 #else
 #define SAFE_FREE_LIBRARY(p)	{ if (p) { ::FreeLibrary(p); (p) = NULL; } }

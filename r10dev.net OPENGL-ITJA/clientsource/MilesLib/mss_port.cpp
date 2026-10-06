@@ -5,7 +5,7 @@
 #include <mutex>
 #include <unordered_map>
 #include <vector>
-#include <android/log.h>
+#include "../platform/m2platform.h"
 
 #define MINIAUDIO_IMPLEMENTATION
 #define MA_NO_ENCODING
@@ -15,7 +15,7 @@
 
 #include "mss.h"
 
-#define LOGI(...) __android_log_print(ANDROID_LOG_INFO, "Metin2Audio", __VA_ARGS__)
+#define LOGI(...) M2Plat::Log(M2Plat::LOG_INFO, "Metin2Audio", __VA_ARGS__)
 
 namespace
 {
@@ -375,7 +375,7 @@ const char* AIL_last_error()
 	return g_szError;
 }
 
-void AIL_android_set_paused(int paused)
+void AIL_set_paused(int paused)
 {
 	if (!g_bEngine)
 		return;

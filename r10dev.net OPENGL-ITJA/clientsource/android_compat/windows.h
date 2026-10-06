@@ -1,10 +1,12 @@
 #pragma once
 
-#ifndef __ANDROID__
-  #error "This windows.h is only for Android!"
+#if !defined(__ANDROID__) && !defined(__EMSCRIPTEN__)
+  #error "This windows.h is only for platform-port (Android/web) builds!"
 #endif
 
-// Win32 compatibility layer for Android.
+#include "../platform/m2platform.h"
+
+// Win32 compatibility layer for platform-port builds.
 // Types, macros, constants and function prototypes the engine needs.
 // Implementations of the stubbed functions live in win_stub.cpp.
 
@@ -599,6 +601,8 @@ typedef struct _CRITICAL_SECTION {
 #define MAKEWPARAM(l, h) ((WPARAM)MAKELONG(l, h))
 #endif
 
+#include "../platform/m2platform.h"
+
 /* ---- C runtime aliases ---- */
 #define stricmp     strcasecmp
 #define _stricmp    strcasecmp
@@ -614,7 +618,7 @@ typedef struct _CRITICAL_SECTION {
 #define _snwprintf  swprintf
 #define _tzset      tzset
 #define _chmod      chmod
-#define _access     android_access
+#define _access(p, m) M2Plat::FileAccess((p), (m))
 #define _mkdir(p)   mkdir((p), 0777)
 #define _rmdir      rmdir
 #define _unlink     unlink
@@ -1471,11 +1475,4 @@ DWORD GetCurrentThreadId();
 }
 #endif
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-void android_normalize_path(const char* c_szPath, char* szOut, size_t uOutSize);
-int android_access(const char* c_szPath, int iMode);
-#ifdef __cplusplus
-}
-#endif
+

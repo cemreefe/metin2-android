@@ -2,6 +2,16 @@
 #include "NetStream.h"
 //#include "eterCrypt.h"
 
+#ifdef M2_PORT
+#include "../platform/m2net.h"
+// The engine core was written against BSD socket names; on port builds they are
+// routed through the net port instead (POSIX impl on Android, WebSocket on web).
+#undef closesocket
+#define recv(f, b, l, fl)   M2Net::StreamRecv((f), (b), (l))
+#define send(f, b, l, fl)   M2Net::StreamSend((f), (b), (l))
+#define closesocket         M2Net::Close
+#endif
+
 #ifndef _IMPROVED_PACKET_ENCRYPTION_
 #include "../EterBase/tea.h"
 #endif
@@ -289,6 +299,7 @@ void CNetworkStream::Process()
 	if (m_sock == INVALID_SOCKET)
 		return;
 
+#ifndef M2_PORT
 	fd_set fdsRecv;
 	fd_set fdsSend;
 
@@ -297,7 +308,15 @@ void CNetworkStream::Process()
 
 	FD_SET(m_sock, &fdsRecv);
 	FD_SET(m_sock, &fdsSend);
+#endif
 
+	int iReady;
+
+#ifdef M2_PORT
+	iReady = M2Net::Poll(m_sock);
+	if (iReady < 0)
+		return;
+#else
 	TIMEVAL delay;
 
 	delay.tv_sec = 0;
@@ -306,14 +325,20 @@ void CNetworkStream::Process()
 	if (select((int)m_sock + 1, &fdsRecv, &fdsSend, NULL, &delay) == SOCKET_ERROR)
 		return;
 
+	iReady = 0;
+	if (FD_ISSET(m_sock, &fdsRecv))
+		iReady |= M2Net::NET_POLL_READABLE;
+	if (FD_ISSET(m_sock, &fdsSend))
+		iReady |= M2Net::NET_POLL_WRITABLE;
+#endif
+
 	if (!m_isOnline)
 	{
-		if (FD_ISSET(m_sock, &fdsSend))
+		if (iReady & M2Net::NET_POLL_WRITABLE)
 		{
-#ifdef __ANDROID__
+#ifdef M2_PORT
 			int sockErr = 0;
-			socklen_t sockErrLen = sizeof(sockErr);
-			if (getsockopt(m_sock, SOL_SOCKET, SO_ERROR, &sockErr, &sockErrLen) != 0 || sockErr != 0)
+			if (!M2Net::ConnectDone(m_sock, &sockErr) || sockErr != 0)
 			{
 				Clear();
 				OnConnectFailure();
@@ -332,7 +357,7 @@ void CNetworkStream::Process()
 		return;
 	}
 
-	if (FD_ISSET(m_sock, &fdsSend) && (m_sendBufInputPos > m_sendBufOutputPos))
+	if ((iReady & M2Net::NET_POLL_WRITABLE) && (m_sendBufInputPos > m_sendBufOutputPos))
 	{
 		if (!__SendInternalBuffer())
 		{
@@ -347,7 +372,7 @@ void CNetworkStream::Process()
 		}
 	}
 
-	if (FD_ISSET(m_sock, &fdsRecv))
+	if (iReady & M2Net::NET_POLL_READABLE)
 	{
 		if (!__RecvInternalBuffer())
 		{
@@ -420,15 +445,23 @@ bool CNetworkStream::Connect(const CNetworkAddress& c_rkNetAddr, int limitSec)
 
 	m_addr = c_rkNetAddr;
 
+#ifdef M2_PORT
+	char szHost[40];
+	m_addr.GetIP(szHost, sizeof(szHost));
+	m_sock = M2Net::Connect(szHost, m_addr.GetPort());
+	if (m_sock == INVALID_SOCKET)
+#else
 	m_sock = socket(AF_INET, SOCK_STREAM, 0);
 
 	if (m_sock == INVALID_SOCKET)
+#endif
 	{
 		Clear();
 		OnConnectFailure();
 		return false;
 	}
 
+#ifndef M2_PORT
 	DWORD arg = 1;
 	ioctlsocket(m_sock, FIONBIO, &arg);	// Non-blocking mode
 
@@ -444,6 +477,7 @@ bool CNetworkStream::Connect(const CNetworkAddress& c_rkNetAddr, int limitSec)
 			return false;
 		}
 	}
+#endif
 
 	m_connectLimitTime = time(NULL) + limitSec;
 	return true;
@@ -462,7 +496,7 @@ bool CNetworkStream::Connect(DWORD dwAddr, int port, int limitSec)
 		sprintf(szAddr, "%d.%d.%d.%d", ip[0], ip[1], ip[2], ip[3]);
 	}
 
-#ifdef __ANDROID__
+#ifdef M2_PORT
 	// Remote test profiles reach the cores through a tunnel: the server advertises its LAN address, so
 	// redirect to the profile host and shift the port into the tunnel's range. Loopback cores are the
 	// embedded server and are never tunnelled.

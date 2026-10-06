@@ -25,55 +25,55 @@ extern "C" {
 	volatile int _AVOID_FLOATING_POINT_LIBRARY_BUG = _fltused;
 };
 
-#ifndef __ANDROID__
+#ifndef M2_PORT
 #pragma comment(linker, "/NODEFAULTLIB:libci.lib")
 #endif
 
-#ifndef __ANDROID__
+#ifndef M2_PORT
 #pragma comment( lib, "version.lib" )
 #endif
 
-#ifndef __ANDROID__
+#ifndef M2_PORT
 #pragma comment( lib, "imagehlp.lib" )
 #endif
-#ifndef __ANDROID__
+#ifndef M2_PORT
 #pragma comment( lib, "devil.lib" )
 #endif
 
-#ifndef __ANDROID__
+#ifndef M2_PORT
 #pragma comment( lib, "granny2.11.8.0.lib" )
 #endif
-#ifndef __ANDROID__
+#ifndef M2_PORT
 #pragma comment( lib, "mss32.lib" )
 #endif
-#ifndef __ANDROID__
+#ifndef M2_PORT
 #pragma comment( lib, "winmm.lib" )
 #endif
-#ifndef __ANDROID__
+#ifndef M2_PORT
 #pragma comment( lib, "imm32.lib" )
 #endif
-#ifndef __ANDROID__
+#ifndef M2_PORT
 #pragma comment( lib, "oldnames.lib" )
 #endif
-#ifndef __ANDROID__
+#ifndef M2_PORT
 #pragma comment( lib, "SpeedTreeRT.lib" )
 #endif
-#ifndef __ANDROID__
+#ifndef M2_PORT
 #pragma comment( lib, "dinput8.lib" )
 #endif
-#ifndef __ANDROID__
+#ifndef M2_PORT
 #pragma comment( lib, "dxguid.lib" )
 #endif
-#ifndef __ANDROID__
+#ifndef M2_PORT
 #pragma comment( lib, "ws2_32.lib" )
 #endif
-#ifndef __ANDROID__
+#ifndef M2_PORT
 #pragma comment( lib, "strmiids.lib" )
 #endif
-#ifndef __ANDROID__
+#ifndef M2_PORT
 #pragma comment( lib, "ddraw.lib" )
 #endif
-#ifndef __ANDROID__
+#ifndef M2_PORT
 #pragma comment( lib, "dmoguids.lib" )
 #endif
 //#pragma comment( lib, "wsock32.lib" )
@@ -570,7 +570,9 @@ bool PackInitialize(const char* c_pszFolder)
 
 bool RunMainScript(CPythonLauncher& pyLauncher, const char* lpCmdLine)
 {
+	fprintf(stderr, "[web] RunMainScript: initpack\n");
 	initpack();
+	fprintf(stderr, "[web] RunMainScript: modules\n");
 	initdbg();
 	initime();
 	initgrp();
@@ -602,6 +604,7 @@ bool RunMainScript(CPythonLauncher& pyLauncher, const char* lpCmdLine)
 	initquest();
 	initBackground();
 	initMessenger();
+	fprintf(stderr, "[web] RunMainScript: modules done\n");
 #ifdef ENABLE_ACCE_SYSTEM
 	initAcce();
 #endif
@@ -699,6 +702,7 @@ bool RunMainScript(CPythonLauncher& pyLauncher, const char* lpCmdLine)
 #ifdef __USE_CYTHON__
 		if (!pyLauncher.RunLine("import rootlib\nrootlib.moduleImport('system')"))
 #else
+		fprintf(stderr, "[web] RunMainScript: running system.py\n");
 		if (!pyLauncher.RunFile("system.py"))
 #endif
 		{
@@ -742,8 +746,10 @@ bool Main(HINSTANCE hInstance, LPSTR lpCmdLine)
 #ifndef __VTUNE__
 	ilInit();
 #endif
+	fprintf(stderr, "[web] Main: before Setup\n");
 	if (!Setup(lpCmdLine))
 		return false;
+	fprintf(stderr, "[web] Main: after Setup\n");
 
 #ifdef _DEBUG
 	OpenConsoleWindow();
@@ -755,16 +761,18 @@ bool Main(HINSTANCE hInstance, LPSTR lpCmdLine)
 	static CLZO				lzo;
 	static CEterPackManager	EterPackManager;
 
+	fprintf(stderr, "[web] Main: before PackInitialize\n");
 	if (!PackInitialize("pack"))
 	{
 		LogBox("Pack Initialization failed. Check log.txt file..");
 		return false;
 	}
+	fprintf(stderr, "[web] Main: packs initialized\n");
 
 	if (LocaleService_LoadGlobal(hInstance))
 		SetDefaultCodePage(LocaleService_GetCodePage());
 
-#if defined(ENABLE_PYLIB_CHECK) && !defined(__ANDROID__)
+#if defined(ENABLE_PYLIB_CHECK) && !defined(M2_PORT)
 	if (!__CheckPyLibFiles())
 		return false;
 #endif
@@ -774,7 +782,9 @@ bool Main(HINSTANCE hInstance, LPSTR lpCmdLine)
 #endif
 	CPythonApplication* app = new CPythonApplication;
 
+	fprintf(stderr, "[web] Main: before app->Initialize\n");
 	app->Initialize(hInstance);
+	fprintf(stderr, "[web] Main: app initialized, launching python\n");
 
 	bool ret = false;
 	{
@@ -784,6 +794,7 @@ bool Main(HINSTANCE hInstance, LPSTR lpCmdLine)
 
 		if (pyLauncher.Create())
 		{
+			fprintf(stderr, "[web] Main: python created, RunMainScript\n");
 			ret = RunMainScript(pyLauncher, lpCmdLine);	//���� �����߿� �Լ��� ������ �ʴ´�.
 		}
 
@@ -873,13 +884,13 @@ bool __IsOpenIDTestOption(LPSTR lpCmdLine) //Ŭ���̾�Ʈ���� ��
 }
 #endif /* USE_OPENID */
 
-#ifndef __ANDROID__
+#ifndef M2_PORT
 int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 #else
-int AndroidMain(int argc, char** argv)
+int M2PortMain(int argc, char** argv)
 #endif
 {
-#ifdef __ANDROID__
+#ifdef M2_PORT
 	void* hInstance = NULL;
 	static char szCmdLine[1024] = "";
 	if (argc > 1) {
@@ -897,10 +908,12 @@ int AndroidMain(int argc, char** argv)
 	//_CrtSetBreakAlloc( 110247 );
 #endif
 
+	fprintf(stderr, "[web] M2PortMain: stringtable init\n");
 	ApplicationStringTable_Initialize(hInstance);
 
 	LocaleService_LoadConfig("loca.cfg");
 	SetDefaultCodePage(LocaleService_GetCodePage());
+	fprintf(stderr, "[web] M2PortMain: locale loaded\n");
 
 #ifdef XTRAP_CLIENT_ENABLE
 	if (!XTrap_Init())
@@ -1038,7 +1051,7 @@ int AndroidMain(int argc, char** argv)
 
 	WebBrowser_Startup(hInstance);
 
-#if !defined(ENABLE_PYLIB_CHECK) && !defined(__ANDROID__)
+#if !defined(ENABLE_PYLIB_CHECK) && !defined(M2_PORT)
 	if (!CheckPythonLibraryFilenames())
 	{
 		__ErrorPythonLibraryIsNotExist();

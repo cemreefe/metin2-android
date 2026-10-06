@@ -20,7 +20,7 @@ void CNetworkDevice::Destroy()
 {
 	if (m_isWSA)
 	{
-#ifndef __ANDROID__
+#ifndef M2_PORT
 		WSACleanup();
 #endif
 		m_isWSA = false;
@@ -33,7 +33,7 @@ bool CNetworkDevice::Create()
 
 	Initialize();
 
-#ifndef __ANDROID__
+#ifndef M2_PORT
 	WSADATA wsaData;
 	if (WSAStartup(MAKEWORD(1, 1), &wsaData) != 0)
 		return false;

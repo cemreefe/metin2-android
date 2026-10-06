@@ -31,7 +31,7 @@ PyObject* appShowWebPage(PyObject* poSelf, PyObject* poArgs)
 	rcWebPage.right = PyInt_AsLong(PyTuple_GetItem(poRect, 2));
 	rcWebPage.bottom = PyInt_AsLong(PyTuple_GetItem(poRect, 3));
 
-#ifndef __ANDROID__
+#ifndef M2_PORT
 	CPythonApplication::Instance().ShowWebPage(
 		szWebPage,
 		rcWebPage
@@ -52,7 +52,7 @@ PyObject* appMoveWebPage(PyObject* poSelf, PyObject* poArgs)
 	rcWebPage.right = PyInt_AsLong(PyTuple_GetItem(poRect, 2));
 	rcWebPage.bottom = PyInt_AsLong(PyTuple_GetItem(poRect, 3));
 
-#ifndef __ANDROID__
+#ifndef M2_PORT
 	CPythonApplication::Instance().MoveWebPage(rcWebPage);
 #endif
 	return Py_BuildNone();
@@ -60,7 +60,7 @@ PyObject* appMoveWebPage(PyObject* poSelf, PyObject* poArgs)
 
 PyObject* appHideWebPage(PyObject* poSelf, PyObject* poArgs)
 {
-#ifndef __ANDROID__
+#ifndef M2_PORT
 	CPythonApplication::Instance().HideWebPage();
 #endif
 	return Py_BuildNone();
@@ -68,7 +68,7 @@ PyObject* appHideWebPage(PyObject* poSelf, PyObject* poArgs)
 
 PyObject* appIsWebPageMode(PyObject* poSelf, PyObject* poArgs)
 {
-#ifdef __ANDROID__
+#ifdef M2_PORT
 	return Py_BuildValue("i", 0);
 #else
 	return Py_BuildValue("i", CPythonApplication::Instance().IsWebPageMode());
@@ -325,22 +325,18 @@ PyObject* appGetLocalePath(PyObject* poSelf, PyObject* poArgs)
 }
 // END_OF_LOCALE
 
-#ifdef __ANDROID__
-void AndroidRestartApp();
-#endif
-
 PyObject* appRestartApplication(PyObject* poSelf, PyObject* poArgs)
 {
-#ifdef __ANDROID__
-	AndroidRestartApp();
+#ifdef M2_PORT
+	M2Plat::RestartApp();
 #endif
 	return Py_BuildNone();
 }
 
 PyObject* appApplyUIScale(PyObject* poSelf, PyObject* poArgs)
 {
-#ifdef __ANDROID__
-	CPythonApplication::Instance().ApplyAndroidUIScale();
+#ifdef M2_PORT
+	CPythonApplication::Instance().ApplyPortUIScale();
 #endif
 	return Py_BuildNone();
 }

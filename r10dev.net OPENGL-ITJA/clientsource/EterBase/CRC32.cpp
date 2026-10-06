@@ -1,5 +1,5 @@
 #include "StdAfx.h"
-#ifdef __ANDROID__
+#ifdef M2_PORT
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/stat.h>
@@ -133,7 +133,7 @@ DWORD GetHFILECRC32(HANDLE hFile)
 {
 	DWORD dwRetCRC32 = 0;
 
-#ifndef __ANDROID__
+#ifndef M2_PORT
 	DWORD dwFileSize = GetFileSize(hFile, NULL);
 
 	DWORD dataOffset = 0;
@@ -189,7 +189,7 @@ DWORD GetHFILECRC32(HANDLE hFile)
 
 DWORD GetFileCRC32(const char* c_szFileName)
 {
-#ifndef __ANDROID__
+#ifndef M2_PORT
 	HANDLE hFile = CreateFile(c_szFileName,					// name of the file
 		GENERIC_READ,					// desired access
 		FILE_SHARE_READ,			// share mode
@@ -217,7 +217,7 @@ DWORD GetFileCRC32(const char* c_szFileName)
 
 DWORD GetFileSize(const char* c_szFileName)
 {
-#ifndef __ANDROID__
+#ifndef M2_PORT
 	HANDLE hFile = CreateFile(c_szFileName,					// name of the file
 		GENERIC_READ,					// desired access
 		FILE_SHARE_READ,			// share mode

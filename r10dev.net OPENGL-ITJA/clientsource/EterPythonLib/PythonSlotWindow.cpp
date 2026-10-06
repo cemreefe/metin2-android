@@ -816,7 +816,7 @@ BOOL CSlotWindow::OnMouseLeftButtonDown()
 
 	if (pSlot->isItem && !(pSlot->dwState & SLOT_STATE_LOCK))
 	{
-#ifdef __ANDROID__
+#ifdef M2_PORT
 		// Touch has no hover: a tap shows the tooltip, holding picks the item up.
 		if (!UI::CWindowManager::Instance().IsAttaching())
 		{

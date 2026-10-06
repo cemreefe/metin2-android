@@ -1,19 +1,16 @@
 #include <set>
 #include <unistd.h>
-#ifdef ANDROID
-#include <sys/system_properties.h>
-#endif
+#include "../platform/m2platform.h"
 #include "StdAfx.h"
 #include "GrpOpenGL.h"
 
 #ifdef ENABLE_OPENGL
 
-#ifdef ANDROID
-#include <android/log.h>
+#ifdef M2_PORT
 #include <EGL/egl.h>
-#define LOG_TAG "Metin2Mobile"
-#define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
-#define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
+#define LOG_TAG "Metin2"
+#define LOGI(...) M2Plat::Log(M2Plat::LOG_INFO, LOG_TAG, __VA_ARGS__)
+#define LOGE(...) M2Plat::Log(M2Plat::LOG_ERROR, LOG_TAG, __VA_ARGS__)
 #else
 #define LOGI(...)
 #define LOGE(...)
@@ -924,13 +921,10 @@ HRESULT IDirect3DDevice8::DrawIndexedPrimitiveUP(D3DPRIMITIVETYPE Type, UINT Min
 HRESULT IDirect3DDevice8::Reset(D3DPRESENT_PARAMETERS* pPresentationParameters) { return S_OK; }
 HRESULT IDirect3DDevice8::BeginScene() { return S_OK; }
 HRESULT IDirect3DDevice8::EndScene() { return S_OK; }
-#ifdef ANDROID
-extern "C" bool AndroidPresent();
-#endif
 HRESULT IDirect3DDevice8::Present(const RECT* pSourceRect, const RECT* pDestRect, HWND hDestWindowOverride, const void* pDirtyRegion) {
-#ifdef ANDROID
+#ifdef M2_PORT
     static unsigned s_uFrame = 0;
-    EGLBoolean ok = AndroidPresent() ? EGL_TRUE : EGL_FALSE;
+    EGLBoolean ok = M2Plat::PresentFrame() ? EGL_TRUE : EGL_FALSE;
     static DWORD s_dwLastLog = 0;
     DWORD dwNow = timeGetTime();
     ++s_uFrame;
@@ -941,12 +935,12 @@ HRESULT IDirect3DDevice8::Present(const RECT* pSourceRect, const RECT* pDestRect
     static unsigned s_uDumpSerial = 0;
     g_bDbgDump = false;
     if ((s_uFrame % 5) == 0) {
-        char szValue[PROP_VALUE_MAX] = {};
-        __system_property_get("debug.m2.dump", szValue);
+        char szValue[92] = {};
+        M2Plat::GetDebugProperty("debug.m2.dump", szValue, sizeof(szValue));
         unsigned uSerial = (unsigned)atoi(szValue);
         g_bDbgDump = uSerial != s_uDumpSerial;
-        char szSolid[PROP_VALUE_MAX] = {};
-        __system_property_get("debug.m2.solid", szSolid);
+        char szSolid[92] = {};
+        M2Plat::GetDebugProperty("debug.m2.solid", szSolid, sizeof(szSolid));
         g_iDbgSolid = szSolid[0] ? szSolid[0] - '0' : 0;
         s_uDumpSerial = uSerial;
     }

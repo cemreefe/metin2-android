@@ -1,7 +1,7 @@
 #include "StdAfx.h"
 #include "PythonApplication.h"
 
-#ifndef __ANDROID__
+#ifndef M2_PORT
 #include "../CWebBrowser/CWebBrowser.h"
 
 bool CPythonApplication::IsWebPageMode()
@@ -10,7 +10,7 @@ bool CPythonApplication::IsWebPageMode()
 }
 #endif
 
-#ifndef __ANDROID__
+#ifndef M2_PORT
 void CPythonApplication::ShowWebPage(const char* c_szURL, const RECT& c_rcWebPage)
 {
 	if (WebBrowser_IsVisible())
@@ -48,4 +48,4 @@ void CPythonApplication::HideWebPage()
 			SetCursorMode(CURSOR_MODE_HARDWARE);
 	}
 }
-#endif // __ANDROID__
+#endif // M2_PORT

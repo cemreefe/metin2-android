@@ -2,27 +2,27 @@
 # Rebuild the wasm32 prebuilt extern libs for the Emscripten port.
 #
 # Produces:
-#   r10dev.net OPENGL-ITJA/Extern/lib/wasm/libpython2.7.a   (CPython 2.7.18, ucs4, thread+signal builtin)
-#   r10dev.net OPENGL-ITJA/Extern/lib/wasm/libcryptopp.a    (Crypto++ 8.2, vendored in Extern/include/cryptopp)
-#   r10dev.net OPENGL-ITJA/Extern/lib/wasm/liblzo2.a        (LZO 2.10)
-#   r10dev.net OPENGL-ITJA/Extern/include/Python2-wasm/pyconfig.h
+#   r10dev.net OPENGL-ITJA/Extern/lib/web/libpython2.7.a   (CPython 2.7.18, ucs4, thread+signal builtin)
+#   r10dev.net OPENGL-ITJA/Extern/lib/web/libcryptopp.a    (Crypto++ 8.2, vendored in Extern/include/cryptopp)
+#   r10dev.net OPENGL-ITJA/Extern/lib/web/liblzo2.a        (LZO 2.10)
+#   r10dev.net OPENGL-ITJA/Extern/include/Python2-web/pyconfig.h
 #
 # Requires: emsdk installed and activated on PATH (emcc/em++/emar/emconfigure),
 #           curl, make, a C toolchain, and ~4 GB of disk.
 #
-#   EMSDK=/path/to/emsdk ./tools/wasm-deps/build.sh        # full rebuild
+#   EMSDK=/path/to/emsdk ./tools/web-deps/build.sh        # full rebuild
 #
 # Sources are downloaded to $EXTERN_SRC (default ~/extern-src) once, so the
 # script is re-runnable. Built and verified with emcc 6.0.11.
 
 set -euo pipefail
 
-REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 EXTERN_DIR="$REPO_ROOT/r10dev.net OPENGL-ITJA/Extern"
-OUT="$EXTERN_DIR/lib/wasm"
-PYCFG_DIR="$EXTERN_DIR/include/Python2-wasm"
+OUT="$EXTERN_DIR/lib/web"
+PYCFG_DIR="$EXTERN_DIR/include/Python2-web"
 SRC="${EXTERN_SRC:-$HOME/extern-src}"
-B="$SRC/build-wasm"
+B="$SRC/build-web-deps"
 PYVER=2.7.18
 LZOVER=2.10
 
@@ -72,7 +72,7 @@ rm -rf "$B/lzo-$LZOVER"
     && cp "$SRC/config.sub" "$SRC/config.guess" "lzo-$LZOVER/autoconf/" \
     && cd "lzo-$LZOVER" \
     && emconfigure ./configure --host=wasm32-unknown-emscripten \
-        --disable-shared --enable-static CFLAGS="-O2" >/dev/null \
+        --disable-shared --enable-static CFLAGS="-O2 -matomics -mbulk-memory" >/dev/null \
     && emmake make -j"$(nproc)" >/dev/null \
     && cp src/.libs/liblzo2.a "$OUT/")
 echo "lzo OK"
@@ -93,7 +93,7 @@ ppc_power7 ppc_power8 ppc_power9 ppc_simd chacha_avx donna_sse cpu"
         [ "$skip" = 0 ] && FILES="$FILES $f"
     done
     printf '%s\n' $FILES cpu.cpp | xargs -P "$(nproc)" -I{} sh -c \
-        "em++ -O2 -std=c++11 -DNDEBUG -DCRYPTOPP_DISABLE_ASM -I. -c {} -o '$CPP_B/{}.o' \
+        "em++ -O2 -std=c++11 -matomics -mbulk-memory -DNDEBUG -DCRYPTOPP_DISABLE_ASM -I. -c {} -o '$CPP_B/{}.o' \
          2>>'$CPP_B/err.log' || echo FAIL {}"
 })
 "$AR" rcs "$OUT/libcryptopp.a" "$CPP_B"/*.o
@@ -171,7 +171,7 @@ EOF
 touch Include/graminit.h Python/graminit.c Include/Python-ast.h Python/Python-ast.c
 
 emmake make -j"$(nproc)" libpython2.7.a \
-    CFLAGS="-fno-strict-aliasing -O2 -DNDEBUG -O3 -Wall -Wstrict-prototypes" \
+    CFLAGS="-fno-strict-aliasing -O2 -matomics -mbulk-memory -DNDEBUG -O3 -Wall -Wstrict-prototypes" \
     >/dev/null
 cp libpython2.7.a "$OUT/"
 cp pyconfig.h "$PYCFG_DIR/pyconfig.h"
@@ -198,6 +198,8 @@ echo "embed test: $RESULT"
 
 for sym in 'Py_Initialize:libpython2.7.a' 'AgreeE:libcryptopp.a' 'lzo1x_decompress:liblzo2.a'; do
     name="${sym%%:*}"; lib="${sym##*:}"
-    "$NM" "$OUT/$lib" | grep -q " T .*$name" || { echo "missing T symbol $name in $lib" >&2; exit 1; }
+    # buffer nm output first: grep -q exits early and SIGPIPEs nm under pipefail
+    "$NM" "$OUT/$lib" > "$B/nm.out" 2>/dev/null || true
+    grep -q " T .*$name" "$B/nm.out" || { echo "missing T symbol $name in $lib" >&2; exit 1; }
 done
 echo "ALL OK -> $OUT"

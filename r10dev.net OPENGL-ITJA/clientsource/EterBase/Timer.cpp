@@ -7,19 +7,19 @@ static DWORD gs_dwServerTime = 0;
 static DWORD gs_dwClientTime = 0;
 static DWORD gs_dwFrameTime = 0;
 
-#ifndef __ANDROID__
+#ifndef M2_PORT
 #include <mmsystem.h>
 #else
 #include <time.h>
 #endif
 
-#ifndef __ANDROID__
-#ifndef __ANDROID__
+#ifndef M2_PORT
+#ifndef M2_PORT
 #pragma comment(lib, "winmm.lib")
 #endif
 #endif
 
-#ifdef __ANDROID__
+#ifdef M2_PORT
 DWORD timeGetTime()
 {
 	struct timespec ts;

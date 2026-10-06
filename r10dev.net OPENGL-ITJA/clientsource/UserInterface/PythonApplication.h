@@ -130,7 +130,7 @@ public:
 	virtual ~CPythonApplication();
 
 public:
-#ifndef __ANDROID__
+#ifndef M2_PORT
 	void ShowWebPage(const char* c_szURL, const RECT& c_rcWebPage);
 	void MoveWebPage(const RECT& c_rcWebPage);
 	void HideWebPage();
@@ -258,7 +258,7 @@ public:
 	void OnLogoClose();
 
 protected:
-#ifndef __ANDROID__
+#ifndef M2_PORT
 	IGraphBuilder* m_pGraphBuilder;			// Graph Builder
 	IBaseFilter* m_pFilterSG;				// Sample Grabber ����
 	ISampleGrabber* m_pSampleGrabber;			// ���� �̹��� ĸó�� ���� ���� �׷���
@@ -279,14 +279,14 @@ public:
 	void OnKeyDown(int iIndex);
 	void OnKeyUp(int iIndex);
 
-#ifdef __ANDROID__
+#ifdef M2_PORT
 	void OnMouseMovePublic(int x, int y) { OnMouseMove(x, y); }
 	void OnMouseLeftButtonDownPublic(int x, int y) { OnMouseLeftButtonDown(x, y); }
 	void OnMouseLeftButtonUpPublic(int x, int y) { OnMouseLeftButtonUp(x, y); }
-	void OnAndroidKeyEvent(int action, int keyCode, int unicodeChar) override;
+	void OnPortKeyEvent(int action, int keyCode, int unicodeChar) override;
 	void OnTouchEvent(int action, int x, int y) override;
-	void OnAndroidFrame();
-	void ApplyAndroidUIScale();
+	void OnPortFrame();
+	void ApplyPortUIScale();
 
 	enum ETouchMode { TOUCH_NONE, TOUCH_UI, TOUCH_WORLD_PENDING, TOUCH_WORLD_HOLD, TOUCH_CAMERA };
 	ETouchMode m_eTouchMode = TOUCH_NONE;

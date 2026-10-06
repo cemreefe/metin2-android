@@ -65,7 +65,7 @@ typedef struct
 
 /* Converts a floating point number to an integer by truncation, using
    the FISTP instruction */
-#ifndef __ANDROID__
+#ifndef M2_PORT
 #define PR_FLOAT_TO_INTASM __asm	\
 {									\
 	__asm fld PR_FCNV				\
