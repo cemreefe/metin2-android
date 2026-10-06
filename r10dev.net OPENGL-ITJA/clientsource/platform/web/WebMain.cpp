@@ -93,10 +93,15 @@ namespace
 		switch (type)
 		{
 		case EMSCRIPTEN_EVENT_MOUSEDOWN:
+			// Engine tracks cursor pos from move events only; a click that
+			// arrives with no preceding move would land at stale coords, so
+			// push a move first (on Windows a move always precedes the click).
+			CMSApplication::PushTouchEvent(2, x, y);
 			// Right button = camera rotate, like the desktop client.
 			CMSApplication::PushTouchEvent(e->button == 2 ? CMSApplication::TOUCH_RIGHT_DOWN : 0, x, y);
 			break;
 		case EMSCRIPTEN_EVENT_MOUSEUP:
+			CMSApplication::PushTouchEvent(2, x, y);
 			CMSApplication::PushTouchEvent(e->button == 2 ? CMSApplication::TOUCH_RIGHT_UP : 1, x, y);
 			break;
 		case EMSCRIPTEN_EVENT_MOUSEMOVE:

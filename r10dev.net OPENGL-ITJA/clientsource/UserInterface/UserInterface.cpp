@@ -523,6 +523,7 @@ int Setup(LPSTR lpCmdLine); // Internal function forward
 
 bool PackInitialize(const char* c_pszFolder)
 {
+	fprintf(stderr, "[web] PackInitialize: enter\n");
 //@turkmmo44
 	if (_access(c_pszFolder, 0) != 0)
 		return true;
@@ -744,6 +745,7 @@ bool Main(HINSTANCE hInstance, LPSTR lpCmdLine)
 #endif
 	if (!Setup(lpCmdLine))
 		return false;
+	fprintf(stderr, "[web] Main: after Setup\n");
 
 #ifdef _DEBUG
 	OpenConsoleWindow();
@@ -751,9 +753,12 @@ bool Main(HINSTANCE hInstance, LPSTR lpCmdLine)
 #else
 	OpenLogFile(false); // false == uses syserr.txt only
 #endif
+	fprintf(stderr, "[web] Main: log opened\n");
 
 	static CLZO				lzo;
+	fprintf(stderr, "[web] Main: lzo ctor done\n");
 	static CEterPackManager	EterPackManager;
+	fprintf(stderr, "[web] Main: packmgr ctor done\n");
 
 	if (!PackInitialize("pack"))
 	{
