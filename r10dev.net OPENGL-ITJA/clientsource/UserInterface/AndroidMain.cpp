@@ -358,8 +358,9 @@ static void ApplyPendingWindow()
 	pthread_mutex_unlock(&s_kWindowLock);
 }
 
-// Called by the D3D8 device's Present on the game thread.
-bool M2Plat::PresentFrame()
+// Called by the D3D8 device's Present on the game thread. extern "C++" because
+// this sits inside the extern "C" JNI block (it uses the EGL statics above).
+extern "C++" bool M2Plat::PresentFrame()
 {
 	ApplyPendingWindow();
 	if (s_eglSurface == EGL_NO_SURFACE)

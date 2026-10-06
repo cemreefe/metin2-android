@@ -570,9 +570,7 @@ bool PackInitialize(const char* c_pszFolder)
 
 bool RunMainScript(CPythonLauncher& pyLauncher, const char* lpCmdLine)
 {
-	fprintf(stderr, "[web] RunMainScript: initpack\n");
 	initpack();
-	fprintf(stderr, "[web] RunMainScript: modules\n");
 	initdbg();
 	initime();
 	initgrp();
@@ -604,7 +602,6 @@ bool RunMainScript(CPythonLauncher& pyLauncher, const char* lpCmdLine)
 	initquest();
 	initBackground();
 	initMessenger();
-	fprintf(stderr, "[web] RunMainScript: modules done\n");
 #ifdef ENABLE_ACCE_SYSTEM
 	initAcce();
 #endif
@@ -702,7 +699,6 @@ bool RunMainScript(CPythonLauncher& pyLauncher, const char* lpCmdLine)
 #ifdef __USE_CYTHON__
 		if (!pyLauncher.RunLine("import rootlib\nrootlib.moduleImport('system')"))
 #else
-		fprintf(stderr, "[web] RunMainScript: running system.py\n");
 		if (!pyLauncher.RunFile("system.py"))
 #endif
 		{
@@ -746,10 +742,8 @@ bool Main(HINSTANCE hInstance, LPSTR lpCmdLine)
 #ifndef __VTUNE__
 	ilInit();
 #endif
-	fprintf(stderr, "[web] Main: before Setup\n");
 	if (!Setup(lpCmdLine))
 		return false;
-	fprintf(stderr, "[web] Main: after Setup\n");
 
 #ifdef _DEBUG
 	OpenConsoleWindow();
@@ -761,13 +755,11 @@ bool Main(HINSTANCE hInstance, LPSTR lpCmdLine)
 	static CLZO				lzo;
 	static CEterPackManager	EterPackManager;
 
-	fprintf(stderr, "[web] Main: before PackInitialize\n");
 	if (!PackInitialize("pack"))
 	{
 		LogBox("Pack Initialization failed. Check log.txt file..");
 		return false;
 	}
-	fprintf(stderr, "[web] Main: packs initialized\n");
 
 	if (LocaleService_LoadGlobal(hInstance))
 		SetDefaultCodePage(LocaleService_GetCodePage());
@@ -782,9 +774,7 @@ bool Main(HINSTANCE hInstance, LPSTR lpCmdLine)
 #endif
 	CPythonApplication* app = new CPythonApplication;
 
-	fprintf(stderr, "[web] Main: before app->Initialize\n");
 	app->Initialize(hInstance);
-	fprintf(stderr, "[web] Main: app initialized, launching python\n");
 
 	bool ret = false;
 	{
@@ -794,7 +784,6 @@ bool Main(HINSTANCE hInstance, LPSTR lpCmdLine)
 
 		if (pyLauncher.Create())
 		{
-			fprintf(stderr, "[web] Main: python created, RunMainScript\n");
 			ret = RunMainScript(pyLauncher, lpCmdLine);	//���� �����߿� �Լ��� ������ �ʴ´�.
 		}
 
@@ -908,12 +897,10 @@ int M2PortMain(int argc, char** argv)
 	//_CrtSetBreakAlloc( 110247 );
 #endif
 
-	fprintf(stderr, "[web] M2PortMain: stringtable init\n");
 	ApplicationStringTable_Initialize(hInstance);
 
 	LocaleService_LoadConfig("loca.cfg");
 	SetDefaultCodePage(LocaleService_GetCodePage());
-	fprintf(stderr, "[web] M2PortMain: locale loaded\n");
 
 #ifdef XTRAP_CLIENT_ENABLE
 	if (!XTrap_Init())

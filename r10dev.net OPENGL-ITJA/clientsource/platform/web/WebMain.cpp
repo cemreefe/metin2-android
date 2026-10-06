@@ -78,10 +78,12 @@ namespace
 
 	void SurfacePoint(const EmscriptenMouseEvent* e, int* x, int* y)
 	{
+		// canvasX is deprecated/never filled in new emscripten; targetX is
+		// clientX - target rect, i.e. canvas-local.
 		double cssW = s_iSurfaceW, cssH = s_iSurfaceH;
 		emscripten_get_element_css_size("#canvas", &cssW, &cssH);
-		*x = cssW > 0 ? (int)(e->canvasX * (double)s_iSurfaceW / cssW) : e->canvasX;
-		*y = cssH > 0 ? (int)(e->canvasY * (double)s_iSurfaceH / cssH) : e->canvasY;
+		*x = cssW > 0 ? (int)(e->targetX * (double)s_iSurfaceW / cssW) : e->targetX;
+		*y = cssH > 0 ? (int)(e->targetY * (double)s_iSurfaceH / cssH) : e->targetY;
 	}
 
 	EM_BOOL MouseCb(int type, const EmscriptenMouseEvent* e, void*)
@@ -119,8 +121,8 @@ namespace
 		const EmscriptenTouchPoint& t = e->touches[0];
 		double cssW = s_iSurfaceW, cssH = s_iSurfaceH;
 		emscripten_get_element_css_size("#canvas", &cssW, &cssH);
-		int x = cssW > 0 ? (int)(t.canvasX * (double)s_iSurfaceW / cssW) : t.canvasX;
-		int y = cssH > 0 ? (int)(t.canvasY * (double)s_iSurfaceH / cssH) : t.canvasY;
+		int x = cssW > 0 ? (int)(t.targetX * (double)s_iSurfaceW / cssW) : t.targetX;
+		int y = cssH > 0 ? (int)(t.targetY * (double)s_iSurfaceH / cssH) : t.targetY;
 		int action = 2;
 		if (type == EMSCRIPTEN_EVENT_TOUCHSTART)
 			action = 0;
@@ -160,6 +162,9 @@ bool M2Plat::PresentFrame()
 		if (GL.currentContext && GL.currentContext.defaultFbo)
 			GL.blitOffscreenFramebuffer(GL.currentContext);
 	});
+	// DOM input callbacks land in this thread's mailbox — the engine never
+	// yields, so pump it once per frame or input starves.
+	emscripten_current_thread_process_queued_calls();
 	return true;
 }
 

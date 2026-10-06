@@ -323,7 +323,59 @@ Notes:
 - While a session is running, the app shows a "Game running. Tap to return." notification.
   That foreground service is what stops Android from killing the game in the background.
 
-## 5. Reaching the server from a phone
+## 5. The browser client (wasm)
+
+The same client also builds for the browser via Emscripten. `CLIENT` is the
+C++ source; the web glue lives in `CLIENT/platform/web/` and `$ANDROID/../web/`.
+
+### 5.1 Toolchain
+
+```bash
+git clone https://github.com/emscripten-core/emsdk ~/emsdk
+~/emsdk/emsdk install latest && ~/emsdk/emsdk activate latest
+source ~/emsdk/emsdk_env.sh          # emcc 6.0.11 was used
+```
+
+wasm builds of the Extern libs (Python 2.7, Crypto++, LZO) must exist in
+`Extern/lib/web` + `Extern/include/Python2-web`; build them once with
+`tools/wasm-deps/build.sh`.
+
+### 5.2 Build and serve
+
+```bash
+# build -> build-web/metin2_web.{js,wasm,html}
+"r10dev.net OPENGL-ITJA/web/build.sh"
+
+# stage client data (same dir the Android flow uses, see section 3), then:
+python3 "r10dev.net OPENGL-ITJA/web/manifest.py" --data-dir ~/m2data-web \
+    --out ~/m2data-web/manifest.json
+
+# static server + ws->tcp bridge + COOP/COEP headers in one:
+python3 "r10dev.net OPENGL-ITJA/web/serve.py" --root ~/m2data-web --port 8081
+# copy build-web/metin2_web.{js,wasm,html} into ~/m2data-web first, or point
+# --root at a dir that has both the build output and the data
+```
+
+Open `http://<host>:8081/index.html`. First load downloads the boot tier
+(~50 MB); `?m2_boot=1` waits for all ~51k manifest files before starting
+(use when the login screen must be complete from frame 1).
+
+Notes:
+
+- The page needs COOP/COEP headers (pthreads/SharedArrayBuffer) — `serve.py`
+  sets them; if you use another static server, set them yourself.
+- Browsers can't open TCP, so the client wraps every connection in a
+  WebSocket to `ws(s)://<page-origin>/ws?target=<host>:<port>`; `serve.py`
+  bridges that to the real game server. To expose only the bridge,
+  `web/ws_bridge.py` is the standalone version (`--allow` limits targets).
+- `?m2_ws_bridge=ws://...` points the client at a different bridge;
+  `?m2_game_host=...` overrides the connect host. Any `m2_*` query param
+  becomes a process env var, and `debug.m2.*` maps to `GetDebugProperty`.
+- `web/drive_headless.py <url> <secs> <shotdir> [actions.json]` drives
+  headless Chrome over CDP — screenshots, console capture and a timed
+  action list for scripted login tests.
+
+## 6. Reaching the server from a phone
 
 - **Same Wi-Fi:** set `m2.serverHost` to the server's LAN IP and make sure the
   cores advertise that IP (section 2.5). No offset is needed.
@@ -336,12 +388,12 @@ Notes:
   offset. Free relays are slow and their ports get reused, so use one only for
   testing.
 
-## 6. What must never be committed
+## 7. What must never be committed
 
 Client data, data zips, APKs, `local.properties`, `.cxx/`, `build/`,
 emulator images, database dumps with real accounts, and any credentials.
 
-## 7. Troubleshooting
+## 8. Troubleshooting
 
 | Symptom | Cause |
 |---|---|

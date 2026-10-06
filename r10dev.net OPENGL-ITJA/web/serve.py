@@ -75,8 +75,10 @@ def bridge_ws_to_tcp(conn, target):
     try:
         tcp = socket.create_connection((host, int(port)), timeout=10)
     except OSError:
+        print(f"[wsbridge] tcp connect FAILED {target}", flush=True)
         return
     tcp.setblocking(True)
+    print(f"[wsbridge] tcp connected {target}", flush=True)
 
     def tcp_to_ws():
         try:

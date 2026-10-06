@@ -362,3 +362,94 @@ DevIL, SpeedTree, Miles.
   arrow-key movement, so walking is camera-relative exactly as on desktop. 8 directions via
   thresholds, with a deadzone. Native code shows it only in the game phase
   (`AndroidSetGameControlsVisible`), and it releases its keys on pause.
+
+## Browser port (Emscripten/wasm)
+
+Same client, second adapter. The platform seams the Android port introduced
+(`clientsource/platform/` — `M2Plat` for windowing/GL/input/env and `M2Net`
+for the byte stream) paid off: the web adapter is two files
+(`platform/web/WebMain.cpp`, `platform/web/M2WebNet.cpp`) and no game code
+changed. `M2_PORT` (`__ANDROID__ || __EMSCRIPTEN__`) selects the port paths.
+
+### Build
+
+```
+source ~/emsdk/emsdk_env.sh        # emscripten 6.0.11
+"r10dev.net OPENGL-ITJA/web/build.sh"   # -> build-web/metin2_web.{js,wasm,html}
+```
+
+- `M2_TARGET=web` in `clientsource/CMakeLists.txt`; all flags live in
+  `web/emflags.cmake`. `-std=c++14` (the tree predates C++17).
+- wasm extern libs (Python 2.7, Crypto++, LZO) in `Extern/lib/web` +
+  `Extern/include/Python2-web`, built by `tools/wasm-deps/build.sh` from
+  the same sources as the Android prebuilts.
+- `-sUSE_PTHREADS -sPROXY_TO_PTHREAD -sOFFSCREEN_FRAMEBUFFER
+  -sEMULATE_FUNCTION_POINTER_CASTS` are the load-bearing flags. zlib/png/
+  jpeg come from emscripten ports, not the Extern prebuilts — see jpeg ABI
+  below.
+
+### PROXY_TO_PTHREAD changes everything
+
+main() runs on a worker thread, and Emscripten proxies every libc call to
+the main (UI) thread synchronously. Consequences, each of which cost a
+debugging round:
+
+- **No lazy files.** The FS lives on the main thread where sync XHR is
+  banned, so `FS.createLazyFile` is out. `web/shell.html` fetches
+  `manifest.json` and downloads every data file into MEMFS under `/data`
+  before releasing `main()` (`addRunDependency`/`removeRunDependency`;
+  `?m2_boot=1` waits for all ~51k files, the default boot tier is enough
+  for the login screen and the rest streams in the background).
+- **Frame commit.** The engine drives its own loop on the worker, but GL
+  renders into an offscreen FBO that only reaches the canvas at rAF
+  boundaries — which never happen. `M2Plat::PresentFrame` must post
+  `GL.blitOffscreenFramebuffer(GL.currentContext)` via
+  `MAIN_THREAD_ASYNC_EM_ASM` or you get a black canvas while the game runs
+  at 60 fps.
+- **Input starvation.** `emscripten_set_*_callback` registrations proxy
+  to the main thread, which queues each event into the worker's mailbox —
+  and the engine's busy loop never yields, so clicks and keys pile up
+  forever. `PresentFrame` calls
+  `emscripten_current_thread_process_queued_calls()` once per frame to
+  drain it.
+- **Worker `location` is the worker script.** `location.host`/`search` in
+  worker code return the wasm worker URL, not the page. Anything that
+  needs the page origin/query (the ws bridge URL, `m2_*` query params)
+  must go through `MAIN_THREAD_EM_ASM`.
+- **`canvasX`/`canvasY` are dead.** Current emscripten never fills them on
+  `EmscriptenMouseEvent`/`EmscriptenTouchPoint` (deprecated with
+  `Module['canvas']`); use `targetX`/`targetY`.
+- **fp-cast traps.** Win32-era code calls function pointers through
+  wrong-type casts; wasm traps with "null function or function signature
+  mismatch" inside `system.py` without `-sEMULATE_FUNCTION_POINTER_CASTS`.
+- **libjpeg ABI.** The Extern headers declare a 456-byte
+  `jpeg_decompress_struct`; the emscripten port builds 488 bytes
+  (`JPEG parameter struct mismatch`). Under `__EMSCRIPTEN__` include the
+  port's `<jpeglib.h>`, not `Extern/include/libjpeg`.
+- **Python stdlib.** The embedded 2.7 has ~25 builtin modules; `system.py`
+  needs `os`/`posixpath`/`traceback`/… Copy CPython 2.7.18 `Lib/*.py` +
+  `encodings/` into the staged data `lib/` and set
+  `PYTHONPATH=/data/lib:/data` before `Py_Initialize`.
+
+### Networking: ws -> tcp bridge
+
+Browsers have no TCP. `M2WebNet` implements `M2Net` on
+`emscripten_websocket_*` (created on the main thread) and connects to
+`ws(s)://<page-origin>/ws?target=<host>:<port>`. `web/serve.py` accepts the
+upgrade, dials the target TCP and pipes bytes both ways (masked client
+frames -> raw tcp; tcp -> unmasked binary frames). `M2_WS_BRIDGE` env /
+`?m2_ws_bridge=` overrides the bridge URL; an explicit `target=` inside it
+wins over the appended one, which is how the transport was verified
+against a local dummy endpoint. For production, `web/ws_bridge.py` is the
+standalone asyncio version with an `--allow` list.
+
+### Verifying headless
+
+`/home/ubuntu/m2webtest/drive.py` (not in repo): pychrome CDP script —
+loads the page, captures screenshots/console/syserr.txt, and executes a
+timed action list (`click`/`type`/`key`/`eval` ops). Synthetic
+`MouseEvent` dispatch on the canvas works fine for the game (it sees
+`clientX`); `Input.dispatchKeyEvent type=char` produces real `keypress`
+events with `charCode` for typing into the login fields. Boot to a live
+ws connection plus a scripted server-select/OK/type/Connect run is the
+smoke test.

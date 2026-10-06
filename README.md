@@ -56,16 +56,24 @@ For complete data preparation, server setup, and client connection instructions,
 ## Architecture
 
 ```text
- Android shell (Java)        activity/surface lifecycle, touch, joystick, keyboard,
-                             data unpacking, embedded-server launcher, foreground service
-        │ JNI
- Platform adapter (C++)      AndroidMain.cpp: EGL, window attach/detach, input → engine events
-        │
- Game client (C++)           original engine, game logic and Python 2.7 UI scripts
+ Platform ports              clientsource/platform/: M2Plat (window, GL present,
+                             input, env) and M2Net (byte stream) — the hexagon
+        ┌────────────┴────────────┐
+ Android adapter              Web adapter
+ AndroidMain.cpp: EGL,        platform/web/: canvas, DOM input,
+ window attach/detach         Emscripten MEMFS, WebSocket transport
+        │                            │
+ Game client (C++)  ←── same core ──┘
+                             original engine, game logic and Python 2.7 UI scripts
         │                    Win32 API shimmed by android_compat/
         ├── d8gles           D3D8 fixed-function → OpenGL ES 3
         └── OpenGr2ndma      open-source Granny GR2 model/animation runtime
 ```
+
+The same client also builds for the browser: `web/build.sh` produces
+`metin2_web.{js,wasm,html}` (Emscripten + WebGL2), `web/serve.py` hosts it
+with the required headers and bridges WebSocket → TCP to the game server.
+See [docs/SELF_HOSTING.md](docs/SELF_HOSTING.md) section 5.
 
 The two engine libraries are standalone projects, usable for other old Windows games:
 
@@ -75,7 +83,9 @@ The two engine libraries are standalone projects, usable for other old Windows g
 
 ## Repository layout
 
-- `r10dev.net OPENGL-ITJA/clientsource/` — native client and platform adapter.
+- `r10dev.net OPENGL-ITJA/clientsource/` — native client, platform ports and adapters.
+- `r10dev.net OPENGL-ITJA/web/` — Emscripten build flags, HTML shell, data
+  manifest, static server + ws→tcp bridge, headless test driver.
 - `r10dev.net OPENGL-ITJA/android/` — Android application, profiles, packaging and server
   catalog.
 - `server/` — server-side integration and setup material.

@@ -16,9 +16,10 @@ add_compile_options(-sUSE_PTHREADS=1 -sUSE_ZLIB=1 -sUSE_LIBPNG=1 -sUSE_LIBJPEG=1
     -sEMULATE_FUNCTION_POINTER_CASTS=1
     $<$<COMPILE_LANGUAGE:CXX>:-std=c++14>)
 
-# main() runs on a pthread worker: the manifest registers FS lazy files whose
-# reads are synchronous XHRs, which browsers only allow off the main thread.
-# Emscripten proxies GL/input/main-loop back to the UI thread.
+# main() runs on a pthread worker (PROXY_TO_PTHREAD): under that mode every
+# libc call is proxied to the main thread anyway, so lazy files (sync XHR)
+# are impossible on the main thread — shell.html prefetches all data into
+# MEMFS before main() instead. Emscripten proxies GL/input to the UI thread.
 add_link_options(
     -sPROXY_TO_PTHREAD=1
     -sUSE_PTHREADS=1

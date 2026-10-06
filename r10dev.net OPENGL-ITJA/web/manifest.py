@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Generate manifest.json for the lazy filesystem.
+"""Generate manifest.json for the data prefetch.
 
 Scans a client data directory (system.py, pack/*.eix+*.epk, index, font.ttf,
-locale.cfg, ...) and emits the flat file list the shell registers with
-FS.createLazyFile. Paths are repo-relative URL paths — serve the data dir
-from the same origin.
+locale.cfg, ...) and emits the flat file list the shell downloads into
+MEMFS before main() runs. Paths are repo-relative URL paths — serve the
+data dir from the same origin.
 
     python3 manifest.py --data-dir /path/to/clientdata --out manifest.json \
         [--strip pack/]

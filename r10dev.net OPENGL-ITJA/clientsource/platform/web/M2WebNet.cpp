@@ -101,7 +101,8 @@ int M2Net::Connect(const char* host, int port)
 	char szUrl[512];
 	const char* cBridge = getenv("M2_WS_BRIDGE");
 	if (cBridge && *cBridge)
-		snprintf(szUrl, sizeof(szUrl), "%s?target=%s:%d", cBridge, host, port);
+		snprintf(szUrl, sizeof(szUrl), "%s%starget=%s:%d",
+			cBridge, strchr(cBridge, '?') ? "&" : "?", host, port);
 	else
 	{
 		char szOrigin[256] = { 0 };
