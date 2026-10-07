@@ -14,6 +14,12 @@
   }
   #bar { width: 320px; height: 6px; background: #222; margin: 8px auto 0; }
   #barfill { height: 100%; width: 0%; background: #888; transition: width .2s; }
+  #srv { color: #555; font-size: 11px; margin-top: 8px; max-width: 90vw;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #spin { width: 18px; height: 18px; margin: 0 auto 10px;
+    border: 2px solid #333; border-top-color: #999; border-radius: 50%;
+    animation: m2rot .8s linear infinite; }
+  @keyframes m2rot { to { transform: rotate(360deg); } }
   #gate {
     position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%);
     display: none; text-align: center; font: 14px monospace;
@@ -31,7 +37,7 @@
 </head>
 <body>
 <canvas id="canvas"></canvas>
-<div id="status">starting…<div id="bar"><div id="barfill"></div></div></div>
+<div id="status"><div id="spin"></div><span>starting…</span><div id="bar"><div id="barfill"></div></div><div id="srv"></div></div>
 <div id="gate"><div><input id="pw" type="password" placeholder="passphrase" autocomplete="off"><button id="pwgo">play</button></div><div class="hint"></div></div>
 <script src="m2pack.js"></script>
 <script src="m2hud.js"></script>
@@ -39,11 +45,22 @@
 // SharedArrayBuffer needs cross-origin isolation. On hosts that don't send
 // COOP/COEP (plain static hosting), a service worker injects the headers —
 // first visit installs it and reloads once.
-if (self.crossOriginIsolated === false && 'serviceWorker' in navigator &&
-    !navigator.serviceWorker.controller) {
-  navigator.serviceWorker.register('coi-sw.js').then(function (reg) {
-    if (reg.active || reg.installing || reg.waiting) location.reload();
-  });
+if (self.crossOriginIsolated === false) {
+  var coiMsg = document.querySelector('#status span');
+  if (!('serviceWorker' in navigator)) {
+    coiMsg.textContent = 'this browser can\'t run the in-page server\n' +
+      '(SharedArrayBuffer needs COOP/COEP) — use Chrome';
+  } else {
+    coiMsg.textContent = 'preparing page (one-time setup)…';
+    navigator.serviceWorker.register('coi-sw.js').then(function (reg) {
+      if (navigator.serviceWorker.controller) {
+        // SW controlled yet still not isolated: headers didn't take.
+        coiMsg.textContent = 'cross-origin isolation failed — try a hard reload';
+      } else if (reg.active || reg.installing || reg.waiting) {
+        location.reload();
+      }
+    });
+  }
 }
 </script>
 <script>
@@ -58,18 +75,35 @@ if (self.crossOriginIsolated === false && 'serviceWorker' in navigator &&
 var statusEl = document.getElementById('status');
 var barEl = document.getElementById('barfill');
 var barWrap = document.getElementById('bar');
+var srvEl = document.getElementById('srv');
 var lastDl = '', worldTxt = '';
+var statusTxt = statusEl.querySelector('span');
 function setStatus(txt, frac) {
   if (txt !== undefined) lastDl = txt;
-  statusEl.childNodes[0].textContent = lastDl + worldTxt;
+  statusTxt.textContent = lastDl + worldTxt;
   if (frac !== undefined) barEl.style.width = Math.round(frac * 100) + '%';
+}
+// Latest line from each server worker, so the boot never looks dead.
+var srvLines = {};
+function setSrv(tag, s) {
+  srvLines[tag] = s;
+  var order = ['m2db.js', 'm2game.js'];
+  var out = [];
+  for (var i = 0; i < order.length; i++)
+    if (srvLines[order[i]]) out.push(order[i].replace(/\.js$/, '') + ': ' + srvLines[order[i]]);
+  srvEl.textContent = out.join('   ·   ');
 }
 
 // SharedArrayBuffer loopback table (must exist before any module inits).
+// If isolation never landed, don't die silently — the COI script above
+// already swapped the status text; bail before touching the page further.
+if (self.crossOriginIsolated === false || typeof SharedArrayBuffer !== 'function')
+  throw new Error('cross-origin isolation missing');
 var M2LB_SIZE = 8192 + 32 * (32 + 2 * 131072);
 var m2sab = new SharedArrayBuffer(M2LB_SIZE);
 new Int32Array(m2sab)[0] = 0x424C324D;
 self.m2lbSab = m2sab;
+statusTxt.textContent = 'loading engine…';
 
 // Deliver the SAB to every pthread: Worker spawns post {m2:'sab'} at
 // construction, and the client module's own pthreads (URL metin2_web.js)
@@ -95,9 +129,10 @@ function spawnSrv(tag, cfg) {
   cfg.sab = m2sab;
   w.onmessage = function (e) {
     var d = e.data;
-    if (d && d.m2 === 'err') console.warn('[' + tag + ']', d.s);
-    else if (d && d.m2 === 'log') console.log('[' + tag + ']', d.s);
-    else if (d && d.m2 === 'ready') console.log('[' + tag + '] ready');
+    if (d && d.m2 === 'err') { console.warn('[' + tag + ']', d.s); setSrv(tag, d.s); }
+    else if (d && d.m2 === 'log') { console.log('[' + tag + ']', d.s); setSrv(tag, d.s); }
+    else if (d && d.m2 === 'stage') setSrv(tag, d.s);
+    else if (d && d.m2 === 'ready') { console.log('[' + tag + '] ready'); setSrv(tag, 'ready'); }
   };
   w.onerror = function (e) { console.warn('[' + tag + ']', e.message || e); };
   w.postMessage(cfg);
@@ -179,7 +214,6 @@ function m2gate() {
     function go() {
       g.style.display = 'none';
       var v = document.getElementById('pw').value;
-      try { sessionStorage.setItem('m2pw', v); } catch (e) {}
       res(v);
     }
     document.getElementById('pwgo').onclick = go;
@@ -189,10 +223,29 @@ function m2gate() {
   });
 }
 
-async function m2boot() {
-  var pw = await m2gate();
-  if (pw) await m2packSetPassphrase(pw);
+// Wrong passphrase -> AES-GCM decrypt throws. Verify against the first
+// client pack before booting (its bytes land in IDB, so the real unpack
+// reuses them); a bad or remembered-but-wrong value re-asks.
+async function m2gateLoop(checkSpec) {
+  while (true) {
+    var pw = await m2gate();
+    if (pw) await m2packSetPassphrase(pw);
+    setStatus('checking key…');
+    try {
+      await m2packDecrypt(await (await m2packFetch(checkSpec)).arrayBuffer());
+      m2pw = pw;
+      try { sessionStorage.setItem('m2pw', pw); } catch (e) {}
+      return pw;
+    } catch (e) {
+      if (!/encrypt|decrypt|required|OperationError/i.test(e && e.message || '' + e)) throw e;
+      m2pw = null;
+      try { sessionStorage.removeItem('m2pw'); } catch (e2) {}
+      document.querySelector('#gate .hint').textContent = 'wrong passphrase';
+    }
+  }
+}
 
+async function m2boot() {
   var packs;
   try {
     packs = await (await fetch('packs.json')).json();
@@ -200,6 +253,10 @@ async function m2boot() {
     statusEl.textContent = 'packs.json: ' + e;
     throw e;
   }
+
+  var client = packs['client'];
+  var firstSpec = client.boot || (client.parts && client.parts[0]) || client;
+  var pw = await m2gateLoop(firstSpec);
   var share = Object.assign({}, packs['srv-share'], { dest: '/srv/share' });
   var sqlite = packs['srv-sqlite'];
 

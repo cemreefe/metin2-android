@@ -78,8 +78,21 @@ async function m2srvInit(cfg) {
 async function m2stage(cfg) {
   if (cfg.pw) await m2packSetPassphrase(cfg.pw);
 
+  var partName = 'pack';
+  var cb = {
+    onPart: function (i, n, isBoot) {
+      partName = isBoot ? 'boot pack' : 'pack ' + i + '/' + (n - 1);
+    },
+    onProgress: function (f) {
+      postMessage({ m2: 'stage', s: 'downloading ' + partName + ' — ' + Math.round(f * 100) + '%' });
+    },
+    onFile: function (path, i, total) {
+      postMessage({ m2: 'stage', s: 'unpacking ' + partName + ' — ' + i + '/' + total });
+    },
+  };
+  postMessage({ m2: 'stage', s: 'staging…' });
   for (const p of cfg.packs || [])
-    await m2LoadPack(FS, p, p.dest, {});
+    await m2LoadPack(FS, p, p.dest, cb);
 
   m2mkdirP(FS, cfg.cwd);
 
@@ -104,7 +117,7 @@ async function m2stage(cfg) {
       }
     }
     for (const p of cfg.sqlitePacks || [])
-      await m2LoadPack(FS, p, cfg.sqliteDir, {});
+      await m2LoadPack(FS, p, cfg.sqliteDir, cb);
     if (cfg.sqliteIdb)
       setInterval(function () { try { FS.syncfs(false, function () {}); } catch (e) {} }, 30000);
   }
