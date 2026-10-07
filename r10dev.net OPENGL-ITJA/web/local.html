@@ -54,15 +54,36 @@ if (self.crossOriginIsolated === false) {
       '(SharedArrayBuffer needs COOP/COEP) — use Chrome';
   } else {
     coiMsg.textContent = 'preparing page (one-time setup)…';
+    var coiTries = 0;
+    try { coiTries = +sessionStorage.getItem('m2coi') || 0; } catch (e) {}
+    function coiReload() {
+      if (coiTries >= 2) {
+        coiMsg.textContent = 'cross-origin isolation failed — try a hard reload';
+        return;
+      }
+      try { sessionStorage.setItem('m2coi', String(coiTries + 1)); } catch (e) {}
+      location.reload();
+    }
     navigator.serviceWorker.register('coi-sw.js').then(function (reg) {
       if (navigator.serviceWorker.controller) {
         // SW controlled yet still not isolated: headers didn't take.
         coiMsg.textContent = 'cross-origin isolation failed — try a hard reload';
       } else if (reg.active || reg.installing || reg.waiting) {
-        location.reload();
+        coiReload();
       }
-    });
+      // else: registration produced no worker — watchdog below fires.
+    }).catch(function () {});
+    // Watchdog: registration/install hung or produced nothing — reload
+    // ourselves after 15s (bounded by m2coi) rather than sitting here.
+    setTimeout(function () {
+      if (self.crossOriginIsolated === false && !navigator.serviceWorker.controller)
+        coiReload();
+      else if (self.crossOriginIsolated === false)
+        coiMsg.textContent = 'cross-origin isolation failed — try a hard reload';
+    }, 15000);
   }
+} else {
+  try { sessionStorage.removeItem('m2coi'); } catch (e) {}
 }
 </script>
 <script>
