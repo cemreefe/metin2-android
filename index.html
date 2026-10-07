@@ -41,8 +41,8 @@
 <canvas id="canvas"></canvas>
 <div id="status"><div id="spin"></div><span>starting…</span><div id="bar"><div id="barfill"></div></div><div id="srv"></div><div id="detail"></div></div>
 <div id="gate"><div><input id="pw" type="password" placeholder="passphrase" autocomplete="off"><button id="pwgo">play</button></div><div class="hint"></div></div>
-<script src="m2pack.js?v=6b726b091e"></script>
-<script src="m2hud.js?v=6b726b091e"></script>
+<script src="m2pack.js?v=5e1e0a11ba"></script>
+<script src="m2hud.js?v=5e1e0a11ba"></script>
 <script>
 // SharedArrayBuffer needs cross-origin isolation. On hosts that don't send
 // COOP/COEP (plain static hosting), a service worker injects the headers —
@@ -119,7 +119,7 @@ function setStatus(txt, frac) {
 // Latest line from each server worker, so the boot never looks dead.
 // Build stamp on every URL: Pages caches files for 10 min, and a new
 // page must never run with an old engine.
-var M2V = '6b726b091e';
+var M2V = '5e1e0a11ba';
 var srvLines = {};
 function setSrv(tag, s) {
   srvLines[tag] = s;
@@ -196,16 +196,17 @@ var Module = {
       FS.mkdir('/data');
       // local server list: auth :11000, channel :11011 on the loopback
       FS.writeFile('/data/m2profile.py',
-        'SERVER_IP = "127.0.0.1"\nPORT_AUTH = 11000\nPORT_1 = 11011\n');
-      // ?m2auto=1 — scripted-login shortcut: loginInfo.py drives the
-      // client's own autoLogin/autoSelect path (chan :11011, auth :11000).
-      if (new URLSearchParams(location.search).get('m2auto') === '1') {
-        FS.writeFile('/data/loginInfo.py',
-          'addr = "127.0.0.1"\nport = 11011\n' +
-          'account_addr = "127.0.0.1"\naccount_port = 11000\n' +
-          'id = "test"\npwd = "test123"\n' +
-          'autoLogin = 1\nautoSelect = 1\nslot = 0\n');
-      }
+        'SERVER_IP = "127.0.0.1"\nPORT_AUTH = 11000\nPORT_1 = 11011\n' +
+        'SERVERS = [("Single Player", "127.0.0.1", 11000, 11011)]\n');
+      // Single player has no login page: always log into the local account.
+      // ?m2auto=1 uses the seeded test account and enters the world directly.
+      var m2auto = new URLSearchParams(location.search).get('m2auto') === '1';
+      FS.writeFile('/data/loginInfo.py',
+        'addr = "127.0.0.1"\nport = 11011\n' +
+        'account_addr = "127.0.0.1"\naccount_port = 11000\n' +
+        (m2auto ? 'id = "test"\npwd = "test123"\nautoSelect = 1\n'
+                : 'id = "local"\npwd = "1234"\nautoSelect = 0\n') +
+        'serverName = "Single Player"\nautoLogin = 1\nslot = 0\n');
       addRunDependency('m2data');
       // Don't let the engine reach main() until the in-page channel is
       // listening: the login flow connects straight to :11011 and a too-early
@@ -368,6 +369,6 @@ async function m2boot() {
 
 document.addEventListener('contextmenu', function (e) { e.preventDefault(); });
 </script>
-<script async src="metin2_web.js?v=6b726b091e"></script>
+<script async src="metin2_web.js?v=5e1e0a11ba"></script>
 </body>
 </html>

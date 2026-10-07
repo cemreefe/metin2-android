@@ -117,10 +117,16 @@ async function m2stage(cfg) {
         postMessage({ m2: 'err', s: 'idbfs mount failed, saves are session-only: ' + e });
       }
     }
+    // Seeds only fill in what the saved game doesn't have yet. Saves from
+    // before this marker existed were seed copies anyway, so reseed those.
+    const savedMark = cfg.sqliteDir + '/.m2saved';
+    const keep = !!cfg.sqliteIdb && FS.analyzePath(savedMark).exists;
     for (const p of cfg.sqlitePacks || [])
-      await m2LoadPack(FS, p, cfg.sqliteDir, cb);
+      await m2LoadPack(FS, p, cfg.sqliteDir, Object.assign({}, cb, { keepExisting: keep }));
     if (cfg.sqliteIdb)
-      setInterval(function () { try { FS.syncfs(false, function () {}); } catch (e) {} }, 30000);
+      FS.writeFile(savedMark, '1');
+    if (cfg.sqliteIdb)
+      setInterval(function () { try { FS.syncfs(false, function () {}); } catch (e) {} }, 5000);
   }
 
   if (cfg.config)

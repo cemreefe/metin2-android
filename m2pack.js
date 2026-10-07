@@ -177,7 +177,7 @@ async function m2packEach(gz, url, onEntry) {
 // spec = {url, ver} (single archive) or {boot: {url,ver}, parts: [{url,ver}]}
 // (split archives). With a boot archive, opts.bootReady fires once it's
 // unpacked; with a single archive it fires at bootCount or the end.
-// opts = {onProgress, bootReady, onFile}
+// opts = {onProgress, bootReady, onFile, keepExisting}
 async function m2LoadPack(FS, spec, dest, opts) {
   opts = opts || {};
   var specs = spec.parts ? [].concat(spec.boot ? [spec.boot] : [], spec.parts)
@@ -189,7 +189,8 @@ async function m2LoadPack(FS, spec, dest, opts) {
     var gz = await m2packFetch(sp, opts.onProgress);
     await m2packEach(gz, sp.url, function (path, data, i, total, bootCount) {
       m2mkdirP(FS, dest + '/' + path.split('/').slice(0, -1).join('/'));
-      FS.writeFile(dest + '/' + path, data);
+      if (!(opts.keepExisting && FS.analyzePath(dest + '/' + path).exists))
+        FS.writeFile(dest + '/' + path, data);
       if (opts.onFile) opts.onFile(path, i + 1, total);
       if (!bootFired && !spec.boot && i + 1 >= bootCount) {
         bootFired = true;

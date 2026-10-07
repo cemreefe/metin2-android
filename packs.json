@@ -2,7 +2,7 @@
  "client": {
   "boot": {
    "url": "client-boot.m2pack",
-   "ver": "4758822f6306d9fa-dost1"
+   "ver": "16852dfb1c816f28-dost1"
   },
   "parts": [
    {
@@ -91,7 +91,7 @@
   "parts": [
    {
     "url": "srv-sqlite.m2pack",
-    "ver": "8575da49c6ecd330-dost1"
+    "ver": "e4111f727be7f0dd-dost1"
    }
   ]
  }
