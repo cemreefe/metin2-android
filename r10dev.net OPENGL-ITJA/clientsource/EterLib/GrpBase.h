@@ -206,6 +206,7 @@ public:
 	void		UpdateViewMatrix();
 
 	void		SetViewport(DWORD dwX, DWORD dwY, DWORD dwWidth, DWORD dwHeight, float fMinZ, float fMaxZ);
+	void		FitViewportToSurface(int iWidth, int iHeight);
 	static void		GetBackBufferSize(UINT* puWidth, UINT* puHeight);
 	static void		SetLogicalScreenSize(int iWidth, int iHeight);
 	static bool		IsTLVertexClipping();

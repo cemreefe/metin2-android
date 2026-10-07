@@ -40,7 +40,18 @@ python3 "$HERE/pack.py" --data-dir "$CLIENT_DATA" --out "$OUT/client.m2pack" \
     --manifest "$OUT/packs.json" --name client
 python3 "$HERE/pack.py" --data-dir "$SRV_PACK/share" --out "$OUT/srv-share.m2pack" \
     --manifest "$OUT/packs.json" --name srv-share
-python3 "$HERE/pack.py" --data-dir "$SRV_PACK/sqlite-seed" --out "$OUT/srv-sqlite.m2pack" \
+# Single player logs straight into a hidden local account with no characters.
+SEED_TMP="$(mktemp -d)"
+trap 'rm -rf "$SEED_TMP"' EXIT
+cp -r "$SRV_PACK/sqlite-seed/." "$SEED_TMP/"
+python3 - "$SEED_TMP/account.sqlite3" <<'PY'
+import hashlib, sqlite3, sys
+h = "*" + hashlib.sha1(hashlib.sha1(b"1234").digest()).hexdigest().upper()
+c = sqlite3.connect(sys.argv[1])
+c.execute("INSERT OR IGNORE INTO account (login, password, social_id) VALUES ('local', ?, '1234567')", (h,))
+c.commit()
+PY
+python3 "$HERE/pack.py" --data-dir "$SEED_TMP" --out "$OUT/srv-sqlite.m2pack" \
     --manifest "$OUT/packs.json" --name srv-sqlite
 
 echo "-> $OUT  (serve with: python3 $HERE/serve.py --root $OUT --port 8081)"

@@ -658,3 +658,47 @@
  
  class EventCurtain(ui.Bar):
  
+--- a/intrologin.py
++++ b/intrologin.py
+@@ -492,6 +492,8 @@
+ 
+ 		self.loginButton.SetEvent(ui.__mem_func__(self.__OnClickLoginButton))
+ 		self.loginExitButton.SetEvent(ui.__mem_func__(self.__OnClickExitButton))
++		# Exit sat next to Connect and quit the game on a misclick.
++		self.loginExitButton.Hide()
+ 
+ 		self.serverList.SetEvent(ui.__mem_func__(self.__OnSelectServer))
+ 		
+@@ -720,8 +722,9 @@
+ 		if addr and port:
+ 			net.SetMarkServer(addr, port)
+ 
+-			net.SetServerInfo(addr+":"+str(port))
+-			self.serverInfo.SetText("K:"+addr+":"+str(port))
++			serverName = loginInfo.get("serverName", "")
++			net.SetServerInfo(serverName or addr+":"+str(port))
++			self.serverInfo.SetText(serverName or "K:"+addr+":"+str(port))
+ 
+ 		slot=loginInfo.get("slot", 0)
+ 		isAutoLogin=loginInfo.get("auto", 0)
+@@ -745,6 +748,9 @@
+ 			app.loggined = TRUE
+ 
+ 		if isAutoLogin:
++			# No login page while the stored account logs in by itself.
++			self.connectBoard.Hide()
++			self.loginBoard.Hide()
+ 			self.Connect(id, pwd)
+ 			
+ 			print "=================================================================================="
+--- a/uiscript/loginwindow.py
++++ b/uiscript/loginwindow.py
+@@ -628,7 +628,7 @@
+ 					"name" : "LoginButton",
+ 					"type" : "button",
+ 
+-					"x" : 15,
++					"x" : (208 - 88) / 2,
+ 					"y" : 79,
+ 
+ 					"default_image" : "d:/ymir work/ui/public/large_button_01.sub",

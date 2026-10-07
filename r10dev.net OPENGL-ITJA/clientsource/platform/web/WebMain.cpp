@@ -217,6 +217,11 @@ bool M2Plat::IsTouchPrimary()
 	return MAIN_THREAD_EM_ASM_INT({ return matchMedia('(pointer: coarse)').matches ? 1 : 0; }) != 0;
 }
 
+void M2Plat::SetPointerVisible(bool bVisible)
+{
+	MAIN_THREAD_ASYNC_EM_ASM({ var c = Module.canvas; if (c) c.style.cursor = $0 ? "" : "none"; }, bVisible ? 1 : 0);
+}
+
 int M2Plat::GetEnv(const char* name, char* out, size_t outSize)
 {
 	const char* v = getenv(name);

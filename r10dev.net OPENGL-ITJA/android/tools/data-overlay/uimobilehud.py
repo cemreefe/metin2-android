@@ -385,6 +385,15 @@ def _RebuildGameUI(game, reopenOptions):
 	game.SetFocus()
 
 
+def OnSurfaceResized():
+	"""Called by the engine after the window/surface size settles."""
+	if ApplyUIScaleLive():
+		return
+	import uiscale
+	if not uiscale.Relayout():
+		app.ApplyUIScale()
+
+
 def ApplyUIScaleLive():
 	"""True when the current phase can be rescaled in place (it is rebuilt next frame)."""
 	if not _hud or not _hud.game or not _hud.game.interface:

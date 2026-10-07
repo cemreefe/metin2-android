@@ -131,8 +131,29 @@ def _Rebuild(owner, stream):
 	stream.curtain.FadeIn()
 
 
+_current = None
+
+
+def Relayout():
+	"""Rebuilds the open intro screen for a new surface size. False when none is open."""
+	hud = _current
+	try:
+		if not hud or not hud.IsShow():
+			return False
+		owner = hud.owner
+		stream = owner.stream
+		if not stream:
+			return False
+	except Exception:  # owner window already destroyed
+		return False
+	stream.curtain.FadeOut(lambda: _Rebuild(owner, stream))
+	return True
+
+
 def Attach(window):
+	global _current
 	hud = IntroScaleWindow(window)
+	_current = hud
 	hud.SetParent(window)
 	hud.SetPosition(wndMgr.GetScreenWidth() - hud.W - hud.MARGIN,
 	                wndMgr.GetScreenHeight() - hud.H - hud.MARGIN)

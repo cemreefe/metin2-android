@@ -57,6 +57,9 @@ namespace M2Plat
 	// True when the main input is a touch screen (default HUD: mobile).
 	bool IsTouchPrimary();
 
+	// Shows/hides the OS pointer over the game (Win32 ShowCursor).
+	void SetPointerVisible(bool visible);
+
 	// Entries of directory dir the adapter holds outside the filesystem and
 	// has not materialized yet, one call per name. No-op without such data.
 	typedef void (*ListDirFn)(const char* name, bool isDir, void* user);

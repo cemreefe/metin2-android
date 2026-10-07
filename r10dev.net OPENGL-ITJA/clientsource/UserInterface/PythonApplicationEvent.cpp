@@ -335,6 +335,7 @@ void CPythonApplication::ApplyPortUIScale()
 	m_dwWidth = iWidth;
 	m_dwHeight = iHeight;
 	AdjustSize(iWidth, iHeight);
+	m_grpDevice.FitViewportToSurface(M2Plat::SurfaceWidth(), M2Plat::SurfaceHeight());
 	CGraphicBase::SetLogicalScreenSize(iWidth, iHeight);
 	UI::CWindowManager& rkWndMgr = UI::CWindowManager::Instance();
 	rkWndMgr.SetResolution(iWidth, iHeight);
@@ -458,6 +459,26 @@ void CPythonApplication::OnTouchEvent(int action, int x, int y)
 
 void CPythonApplication::OnPortFrame()
 {
+	// The surface follows the window (browser resize, fullscreen on/off). Once it has
+	// settled, re-fit the UI canvas and let Python rebuild the screen-sized windows.
+	static int s_iLastSurfW = 0, s_iLastSurfH = 0;
+	static DWORD s_dwSurfChangedAt = 0;
+	const int iSurfW = M2Plat::SurfaceWidth();
+	const int iSurfH = M2Plat::SurfaceHeight();
+	if (iSurfW != s_iLastSurfW || iSurfH != s_iLastSurfH)
+	{
+		if (s_iLastSurfW && s_iLastSurfH)
+			s_dwSurfChangedAt = ELTimer_GetMSec() | 1;
+		s_iLastSurfW = iSurfW;
+		s_iLastSurfH = iSurfH;
+		m_grpDevice.FitViewportToSurface(iSurfW, iSurfH);
+	}
+	else if (s_dwSurfChangedAt && ELTimer_GetMSec() - s_dwSurfChangedAt >= 250)
+	{
+		s_dwSurfChangedAt = 0;
+		PyRun_SimpleString("import uimobilehud\nuimobilehud.OnSurfaceResized()\n");
+	}
+
 	// Like the original per-frame cursor drag: the camera turns by exactly this
 	// frame's pointer movement, so it stops the frame the pointer stops.
 	if (m_eTouchMode == TOUCH_CAMERA)

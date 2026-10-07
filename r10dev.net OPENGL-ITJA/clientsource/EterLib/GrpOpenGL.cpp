@@ -580,6 +580,12 @@ HRESULT IDirect3DDevice8::SetRenderTarget(LPDIRECT3DSURFACE8 pRenderTarget, LPDI
 
 HRESULT IDirect3DDevice8::SetViewport(const D3DVIEWPORT8* v) {
     m_viewport = *v;
+    // The window surface can be resized (browser window, fullscreen on/off).
+    if (M2Plat::SurfaceHeight() > 0 && M2Plat::SurfaceHeight() != m_iWindowHeight) {
+        m_iWindowHeight = M2Plat::SurfaceHeight();
+        if (!m_pRenderTarget)
+            m_iSurfaceHeight = m_iWindowHeight;
+    }
     // D3D viewports are top-left based; GL's are bottom-left based.
     if (m_pRenderTarget && m_pRenderTarget->pTexture)
         glViewport(v->X, v->Y, v->Width, v->Height);
@@ -874,13 +880,44 @@ HRESULT IDirect3DDevice8::DrawIndexedPrimitive(D3DPRIMITIVETYPE Type, UINT MinIn
     return S_OK;
 }
 
+#ifdef __EMSCRIPTEN__
+// WebGL has no client-side vertex arrays: stream UP data through buffers.
+static const BYTE* StreamUP(GLenum target, const void* pData, size_t uSize)
+{
+    static GLuint s_auBuf[2];
+    const int i = target == GL_ARRAY_BUFFER ? 0 : 1;
+    if (!s_auBuf[i])
+        glGenBuffers(1, &s_auBuf[i]);
+    glBindBuffer(target, s_auBuf[i]);
+    glBufferData(target, uSize, pData, GL_STREAM_DRAW);
+    return (const BYTE*)0;
+}
+
+static UINT MaxIndex(const void* pIndexData, GLsizei count, bool b16)
+{
+    UINT m = 0;
+    for (GLsizei i = 0; i < count; ++i)
+    {
+        const UINT v = b16 ? ((const WORD*)pIndexData)[i] : ((const DWORD*)pIndexData)[i];
+        if (v > m) m = v;
+    }
+    return m;
+}
+#endif
+
 HRESULT IDirect3DDevice8::DrawPrimitiveUP(D3DPRIMITIVETYPE Type, UINT PrimitiveCount, const void* pVertexStreamZeroData, UINT VertexStreamZeroStride) {
     if (!pVertexStreamZeroData || !VertexStreamZeroStride) return S_OK;
     GLsizei count;
     GLenum mode = ToGLMode(Type, PrimitiveCount, &count);
+#ifdef __EMSCRIPTEN__
+    ApplyDrawState(StreamUP(GL_ARRAY_BUFFER, pVertexStreamZeroData, (size_t)count * VertexStreamZeroStride), VertexStreamZeroStride);
+    glDrawArrays(mode, 0, count);
+#else
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     ApplyDrawState((const BYTE*)pVertexStreamZeroData, VertexStreamZeroStride);
     glDrawArrays(mode, 0, count);
+#endif
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
     // D3D8 semantics: DrawPrimitiveUP resets stream 0.
     m_pStreamSource = NULL;
     m_StreamStride = 0;
@@ -891,10 +928,21 @@ HRESULT IDirect3DDevice8::DrawIndexedPrimitiveUP(D3DPRIMITIVETYPE Type, UINT Min
     if (!pVertexStreamZeroData || !VertexStreamZeroStride || !pIndexData) return S_OK;
     GLsizei count;
     GLenum mode = ToGLMode(Type, PrimitiveCount, &count);
+#ifdef __EMSCRIPTEN__
+    const bool b16 = IndexDataFormat == D3DFMT_INDEX16;
+    const UINT uMaxIdx = MaxIndex(pIndexData, count, b16) + 1;
+    const UINT uVerts = uMaxIdx > MinVertexIndex + NumVertexIndices ? uMaxIdx : MinVertexIndex + NumVertexIndices;
+    ApplyDrawState(StreamUP(GL_ARRAY_BUFFER, pVertexStreamZeroData, (size_t)uVerts * VertexStreamZeroStride), VertexStreamZeroStride);
+    StreamUP(GL_ELEMENT_ARRAY_BUFFER, pIndexData, (size_t)count * (b16 ? 2 : 4));
+    glDrawElements(mode, count, b16 ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT, (const void*)0);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+#else
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
     ApplyDrawState((const BYTE*)pVertexStreamZeroData, VertexStreamZeroStride);
     glDrawElements(mode, count, IndexDataFormat == D3DFMT_INDEX16 ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT, pIndexData);
+#endif
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
     m_pStreamSource = NULL;
     m_StreamStride = 0;
     m_pIndexBuffer = NULL;

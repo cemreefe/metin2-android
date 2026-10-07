@@ -524,7 +524,15 @@ BOOL    SetTimer(HWND, UINT_PTR, UINT, void*) { return TRUE; }
 BOOL    KillTimer(HWND, UINT_PTR) { return TRUE; }
 HCURSOR LoadCursorA(HINSTANCE, LPCSTR) { return NULL; }
 HCURSOR SetCursor(HCURSOR hCursor) { return hCursor; }
-int     ShowCursor(BOOL bShow) { static int s_iDisplayCount = 0; return bShow ? ++s_iDisplayCount : --s_iDisplayCount; }
+int     ShowCursor(BOOL bShow)
+{
+    static int s_iDisplayCount = 0;
+    const bool bWas = s_iDisplayCount >= 0;
+    s_iDisplayCount += bShow ? 1 : -1;
+    if ((s_iDisplayCount >= 0) != bWas)
+        M2Plat::SetPointerVisible(s_iDisplayCount >= 0);
+    return s_iDisplayCount;
+}
 HICON   LoadIconA(HINSTANCE, LPCSTR) { return NULL; }
 BOOL    DestroyIcon(HICON) { return TRUE; }
 BOOL    DestroyCursor(HCURSOR) { return TRUE; }

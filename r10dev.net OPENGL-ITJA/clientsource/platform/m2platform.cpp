@@ -49,6 +49,10 @@ namespace M2Plat
 		return false;
 	}
 
+	__attribute__((weak)) void SetPointerVisible(bool)
+	{
+	}
+
 	__attribute__((weak)) bool IsTouchPrimary()
 	{
 		return true;
