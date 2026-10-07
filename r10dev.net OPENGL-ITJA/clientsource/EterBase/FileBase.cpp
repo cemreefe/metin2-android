@@ -89,6 +89,8 @@ BOOL CFileBase::Create(const char* filename, EFileMode mode)
 		char szLower[MAX_PATH];
 		M2Plat::NormalizePath(filename, szLower, sizeof(szLower));
 		fd = open(szLower, flags);
+		if (fd == -1 && M2Plat::MaterializeFile(filename))
+			fd = open(szLower, flags);
 	}
 	m_hFile = (HANDLE)(intptr_t)fd;
 

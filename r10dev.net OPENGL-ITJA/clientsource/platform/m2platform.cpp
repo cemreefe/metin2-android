@@ -36,6 +36,13 @@ namespace M2Plat
 			return 0;
 		char szNormalized[1024];
 		NormalizePath(c_szPath, szNormalized, sizeof(szNormalized));
-		return access(szNormalized, iMode);
+		if (access(szNormalized, iMode) == 0)
+			return 0;
+		return MaterializeFile(c_szPath) ? access(szNormalized, iMode) : -1;
+	}
+
+	__attribute__((weak)) bool MaterializeFile(const char*)
+	{
+		return false;
 	}
 }

@@ -50,6 +50,10 @@ namespace M2Plat
 	// access(2) with a normalized-path fallback.
 	int FileAccess(const char* path, int mode);
 
+	// Copy a file the adapter holds outside the filesystem (web: lazy pack
+	// data) to its normalized path. False if the adapter does not know it.
+	bool MaterializeFile(const char* path);
+
 	// Root for per-user data (saves, logs). Android: external files dir;
 	// web: a MEMFS/IDBFS mount point.
 	const char* DataDir();
