@@ -14,13 +14,38 @@
   }
   #bar { width: 320px; height: 6px; background: #222; margin: 8px auto 0; }
   #barfill { height: 100%; width: 0%; background: #888; transition: width .2s; }
+  #gate {
+    position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%);
+    display: none; text-align: center; font: 14px monospace;
+  }
+  #gate input {
+    background: #111; border: 1px solid #444; color: #ccc;
+    font: 16px monospace; padding: 6px 10px; width: 220px;
+  }
+  #gate button {
+    background: #222; border: 1px solid #444; color: #ccc;
+    font: 16px monospace; padding: 6px 14px; cursor: pointer;
+  }
+  #gate .hint { color: #555; margin-top: 10px; }
 </style>
 </head>
 <body>
 <canvas id="canvas"></canvas>
 <div id="status">starting…<div id="bar"><div id="barfill"></div></div></div>
+<div id="gate"><div><input id="pw" type="password" placeholder="passphrase" autocomplete="off"><button id="pwgo">play</button></div><div class="hint"></div></div>
 <script src="m2pack.js"></script>
 <script src="m2hud.js"></script>
+<script>
+// SharedArrayBuffer needs cross-origin isolation. On hosts that don't send
+// COOP/COEP (plain static hosting), a service worker injects the headers —
+// first visit installs it and reloads once.
+if (self.crossOriginIsolated === false && 'serviceWorker' in navigator &&
+    !navigator.serviceWorker.controller) {
+  navigator.serviceWorker.register('coi-sw.js').then(function (reg) {
+    if (reg.active || reg.installing || reg.waiting) location.reload();
+  });
+}
+</script>
 <script>
 // Single player, zero backend: the whole m2dev-server (db + auth + channel)
 // runs as wasm modules in workers on this page. Client and servers talk
@@ -138,7 +163,36 @@ var Module = {
 // Android build; the engine shows/hides it by game phase.
 m2HudInit(Module);
 
+// Passphrase gate: ?m2pw=<pw> skips the prompt (headless tests); a correct
+// entry is remembered in sessionStorage so in-app restarts (which reload
+// the page) don't re-ask. sessionStorage clears when the tab closes.
+var m2pw = new URLSearchParams(location.search).get('m2pw');
+if (m2pw === null)
+  try { m2pw = sessionStorage.getItem('m2pw'); } catch (e) {}
+
+function m2gate() {
+  return new Promise(function (res) {
+    if (m2pw !== null) return res(m2pw);
+    var g = document.getElementById('gate');
+    g.style.display = 'block';
+    document.getElementById('pw').focus();
+    function go() {
+      g.style.display = 'none';
+      var v = document.getElementById('pw').value;
+      try { sessionStorage.setItem('m2pw', v); } catch (e) {}
+      res(v);
+    }
+    document.getElementById('pwgo').onclick = go;
+    document.getElementById('pw').onkeydown = function (e) {
+      if (e.key === 'Enter') go();
+    };
+  });
+}
+
 async function m2boot() {
+  var pw = await m2gate();
+  if (pw) await m2packSetPassphrase(pw);
+
   var packs;
   try {
     packs = await (await fetch('packs.json')).json();
@@ -160,6 +214,7 @@ async function m2boot() {
     sqliteDir: '/srv/db/sqlite', sqliteIdb: true,
     sqlitePacks: [sqlite],
     env: { M2_SQLITE_DIR: '/srv/db/sqlite' },
+    pw: pw,
   });
   spawnSrv('m2game.js', {
     argv: ['-I', '127.0.0.1'], cwd: '/srv/auth',
@@ -168,6 +223,7 @@ async function m2boot() {
     sqlitePacks: [sqlite],
     env: { M2_SQLITE_DIR: '/srv/auth/sqlite' },
     config: 'HOSTNAME: auth\nCHANNEL: 1\nPORT: 11000\nP2P_PORT: 12100\nAUTH_SERVER: master\n',
+    pw: pw,
   });
   spawnSrv('m2game.js', {
     argv: ['-I', '127.0.0.1'], cwd: '/srv/chan1',
@@ -176,6 +232,7 @@ async function m2boot() {
     sqlitePacks: [sqlite],
     env: { M2_SQLITE_DIR: '/srv/chan1/sqlite' },
     config: 'HOSTNAME: channel1_1\nCHANNEL: 1\nPORT: 11011\nP2P_PORT: 12111\nMAP_ALLOW: ' + MAP_ALLOW + '\n',
+    pw: pw,
   });
 
   var client = packs['client'];
@@ -193,6 +250,13 @@ async function m2boot() {
     },
     bootReady: bootAll ? null : function () {
       setStatus('starting…');
+      // Re-apply the user's saved display.cfg (ui_scale etc.): MEMFS is
+      // rebuilt from packs each boot, so M2Plat::RestartApp stashes it in
+      // localStorage before reloading.
+      try {
+        var cfg = localStorage.getItem('m2_display_cfg');
+        if (cfg) FS.writeFile('/data/display.cfg', cfg);
+      } catch (e) {}
       removeRunDependency('m2data');
     },
   });

@@ -428,3 +428,138 @@
  		
  	def AdjustPositionAndSize(self):
  		bx, by = self.GetBasePosition()
+--- a/intrologin.py
++++ b/intrologin.py
+@@ -221,6 +221,9 @@
+ 			
+ 		self.Show()
+ 
++		import uiscale
++		self.scaleHud = uiscale.Attach(self)
++
+ 		global SKIP_LOGIN_PHASE
+ 		if SKIP_LOGIN_PHASE:
+ 			if self.isStartError:
+--- a/introselect.py
++++ b/introselect.py
+@@ -151,6 +151,9 @@
+ 		self.SetWindowName("SelectCharacterWindow")
+ 		self.Show()
+ 
++		import uiscale
++		self.scaleHud = uiscale.Attach(self)
++
+ 		if self.slot>=0:
+ 			self.SelectSlot(self.slot)
+ 
+--- a/introempire.py
++++ b/introempire.py
+@@ -89,6 +89,9 @@
+ 		self.SetWindowName("SelectEmpireWindow")
+ 		self.Show()
+ 
++		import uiscale
++		self.scaleHud = uiscale.Attach(self)
++
+ 		if app.IsRTL():
+ 			selectPath = uiScriptLocale.LOCALE_UISCRIPT_PATH + "SelectEmpireWindow.py"
+ 		else:
+--- a/introcreate.py
++++ b/introcreate.py
+@@ -261,6 +261,9 @@
+ 		self.dlgBoard.Show()
+ 		self.Show()
+ 
++		import uiscale
++		self.scaleHud = uiscale.Attach(self)
++
+ 		if musicInfo.createMusic != "":
+ 			snd.SetMusicVolume(systemSetting.GetMusicVolume())
+ 			snd.FadeInMusic("BGM/"+musicInfo.createMusic)
+--- a/uiscript/selectcharacterwindow.py
++++ b/uiscript/selectcharacterwindow.py
+@@ -3,11 +3,16 @@
+ ROOT_PATH = "d:/ymir work/ui/public/"
+ LOCALE_PATH = uiScriptLocale.SELECT_PATH
+ 
+-BOARD_X = SCREEN_WIDTH * (65) / 800
+-BOARD_Y = SCREEN_HEIGHT * (220) / 600
+-
+ BOARD_ITEM_ADD_POSITION = -40
+ 
++# The board is 208x(363+BOARD_ITEM_ADD_POSITION). At large ui_scale values the
++# logical screen is smaller than the layout assumes, so clamp the board to stay
++# fully on screen instead of sliding off the bottom edge.
++BOARD_W = 208
++BOARD_H = 363 + BOARD_ITEM_ADD_POSITION
++BOARD_X = max(0, min(SCREEN_WIDTH * (65) / 800, SCREEN_WIDTH - BOARD_W))
++BOARD_Y = max(0, min(SCREEN_HEIGHT * (220) / 600, SCREEN_HEIGHT - BOARD_H))
++
+ # The artwork is 1024x768; scale it uniformly to cover the screen and centre it,
+ # so narrow or tall screens crop it instead of stretching it.
+ BG_SCALE = max(float(SCREEN_WIDTH) / 1024.0, float(SCREEN_HEIGHT) / 768.0)
+--- a/uiscript/loginwindow.py
++++ b/uiscript/loginwindow.py
+@@ -21,6 +21,11 @@
+ BG_X = int((SCREEN_WIDTH - 1024 * BG_SCALE) / 2)
+ BG_Y = int((SCREEN_HEIGHT - 768 * BG_SCALE) / 2)
+ 
++# The login cluster (ConnectBoard + LoginBoard) is anchored 445px from the
++# bottom. At large ui_scale values the logical screen is shorter than that, so
++# clamp it to stay on screen instead of sliding off the top/bottom edge.
++LOGIN_Y = max(0, SCREEN_HEIGHT - 445)
++
+ window = {
+ 	"name" : "LoginWindow",
+ 	"sytle" : ("movable",),
+@@ -51,7 +56,7 @@
+ 			'name' : 'VirtualKeyboard',
+ 			'type' : 'thinboard',
+ 			'x' : (SCREEN_WIDTH - 564) / 2,
+-			'y' : SCREEN_HEIGHT - 300,
++			'y' : max(0, SCREEN_HEIGHT - 300),
+ 			'width' : 564,
+ 			'height' : 254,
+ 			'children' : 
+@@ -524,7 +529,7 @@
+ 			"type" : "thinboard",
+ 
+ 			"x" : (SCREEN_WIDTH - 208) / 2,
+-			"y" : (SCREEN_HEIGHT - 410 - 35),
++			"y" : LOGIN_Y,
+ 			"width" : 208,
+ 			"height" : 30,
+ 
+@@ -564,7 +569,7 @@
+ 			"type" : "image",
+ 
+ 			"x" : (SCREEN_WIDTH - 208) / 2,
+-			"y" : (SCREEN_HEIGHT - 410),
++			"y" : LOGIN_Y + 35,
+ 
+ 			"image" : "d:/ymir work/ui/intro/login/loginwindow.sub",
+ 
+@@ -654,7 +659,7 @@
+ 			"type" : "thinboard",
+ 
+ 			"x" : 0,
+-			"y" : SCREEN_HEIGHT - SERVER_BOARD_HEIGHT - 72,
++			"y" : max(0, SCREEN_HEIGHT - SERVER_BOARD_HEIGHT - 72),
+ 			"width" : 375,
+ 			"height" : SERVER_BOARD_HEIGHT,
+ 			"horizontal_align" : "center",
+--- a/uiscript/selectempirewindow.py
++++ b/uiscript/selectempirewindow.py
+@@ -3,8 +3,10 @@
+ ROOT_PATH = "d:/ymir work/ui/public/"
+ LOCALE_PATH = uiScriptLocale.EMPIRE_PATH
+ 
+-ATALS_X = SCREEN_WIDTH * (282) / 800
+-ATALS_Y = SCREEN_HEIGHT * (170) / 600
++# The atlas block ends around ATALS_Y + 380 (select buttons sit at +340).
++# Clamp it so large ui_scale values keep it on screen.
++ATALS_X = max(0, min(SCREEN_WIDTH * (282) / 800, SCREEN_WIDTH - 384))
++ATALS_Y = max(0, min(SCREEN_HEIGHT * (170) / 600, SCREEN_HEIGHT - 385))
+ 
+ window = {
+ 	"name" : "SelectCharacterWindow",

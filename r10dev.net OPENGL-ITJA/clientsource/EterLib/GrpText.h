@@ -16,6 +16,15 @@ public:
 	CGraphicText(const char* c_szFileName);
 	virtual ~CGraphicText();
 
+	// Multiplies the generation size of every .fnt load (display.cfg "font_scale").
+	// Applied when the atlas is created, so a change needs a restart to take effect.
+	static void			SetGlobalFontScale(float fScale);
+
+protected:
+	static float		ms_fFontScale;
+
+public:
+
 	virtual bool			CreateDeviceObjects();
 	virtual void			DestroyDeviceObjects();
 

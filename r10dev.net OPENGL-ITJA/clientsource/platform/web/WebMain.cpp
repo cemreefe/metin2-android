@@ -199,8 +199,16 @@ void M2Plat::SetTouchBlockers(const SRect* rects, int count, int width, int heig
 
 void M2Plat::RestartApp()
 {
+	// Stash display.cfg first: MEMFS is rebuilt from packs on reload, so the
+	// user's ui_scale choice would be lost. local.html restores it at boot.
 	// worker location is read-only; reload has to happen on the UI thread
-	MAIN_THREAD_ASYNC_EM_ASM({ location.reload(); });
+	MAIN_THREAD_ASYNC_EM_ASM({
+		try {
+			var cfg = FS.readFile('/data/display.cfg', {encoding: 'utf8'});
+			localStorage.setItem('m2_display_cfg', cfg);
+		} catch (e) {}
+		location.reload();
+	});
 }
 
 int M2Plat::GetEnv(const char* name, char* out, size_t outSize)

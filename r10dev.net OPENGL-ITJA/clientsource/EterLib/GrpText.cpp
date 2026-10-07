@@ -31,6 +31,13 @@ CGraphicText::TType CGraphicText::Type()
 	return s_type;
 }
 
+float CGraphicText::ms_fFontScale = 1.0f;
+
+void CGraphicText::SetGlobalFontScale(float fScale)
+{
+	ms_fFontScale = fScale;
+}
+
 bool CGraphicText::OnLoad(int /*iSize*/, const void* /*c_pvBuf*/)
 {
 	static char strName[32];
@@ -75,6 +82,10 @@ bool CGraphicText::OnLoad(int /*iSize*/, const void* /*c_pvBuf*/)
 
 		size = 12;
 	}
+
+	size = int(size * ms_fFontScale + 0.5f);
+	if (size < 1)
+		size = 1;
 
 	if (!m_fontTexture.Create(strName, size, bItalic))
 		return false;

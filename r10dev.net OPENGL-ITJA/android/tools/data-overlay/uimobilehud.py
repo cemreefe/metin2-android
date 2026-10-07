@@ -254,6 +254,8 @@ class HudOption:
 DISPLAY_CONFIG = "display.cfg"
 UI_SCALE_MIN = 1.0
 UI_SCALE_MAX = 1.5
+FONT_SCALE_MIN = 1.0
+FONT_SCALE_MAX = 1.6
 CAMERA_MIN = 0.25
 CAMERA_MAX = 2.0
 VALUE_TEXT_WIDTH = 34
@@ -265,7 +267,7 @@ def _Clamp(value, low, high):
 
 def LoadDisplayConfig():
 	"""display.cfg holds 'key value' lines; the engine reads ui_scale and camera_sensitivity."""
-	conf = {"ui_scale": "1.0", "orientation": "landscape", "camera_sensitivity": "1.0"}
+	conf = {"ui_scale": "1.0", "font_scale": "1.0", "orientation": "landscape", "camera_sensitivity": "1.0"}
 	try:
 		f = open(DISPLAY_CONFIG, "r")
 		try:
@@ -277,7 +279,7 @@ def LoadDisplayConfig():
 			f.close()
 	except IOError:
 		pass
-	for key, low, high in (("ui_scale", UI_SCALE_MIN, UI_SCALE_MAX), ("camera_sensitivity", CAMERA_MIN, CAMERA_MAX)):
+	for key, low, high in (("ui_scale", UI_SCALE_MIN, UI_SCALE_MAX), ("font_scale", FONT_SCALE_MIN, FONT_SCALE_MAX), ("camera_sensitivity", CAMERA_MIN, CAMERA_MAX)):
 		try:
 			conf[key] = _Clamp(float(conf[key]), low, high)
 		except ValueError:
@@ -290,8 +292,9 @@ def SaveDisplayConfig(conf):
 	try:
 		f = open(DISPLAY_CONFIG, "w")
 		try:
-			f.write("ui_scale %.2f\norientation %s\ncamera_sensitivity %.2f\n" % (
+			f.write("ui_scale %.2f\nfont_scale %.2f\norientation %s\ncamera_sensitivity %.2f\n" % (
 				_Clamp(conf["ui_scale"], UI_SCALE_MIN, UI_SCALE_MAX),
+				_Clamp(conf.get("font_scale", 1.0), FONT_SCALE_MIN, FONT_SCALE_MAX),
 				"portrait" if conf["portrait"] else "landscape",
 				_Clamp(conf["camera_sensitivity"], CAMERA_MIN, CAMERA_MAX)))
 		finally:

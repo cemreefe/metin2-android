@@ -76,6 +76,8 @@ async function m2srvInit(cfg) {
 
 // Populate the worker's FS before main() starts.
 async function m2stage(cfg) {
+  if (cfg.pw) await m2packSetPassphrase(cfg.pw);
+
   for (const p of cfg.packs || [])
     await m2LoadPack(FS, p, p.dest, {});
 

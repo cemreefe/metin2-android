@@ -418,6 +418,44 @@ survive reloads.
 - `?m2auto=1` auto-logs-in via a generated `loginInfo.py` (scripted
   testing); `?m2_boot=1` waits for every pack before the engine starts.
 
+### 5.4 Gated deploy (passphrase)
+
+The serverless build can be deployed to any static host, but the URL must
+not be wide open. `web/m2encrypt.py` AES-GCM-encrypts every `.m2pack`
+(PBKDF2 over a passphrase); `m2packSetPassphrase()` decrypts in-page —
+the wasm and packs are ciphertext without the key. `local.html` shows a
+passphrase gate before boot.
+
+- Passphrase entry: `?m2pw=<pass>` param, else a `sessionStorage`-saved
+  value, else the gate prompt.
+- COOP/COEP: `SharedArrayBuffer` needs cross-origin isolation, which
+  static hosts can't set. `web/coi-sw.js` is a service worker that
+  injects `require-corp`/`same-origin` headers on every response —
+  register it before first load (the page does this automatically).
+- Encrypt packs before deploy: `python3 web/m2encrypt.py '<pass>' <plain-pack-dir> <deploy-dir>`,
+  and suffix the corresponding `ver` fields in `deploy-dir/packs.json`
+  so IndexedDB caches bust (e.g. `<sha>-dost1`).
+
+### 5.5 display.cfg persistence + intro UI/text scale
+
+The client's MEMFS is rebuilt from packs every boot, so `display.cfg`
+(ui_scale / font_scale / camera) is normally lost on restart.
+`M2Plat::RestartApp()` stashes it to `localStorage['m2_display_cfg']`
+before `location.reload()`, and `local.html`'s bootReady writes it back
+into `/data/display.cfg` before the engine reads it.
+
+`uiscale.py` (in `android/tools/data-overlay/`, staged into the data
+tree) attaches a bottom-right widget to all four intro screens (login,
+empire, character select/create): -/+ buttons and a click-anywhere
+slider for UI size and text size, plus an apply button that saves the
+config and restarts. This rescues screens whose boards have grown past
+the viewport at high ui_scale — and the login/empire/select boards are
+additionally clamped to the visible area in their uiscript coordinates.
+
+`font_scale` (display.cfg, 1.0-1.6) multiplies `.fnt` atlas generation
+size via `CGraphicText::SetGlobalFontScale`, so text renders at a bigger
+size instead of being magnified from small pixels like ui_scale does.
+
 ## 6. Reaching the server from a phone
 
 

@@ -14,6 +14,32 @@
 
 var M2PACK_IDB = 'm2pack-cache';
 
+// Optional passphrase gate: encrypted packs are 'M2E1' | 12-byte nonce |
+// AES-GCM ciphertext. The key is derived from the passphrase (PBKDF2) so
+// nothing secret ships in the page — wrong passphrase just fails to open.
+var m2packKey = null;
+
+async function m2packSetPassphrase(pw) {
+  var km = await crypto.subtle.importKey(
+    'raw', new TextEncoder().encode(pw), 'PBKDF2', false, ['deriveKey']);
+  m2packKey = await crypto.subtle.deriveKey(
+    { name: 'PBKDF2', salt: new TextEncoder().encode('m2gate-v1'),
+      iterations: 100000, hash: 'SHA-256' },
+    km, { name: 'AES-GCM', length: 256 }, false, ['decrypt']);
+}
+
+// buf -> plaintext gzip bytes. Non-'M2E1' input passes through untouched
+// so encrypted and plain packs can mix (e.g. local dev vs deployed).
+async function m2packDecrypt(buf) {
+  var b = new Uint8Array(buf);
+  if (b.length < 20 || b[0] !== 0x4d || b[1] !== 0x32 || b[2] !== 0x45 || b[3] !== 0x31)
+    return buf;
+  if (!m2packKey) throw new Error('pack is encrypted: passphrase required');
+  var plain = await crypto.subtle.decrypt(
+    { name: 'AES-GCM', iv: b.subarray(4, 16) }, m2packKey, b.subarray(16));
+  return plain;
+}
+
 function m2idbOpen() {
   return new Promise(function (resolve, reject) {
     var req = indexedDB.open(M2PACK_IDB, 1);
@@ -131,7 +157,7 @@ async function m2LoadPack(FS, spec, dest, opts) {
     var sp = specs[si];
     if (opts.onPart) opts.onPart(si, specs.length, si === 0 && spec.boot);
     var gz = await m2packFetch(sp, opts.onProgress);
-    var r = m2packReader(gz);
+    var r = m2packReader(await m2packDecrypt(await gz.arrayBuffer()));
 
     var magic = await r.take(12);
     if (!magic || String.fromCharCode(magic[0], magic[1], magic[2], magic[3]) !== 'M2PK')
