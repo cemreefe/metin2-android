@@ -45,4 +45,9 @@ namespace M2Plat
 	{
 		return false;
 	}
+
+	__attribute__((weak)) bool OpenAudioOutput(unsigned, AudioRenderFn, void*)
+	{
+		return false;
+	}
 }

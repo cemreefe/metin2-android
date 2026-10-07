@@ -33,3 +33,21 @@ _define(wndMgr, "TEXT_BASEDIR_AUTO", 0)
 _define(wndMgr, "TEXT_BASEDIR_LTR", 1)
 _define(wndMgr, "TEXT_BASEDIR_RTL", 2)
 _define(wndMgr, "TEXT_HORIZONTAL_ALIGN_ARABIC", 0)
+
+# Font picked in the dev options (uidevoptions); applied before any text loads.
+def _ApplySavedFont():
+	if not hasattr(app, "SetPortFont"):
+		return
+	try:
+		f = open("display.cfg", "r")
+	except IOError:
+		return
+	try:
+		for line in f.readlines():
+			parts = line.split()
+			if len(parts) == 2 and parts[0] == "font" and parts[1] != "default":
+				app.SetPortFont(parts[1], 0)
+	finally:
+		f.close()
+
+_ApplySavedFont()

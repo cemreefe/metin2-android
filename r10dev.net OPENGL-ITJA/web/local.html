@@ -41,8 +41,8 @@
 <canvas id="canvas"></canvas>
 <div id="status"><div id="spin"></div><span>starting…</span><div id="bar"><div id="barfill"></div></div><div id="srv"></div><div id="detail"></div></div>
 <div id="gate"><div><input id="pw" type="password" placeholder="passphrase" autocomplete="off"><button id="pwgo">play</button></div><div class="hint"></div></div>
-<script src="m2pack.js"></script>
-<script src="m2hud.js"></script>
+<script src="m2pack.js?v={{{ M2V }}}"></script>
+<script src="m2hud.js?v={{{ M2V }}}"></script>
 <script>
 // SharedArrayBuffer needs cross-origin isolation. On hosts that don't send
 // COOP/COEP (plain static hosting), a service worker injects the headers —
@@ -117,6 +117,9 @@ function setStatus(txt, frac) {
   if (frac !== undefined) barEl.style.width = Math.round(frac * 100) + '%';
 }
 // Latest line from each server worker, so the boot never looks dead.
+// Build stamp on every URL: Pages caches files for 10 min, and a new
+// page must never run with an old engine.
+var M2V = '{{{ M2V }}}';
 var srvLines = {};
 function setSrv(tag, s) {
   srvLines[tag] = s;
@@ -145,8 +148,8 @@ statusTxt.textContent = 'loading engine…';
   var RealWorker = self.Worker;
   self.Worker = function (url, opts) {
     var u = url;
-    if (typeof u === 'string' && /(^|\/)metin2_web\.js$/.test(u))
-      u = 'srv_worker.js#metin2_web.js';
+    if (typeof u === 'string' && /(^|\/)metin2_web\.js(\?.*)?$/.test(u))
+      u = 'srv_worker.js?v=' + M2V + '#metin2_web.js?v=' + M2V;
     var w = new RealWorker(u, opts);
     try { w.postMessage({ m2: 'sab', sab: m2sab }); } catch (e) {}
     return w;
@@ -157,7 +160,7 @@ statusTxt.textContent = 'loading engine…';
 var MAP_ALLOW = "1 41";
 
 function spawnSrv(tag, cfg) {
-  var w = new Worker('srv_worker.js#' + tag);
+  var w = new Worker('srv_worker.js?v=' + M2V + '#' + tag);
   cfg.m2 = 'init';
   cfg.sab = m2sab;
   w.onmessage = function (e) {
@@ -174,6 +177,7 @@ function spawnSrv(tag, cfg) {
 
 var Module = {
   canvas: document.getElementById('canvas'),
+  locateFile: function (p) { return p + '?v=' + M2V; },
   print: function (s) { console.log(s); setDetail(s); },
   printErr: function (s) { console.warn(s); },
   onExit: function (code) {

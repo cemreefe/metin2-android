@@ -344,6 +344,7 @@ void CPythonSystem::FitUIToPortSurface()
 	}
 	m_Config.width = iUIWidth;
 	m_Config.height = iUIHeight;
+	CGraphicText::SetRasterScale(float(iSurfH) / float(iUIHeight));
 }
 #endif
 

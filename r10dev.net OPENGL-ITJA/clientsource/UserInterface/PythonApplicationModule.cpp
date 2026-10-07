@@ -341,6 +341,22 @@ PyObject* appApplyUIScale(PyObject* poSelf, PyObject* poArgs)
 	return Py_BuildNone();
 }
 
+PyObject* appSetPortFont(PyObject* poSelf, PyObject* poArgs)
+{
+	char* szPath;
+	int iReload;
+	if (!PyTuple_GetString(poArgs, 0, &szPath) || !PyTuple_GetInteger(poArgs, 1, &iReload))
+		return Py_BuildException();
+
+	int iOk = 0;
+#ifdef M2_PORT
+	iOk = GdiSetFontFile(szPath) ? 1 : 0;
+	if (iOk && iReload)
+		CPythonApplication::Instance().ReloadPortFonts();
+#endif
+	return Py_BuildValue("i", iOk);
+}
+
 PyObject* appGetDefaultCodePage(PyObject* poSelf, PyObject* poArgs)
 {
 	return Py_BuildValue("i", LocaleService_GetCodePage());
@@ -1334,6 +1350,7 @@ void initapp()
 		{ "GetLocalePath",				appGetLocalePath,				METH_VARARGS },
 		{ "RestartApplication",			appRestartApplication,			METH_VARARGS },
 		{ "ApplyUIScale",				appApplyUIScale,				METH_VARARGS },
+		{ "SetPortFont",				appSetPortFont,					METH_VARARGS },
 		{ "ForceSetLocale",				appForceSetLocale,				METH_VARARGS },
 		// END_OF_LOCALE
 

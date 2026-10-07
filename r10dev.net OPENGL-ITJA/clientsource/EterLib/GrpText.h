@@ -21,9 +21,14 @@ public:
 	// CResourceManager::ReloadResourcesOfType + CGraphicTextInstance::RefreshAll.
 	static void			SetGlobalFontScale(float fScale);
 	static float		GetGlobalFontScale();
+	// Surface pixels per UI unit: atlases rasterize at this density so text stays sharp
+	// when the logical UI is stretched to a bigger screen.
+	static void			SetRasterScale(float fScale);
+	static float		GetRasterScale();
 
 protected:
 	static float		ms_fFontScale;
+	static float		ms_fRasterScale;
 
 public:
 

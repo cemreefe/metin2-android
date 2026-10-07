@@ -563,3 +563,16 @@
  
  window = {
  	"name" : "SelectCharacterWindow",
+--- a/intrologin.py
++++ b/intrologin.py
+@@ -452,6 +452,10 @@
+ 			self.loginExitButton		= GetObject("LoginExitButton")
+ 
+ 			self.virtualKeyboard		= self.GetChild2("VirtualKeyboard")
++			# Typing uses the real or system keyboard; drop the on-screen one.
++			if self.virtualKeyboard:
++				self.virtualKeyboard.Hide()
++				self.virtualKeyboard = None
+ 
+ 			if self.virtualKeyboard:
+ 				self.VIRTUAL_KEY_ALPHABET_UPPERS = Suffle(localeInfo.VIRTUAL_KEY_ALPHABET_UPPERS)

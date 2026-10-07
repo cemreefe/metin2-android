@@ -287,6 +287,8 @@ public:
 	void OnTouchEvent(int action, int x, int y) override;
 	void OnPortFrame();
 	void ApplyPortUIScale();
+	void ReloadPortFonts();
+	void FeedDevSequence(int iChar);
 
 	enum ETouchMode { TOUCH_NONE, TOUCH_UI, TOUCH_WORLD_PENDING, TOUCH_WORLD_HOLD, TOUCH_CAMERA };
 	ETouchMode m_eTouchMode = TOUCH_NONE;

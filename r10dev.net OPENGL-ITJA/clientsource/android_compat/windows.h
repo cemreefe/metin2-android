@@ -1372,6 +1372,8 @@ BOOL     TextOutA(HDC hdc, int x, int y, LPCSTR lpString, int c);
 #define  TextOut TextOutA
 BOOL     TextOutW(HDC hdc, int x, int y, const wchar_t* lpString, int c);
 HFONT    CreateFontIndirectA(const LOGFONTA* lplf);
+// Port only: switch the TTF every later CreateFontIndirect uses ("" = platform default).
+BOOL     GdiSetFontFile(const char* path);
 #define  CreateFontIndirect CreateFontIndirectA
 BOOL     GetTextExtentPoint32A(HDC hdc, LPCSTR lpString, int c, LPSIZE lpSize);
 #define  GetTextExtentPoint32 GetTextExtentPoint32A

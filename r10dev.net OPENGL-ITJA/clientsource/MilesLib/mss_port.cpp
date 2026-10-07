@@ -50,13 +50,40 @@ namespace
 	AIL_file_seek_callback g_pfnSeek = nullptr;
 	AIL_file_read_callback g_pfnRead = nullptr;
 
+	const ma_uint32 c_uOutputRate = 48000;
+
+	void RenderOutput(float* pOut, unsigned uFrames, void*)
+	{
+		ma_engine_read_pcm_frames(&g_kEngine, pOut, uFrames, NULL);
+	}
+
+	ma_result InitEngine()
+	{
+#if defined(__EMSCRIPTEN__)
+		ma_engine_config kConfig = ma_engine_config_init();
+		kConfig.noDevice = MA_TRUE;
+		kConfig.channels = 2;
+		kConfig.sampleRate = c_uOutputRate;
+		ma_result r = ma_engine_init(&kConfig, &g_kEngine);
+		if (r == MA_SUCCESS && !M2Plat::OpenAudioOutput(c_uOutputRate, RenderOutput, NULL))
+		{
+			ma_engine_uninit(&g_kEngine);
+			r = MA_NO_BACKEND;
+		}
+		return r;
+#else
+		(void)RenderOutput;
+		return ma_engine_init(NULL, &g_kEngine);
+#endif
+	}
+
 	bool EnsureEngine()
 	{
 		if (g_bEngine)
 			return true;
 		if (g_bEngineFailed)
 			return false;
-		ma_result r = ma_engine_init(NULL, &g_kEngine);
+		ma_result r = InitEngine();
 		if (r != MA_SUCCESS)
 		{
 			g_bEngineFailed = true;
@@ -261,6 +288,14 @@ namespace
 			return p;
 		}
 		FILE* fp = fopen(filename, "rb");
+		if (!fp)
+		{
+			char szNorm[1024];
+			M2Plat::NormalizePath(filename, szNorm, sizeof(szNorm));
+			fp = fopen(szNorm, "rb");
+			if (!fp && M2Plat::MaterializeFile(filename))
+				fp = fopen(szNorm, "rb");
+		}
 		if (!fp)
 			return nullptr;
 		fseek(fp, 0, SEEK_END);

@@ -599,8 +599,8 @@ void CGraphicTextInstance::Render(RECT* pClipRect)
 			{
 				pCurCharInfo = *i;
 
-				fFontWidth = float(pCurCharInfo->width);
-				fFontHeight = float(pCurCharInfo->height);
+				fFontWidth = pCurCharInfo->fWidth;
+				fFontHeight = pCurCharInfo->fHeight;
 				fFontAdvance = float(pCurCharInfo->advance);
 
 				// NOTE : ��Ʈ ��¿� Width ������ �Ӵϴ�. - [levites]
@@ -626,8 +626,14 @@ void CGraphicTextInstance::Render(RECT* pClipRect)
 					}
 				}
 
+#ifdef M2_PORT
+				// snap glyphs to whole atlas pixels so the hi-res atlas maps 1:1
+				fFontSx = floorf((fCurX - 0.5f) * CGraphicText::GetRasterScale() + 0.5f) / CGraphicText::GetRasterScale();
+				fFontSy = floorf((fCurY - 0.5f) * CGraphicText::GetRasterScale() + 0.5f) / CGraphicText::GetRasterScale();
+#else
 				fFontSx = fCurX - 0.5f;
 				fFontSy = fCurY - 0.5f;
+#endif
 				fFontEx = fFontSx + fFontWidth;
 				fFontEy = fFontSy + fFontHeight;
 
@@ -708,8 +714,8 @@ void CGraphicTextInstance::Render(RECT* pClipRect)
 		{
 			pCurCharInfo = m_pCharInfoVector[i];
 
-			fFontWidth = float(pCurCharInfo->width);
-			fFontHeight = float(pCurCharInfo->height);
+			fFontWidth = pCurCharInfo->fWidth;
+			fFontHeight = pCurCharInfo->fHeight;
 			fFontMaxHeight = max(fFontHeight, pCurCharInfo->height);
 			fFontAdvance = float(pCurCharInfo->advance);
 
@@ -736,8 +742,14 @@ void CGraphicTextInstance::Render(RECT* pClipRect)
 				}
 			}
 
+#ifdef M2_PORT
+			// snap glyphs to whole atlas pixels so the hi-res atlas maps 1:1
+			fFontSx = floorf((fCurX - 0.5f) * CGraphicText::GetRasterScale() + 0.5f) / CGraphicText::GetRasterScale();
+			fFontSy = floorf((fCurY - 0.5f) * CGraphicText::GetRasterScale() + 0.5f) / CGraphicText::GetRasterScale();
+#else
 			fFontSx = fCurX - 0.5f;
 			fFontSy = fCurY - 0.5f;
+#endif
 			fFontEx = fFontSx + fFontWidth;
 			fFontEy = fFontSy + fFontHeight;
 
@@ -1073,7 +1085,7 @@ WORD CGraphicTextInstance::GetTextLineCount()
 	{
 		pCurCharInfo = *itor;
 
-		float fFontWidth = float(pCurCharInfo->width);
+		float fFontWidth = pCurCharInfo->fWidth;
 		float fFontAdvance = float(pCurCharInfo->advance);
 		//float fFontHeight=float(pCurCharInfo->height);
 

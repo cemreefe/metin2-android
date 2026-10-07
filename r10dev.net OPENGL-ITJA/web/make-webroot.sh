@@ -25,7 +25,9 @@ mkdir -p "$OUT"
 
 cp "$CLIENT_BUILD/metin2_web.js" "$CLIENT_BUILD/metin2_web.wasm" "$OUT/"
 cp "$CLIENT_BUILD/metin2_web.html" "$OUT/index.html"
-sed 's/{{{ SCRIPT }}}/<script async src="metin2_web.js"><\/script>/' \
+M2V=$(cat "$CLIENT_BUILD/metin2_web.wasm" "$HERE"/*.js "$HERE/local.html" | md5sum | cut -c1-10)
+sed -e "s/{{{ SCRIPT }}}/<script async src=\"metin2_web.js?v=$M2V\"><\/script>/" \
+    -e "s/{{{ M2V }}}/$M2V/g" \
     "$HERE/local.html" > "$OUT/local.html"
 
 cp "$HERE/m2pack.js" "$HERE/srv_worker.js" "$OUT/"
@@ -33,7 +35,7 @@ cp "$SRV_BUILD/bin/m2db.js" "$SRV_BUILD/bin/m2db.wasm" "$OUT/"
 cp "$SRV_BUILD/bin/m2game.js" "$SRV_BUILD/bin/m2game.wasm" "$OUT/"
 
 python3 "$HERE/pack.py" --data-dir "$CLIENT_DATA" --out "$OUT/client.m2pack" \
-    --boot loose --boot lib/ --boot uiscript/ --boot locale/ --boot icon/ \
+    --boot loose --boot lib/ --boot uiscript/ --boot locale/ --boot icon/ --boot fonts/ \
     --split-mb 150 \
     --manifest "$OUT/packs.json" --name client
 python3 "$HERE/pack.py" --data-dir "$SRV_PACK/share" --out "$OUT/srv-share.m2pack" \

@@ -255,6 +255,9 @@ void CPythonApplication::OnPortKeyEvent(int action, int keyCode, int unicodeChar
 	int iVK = M2Plat::KeyToVK(keyCode);
 	int iChar = iVK ? iVK : unicodeChar;
 
+	if (unicodeChar && !iVK)
+		FeedDevSequence(unicodeChar);
+
 	if (iChar)
 		CPythonIME::Instance().WMChar(NULL, WM_CHAR, iChar, 0);
 
@@ -294,13 +297,35 @@ namespace
 	}
 }
 
+void CPythonApplication::ReloadPortFonts()
+{
+	CResourceManager::Instance().ReloadResourcesOfType(CGraphicText::Type());
+	CGraphicTextInstance::RefreshAll();
+}
+
+// Typing "devops$" anywhere toggles the hidden developer options window.
+void CPythonApplication::FeedDevSequence(int iChar)
+{
+	static const char c_szSequence[] = "devops$";
+	static size_t s_nMatched = 0;
+	if (iChar == c_szSequence[s_nMatched])
+		++s_nMatched;
+	else
+		s_nMatched = (iChar == c_szSequence[0]) ? 1 : 0;
+	if (c_szSequence[s_nMatched])
+		return;
+	s_nMatched = 0;
+	PyRun_SimpleString("import uidevoptions\nuidevoptions.Toggle()\n");
+}
+
 // Re-reads display.cfg and resizes the logical UI canvas in place; Python then rebuilds
 // the windows that cached the old screen size.
 void CPythonApplication::ApplyPortUIScale()
 {
 	const float fOldFontScale = CGraphicText::GetGlobalFontScale();
+	const float fOldRasterScale = CGraphicText::GetRasterScale();
 	m_pySystem.FitUIToPortSurface();
-	if (CGraphicText::GetGlobalFontScale() != fOldFontScale)
+	if (CGraphicText::GetGlobalFontScale() != fOldFontScale || CGraphicText::GetRasterScale() != fOldRasterScale)
 	{
 		CResourceManager::Instance().ReloadResourcesOfType(CGraphicText::Type());
 		CGraphicTextInstance::RefreshAll();
@@ -335,6 +360,13 @@ void CPythonApplication::OnTouchEvent(int action, int x, int y)
 	}
 	extern volatile int g_iPortCursorX;
 	extern volatile int g_iPortCursorY;
+	extern volatile int g_iPortCursorWarpX;
+	extern volatile int g_iPortCursorWarpY;
+	if (action != TOUCH_RIGHT_DOWN)
+	{
+		x += g_iPortCursorWarpX;
+		y += g_iPortCursorWarpY;
+	}
 	g_iPortCursorX = x;
 	g_iPortCursorY = y;
 
@@ -361,6 +393,9 @@ void CPythonApplication::OnTouchEvent(int action, int x, int y)
 	{
 		OnMouseMove(x, y);
 		OnMouseRightButtonUp(x, y);
+		g_iPortCursorX -= g_iPortCursorWarpX;
+		g_iPortCursorY -= g_iPortCursorWarpY;
+		g_iPortCursorWarpX = g_iPortCursorWarpY = 0;
 		return;
 	}
 

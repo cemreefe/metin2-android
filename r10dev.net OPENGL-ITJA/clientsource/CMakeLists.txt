@@ -406,6 +406,7 @@ elseif(M2_TARGET STREQUAL "web")
         platform/web/WebMain.cpp
         platform/web/M2WebNet.cpp
         platform/web/WebLazyFS.cpp
+        platform/web/WebAudio.cpp
         # SAB loopback transport (shared with the wasm server modules)
         ${CMAKE_CURRENT_SOURCE_DIR}/../server/web/m2lb_bridge.cpp
     )

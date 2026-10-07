@@ -765,7 +765,18 @@ BOOL SetThreadPriority(void*, int) { return TRUE; }
 BOOL SHGetSpecialFolderPathA(void*, char* p, int, BOOL) { if (p) { strcpy(p, M2Plat::DataDir()); } return p != NULL; }
 LPTOP_LEVEL_EXCEPTION_FILTER SetUnhandledExceptionFilter(LPTOP_LEVEL_EXCEPTION_FILTER) { return NULL; }
 
-BOOL SetCursorPos(int, int) { return TRUE; }
+// Win32 warps the real cursor; ports have none, so record the warp as an
+// offset the input layer adds to later pointer positions (camera drag).
+volatile int g_iPortCursorWarpX = 0;
+volatile int g_iPortCursorWarpY = 0;
+BOOL SetCursorPos(int x, int y)
+{
+    g_iPortCursorWarpX += x - g_iPortCursorX;
+    g_iPortCursorWarpY += y - g_iPortCursorY;
+    g_iPortCursorX = x;
+    g_iPortCursorY = y;
+    return TRUE;
+}
 BOOL SetFileAttributesA(LPCSTR, DWORD) { return TRUE; }
 int  SetBkMode(HDC, int m) { return m; }
 unsigned SetBkColor(HDC, unsigned c) { return c; }

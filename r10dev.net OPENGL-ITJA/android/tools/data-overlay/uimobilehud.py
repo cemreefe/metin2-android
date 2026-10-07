@@ -267,7 +267,7 @@ def _Clamp(value, low, high):
 
 def LoadDisplayConfig():
 	"""display.cfg holds 'key value' lines; the engine reads ui_scale and camera_sensitivity."""
-	conf = {"ui_scale": "1.0", "font_scale": "1.0", "orientation": "landscape", "camera_sensitivity": "1.0"}
+	conf = {"ui_scale": "1.0", "font_scale": "1.0", "orientation": "landscape", "camera_sensitivity": "1.0", "font": "default"}
 	try:
 		f = open(DISPLAY_CONFIG, "r")
 		try:
@@ -292,11 +292,12 @@ def SaveDisplayConfig(conf):
 	try:
 		f = open(DISPLAY_CONFIG, "w")
 		try:
-			f.write("ui_scale %.2f\nfont_scale %.2f\norientation %s\ncamera_sensitivity %.2f\n" % (
+			f.write("ui_scale %.2f\nfont_scale %.2f\norientation %s\ncamera_sensitivity %.2f\nfont %s\n" % (
 				_Clamp(conf["ui_scale"], UI_SCALE_MIN, UI_SCALE_MAX),
 				_Clamp(conf.get("font_scale", 1.0), FONT_SCALE_MIN, FONT_SCALE_MAX),
 				"portrait" if conf["portrait"] else "landscape",
-				_Clamp(conf["camera_sensitivity"], CAMERA_MIN, CAMERA_MAX)))
+				_Clamp(conf["camera_sensitivity"], CAMERA_MIN, CAMERA_MAX),
+				conf.get("font", "default")))
 		finally:
 			f.close()
 	except IOError:

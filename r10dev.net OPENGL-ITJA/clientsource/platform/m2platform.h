@@ -54,6 +54,12 @@ namespace M2Plat
 	// data) to its normalized path. False if the adapter does not know it.
 	bool MaterializeFile(const char* path);
 
+	// Audio output owned by the adapter instead of the audio library's own
+	// device (web: AudioWorklet). render fills interleaved stereo floats.
+	// False when the adapter has none and the library should open a device.
+	typedef void (*AudioRenderFn)(float* out, unsigned frames, void* user);
+	bool OpenAudioOutput(unsigned sampleRate, AudioRenderFn render, void* user);
+
 	// Root for per-user data (saves, logs). Android: external files dir;
 	// web: a MEMFS/IDBFS mount point.
 	const char* DataDir();
