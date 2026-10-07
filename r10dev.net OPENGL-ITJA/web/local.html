@@ -49,28 +49,29 @@
 // first visit installs it and reloads once.
 if (self.crossOriginIsolated === false) {
   var coiMsg = document.querySelector('#status span');
+  var coiTries = 0;
+  try { coiTries = +sessionStorage.getItem('m2coi') || 0; } catch (e) {}
+  function coiReload() {
+    if (coiTries >= 4) {
+      coiMsg.textContent = 'cross-origin isolation failed — try a hard reload';
+      return;
+    }
+    try { sessionStorage.setItem('m2coi', String(coiTries + 1)); } catch (e) {}
+    location.reload();
+  }
   if (!('serviceWorker' in navigator)) {
     coiMsg.textContent = 'this browser can\'t run the in-page server\n' +
       '(SharedArrayBuffer needs COOP/COEP) — use Chrome';
+  } else if (navigator.serviceWorker.controller) {
+    // SW controls the page but this document was served before it took
+    // over — one more reload lands the injected headers. Bounded so a
+    // genuinely broken SW can't loop forever.
+    coiMsg.textContent = 'finishing setup…';
+    coiReload();
   } else {
     coiMsg.textContent = 'preparing page (one-time setup)…';
-    var coiTries = 0;
-    try { coiTries = +sessionStorage.getItem('m2coi') || 0; } catch (e) {}
-    function coiReload() {
-      if (coiTries >= 2) {
-        coiMsg.textContent = 'cross-origin isolation failed — try a hard reload';
-        return;
-      }
-      try { sessionStorage.setItem('m2coi', String(coiTries + 1)); } catch (e) {}
-      location.reload();
-    }
     navigator.serviceWorker.register('coi-sw.js').then(function (reg) {
-      if (navigator.serviceWorker.controller) {
-        // SW controlled yet still not isolated: headers didn't take.
-        coiMsg.textContent = 'cross-origin isolation failed — try a hard reload';
-      } else if (reg.active || reg.installing || reg.waiting) {
-        coiReload();
-      }
+      if (reg.active || reg.installing || reg.waiting) coiReload();
       // else: registration produced no worker — watchdog below fires.
     }).catch(function () {});
     // Watchdog: registration/install hung or produced nothing — reload
