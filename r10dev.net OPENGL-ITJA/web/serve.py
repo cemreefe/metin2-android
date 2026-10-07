@@ -121,6 +121,7 @@ class RangeHandler(http.server.SimpleHTTPRequestHandler):
         self.send_header("Cross-Origin-Opener-Policy", "same-origin")
         self.send_header("Cross-Origin-Embedder-Policy", "require-corp")
         self.send_header("Accept-Ranges", "bytes")
+        self.send_header("Cache-Control", "no-store")
         super().end_headers()
 
     def do_GET(self):

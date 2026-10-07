@@ -16,6 +16,28 @@
 #include <string>
 #include <string.h>
 #include <stdlib.h>
+#include <sys/socket.h>
+
+#include "../../../server/web/m2lb.h"
+
+namespace
+{
+	// Loopback (in-page SAB table, server/web/m2lb.h) whenever the page
+	// provided a SAB — the local.html shell does; ?m2_local=0 forces ws.
+	int g_iLoopback = -1;
+
+	bool LoopbackMode()
+	{
+		if (g_iLoopback < 0)
+		{
+			g_iLoopback = MAIN_THREAD_EM_ASM_INT({
+				return (typeof Module !== 'undefined' && Module['m2lbSab'] &&
+					new URLSearchParams(location.search).get('m2_local') !== '0') ? 1 : 0;
+			}) && m2lb_present();
+		}
+		return g_iLoopback == 1;
+	}
+}
 
 namespace
 {
@@ -96,6 +118,29 @@ namespace
 
 int M2Net::Connect(const char* host, int port)
 {
+	if (LoopbackMode())
+	{
+		// Fake fd straight onto the shared loopback table; routing by port.
+		int fd = m2lp_socket(SOCK_STREAM);
+		if (fd < 0)
+			return -1;
+		if (m2lp_connect(fd, port) < 0)
+		{
+			m2lp_close(fd);
+			return -1;
+		}
+		int h = AllocHandle(0);
+		if (h < 0)
+		{
+			m2lp_close(fd);
+			return -1;
+		}
+		s_socks[h].ws = fd;	// ws field doubles as the loopback fd
+		s_socks[h].eState = WS_OPEN;
+		M2Plat::Log(M2Plat::LOG_INFO, "net", "loopback connect :%d (h=%d)", port, h);
+		return h;
+	}
+
 	// Bridge endpoint: ws(s)://<bridge-host>/connect?target=<host>:<port>
 	// M2_WS_BRIDGE overrides; default is same-origin /ws.
 	char szUrl[512];
@@ -171,6 +216,13 @@ int M2Net::Poll(int handle)
 	int flags = 0;
 	if (s->eState == WS_OPEN)
 		flags |= NET_POLL_WRITABLE;
+	if (LoopbackMode())
+	{
+		// Cheap peek: readable iff inbound ring has bytes (EOF handled in Recv).
+		if (m2lp_peek_readable((int)s->ws))
+			flags |= NET_POLL_READABLE;
+		return flags;
+	}
 	if (!s->qIn.empty() || s->eState == WS_CLOSED || s->eState == WS_FAILED)
 		flags |= NET_POLL_READABLE;
 	if (s->eState == WS_FAILED)
@@ -183,6 +235,11 @@ int M2Net::Send(int handle, const void* buf, int len)
 	SWebSock* s = GetSock(handle);
 	if (!s || s->eState != WS_OPEN)
 		return NET_ERROR;
+	if (LoopbackMode())
+	{
+		int n = m2lp_send((int)s->ws, buf, len);
+		return n < 0 ? NET_WOULD_BLOCK : n;
+	}
 	// Browsers buffer ws sends internally; report all bytes queued.
 	EMSCRIPTEN_RESULT r = emscripten_websocket_send_binary(s->ws, (void*)buf, len);
 	return r == EMSCRIPTEN_RESULT_SUCCESS ? len : NET_ERROR;
@@ -193,6 +250,13 @@ int M2Net::Recv(int handle, void* buf, int cap)
 	SWebSock* s = GetSock(handle);
 	if (!s)
 		return NET_ERROR;
+	if (LoopbackMode())
+	{
+		int n = m2lp_recv((int)s->ws, buf, cap);
+		if (n > 0) return n;
+		if (n == 0) return NET_CLOSED;
+		return NET_WOULD_BLOCK;
+	}
 	if (!s->qIn.empty())
 	{
 		std::vector<uint8_t>& front = s->qIn.front();
@@ -216,6 +280,13 @@ void M2Net::Close(int handle)
 	SWebSock* s = GetSock(handle);
 	if (!s)
 		return;
+	if (LoopbackMode())
+	{
+		m2lp_close((int)s->ws);
+		s->bUsed = false;
+		s->qIn.clear();
+		return;
+	}
 	emscripten_websocket_close(s->ws, 1000, NULL);
 	emscripten_websocket_delete(s->ws);
 	s->bUsed = false;

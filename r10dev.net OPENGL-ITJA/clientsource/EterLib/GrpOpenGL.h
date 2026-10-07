@@ -1152,10 +1152,14 @@ inline GLCOLOR* D3DXColorModulate(GLCOLOR* pOut, const GLCOLOR* pC1, const GLCOL
         void* pLockedData;
         void* pScratch;
         ULONG refCount;
-        IDirect3DTexture8() : glId(0), width(0), height(0), format(0), pLockedData(NULL), pScratch(NULL), refCount(1) {}
+        // web: GL work is deferred to Upload() so loader threads never touch
+        // the proxied WebGL context (proxying from worker threads crashes).
+        bool needsUpload;
+        IDirect3DTexture8() : glId(0), width(0), height(0), format(0), pLockedData(NULL), pScratch(NULL), refCount(1), needsUpload(false) {}
         ULONG AddRef() { return ++refCount; }
         HRESULT LockRect(UINT Level,D3DLOCKED_RECT* pLockedRect,const RECT* pRect,DWORD Flags);
         HRESULT UnlockRect(UINT Level);
+        void Upload();
         ULONG Release();
         HRESULT GetSurfaceLevel(UINT Level, LPDIRECT3DSURFACE8* ppSurface);
         DWORD GetLevelCount() { return 1; }
@@ -1185,12 +1189,17 @@ inline GLCOLOR* D3DXColorModulate(GLCOLOR* pOut, const GLCOLOR* pC1, const GLCOL
         }
     };
 
+    void GLDeferDeleteTexture(GLuint id);
+    void GLDeferDeleteBuffer(GLuint id);
+
     struct IDirect3DVertexBuffer8 {
         GLuint glVbo;
         UINT length;
         void* pData;
-        IDirect3DVertexBuffer8(UINT len) : glVbo(0), length(len), pData(NULL) {
-            glGenBuffers(1, &glVbo);
+        bool dirty;
+        // web: GL object + upload deferred to Commit() so creation on
+        // loader threads never touches the proxied context.
+        IDirect3DVertexBuffer8(UINT len) : glVbo(0), length(len), pData(NULL), dirty(false) {
             pData = malloc(len);
         }
         ULONG AddRef() { return 1; }
@@ -1198,14 +1207,14 @@ inline GLCOLOR* D3DXColorModulate(GLCOLOR* pOut, const GLCOLOR* pC1, const GLCOL
             *ppbData = (BYTE*)pData + OffsetToLock;
             return S_OK; 
         }
-        HRESULT Unlock() { 
+        HRESULT Unlock() { dirty = true; return S_OK; }
+        void Commit() {
+            if (!glVbo) glGenBuffers(1, &glVbo);
             glBindBuffer(GL_ARRAY_BUFFER, glVbo);
-            glBufferData(GL_ARRAY_BUFFER, length, pData, GL_DYNAMIC_DRAW);
-            glBindBuffer(GL_ARRAY_BUFFER, 0);
-            return S_OK; 
+            if (dirty) { glBufferData(GL_ARRAY_BUFFER, length, pData, GL_DYNAMIC_DRAW); dirty = false; }
         }
         ULONG Release() { 
-            if (glVbo) glDeleteBuffers(1, &glVbo);
+            GLDeferDeleteBuffer(glVbo);
             if (pData) free(pData);
             delete this;
             return 0; 
@@ -1216,8 +1225,8 @@ inline GLCOLOR* D3DXColorModulate(GLCOLOR* pOut, const GLCOLOR* pC1, const GLCOL
         UINT length;
         void* pData;
         UINT indexSize;
-        IDirect3DIndexBuffer8(UINT len) : glIbo(0), length(len), pData(NULL), indexSize(2) {
-            glGenBuffers(1, &glIbo);
+        bool dirty;
+        IDirect3DIndexBuffer8(UINT len) : glIbo(0), length(len), pData(NULL), indexSize(2), dirty(false) {
             pData = malloc(len);
         }
         ULONG AddRef() { return 1; }
@@ -1225,14 +1234,14 @@ inline GLCOLOR* D3DXColorModulate(GLCOLOR* pOut, const GLCOLOR* pC1, const GLCOL
             *ppbData = (BYTE*)pData + OffsetToLock;
             return S_OK; 
         }
-        HRESULT Unlock() { 
+        HRESULT Unlock() { dirty = true; return S_OK; }
+        void Commit() {
+            if (!glIbo) glGenBuffers(1, &glIbo);
             glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, glIbo);
-            glBufferData(GL_ELEMENT_ARRAY_BUFFER, length, pData, GL_STATIC_DRAW);
-            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-            return S_OK; 
+            if (dirty) { glBufferData(GL_ELEMENT_ARRAY_BUFFER, length, pData, GL_STATIC_DRAW); dirty = false; }
         }
         ULONG Release() { 
-            if (glIbo) glDeleteBuffers(1, &glIbo);
+            GLDeferDeleteBuffer(glIbo);
             if (pData) free(pData);
             delete this;
             return 0; 

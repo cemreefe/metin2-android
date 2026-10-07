@@ -17,9 +17,30 @@
 #endif
 
 void* c_dfDIKeyboard = NULL;
-static unsigned g_uDbgDraws = 0;
-static int g_iDbgSolid = 0;
-static bool g_bDbgDump = false;
+
+// web: GL objects released on loader threads can't be deleted directly (the
+// WebGL context lives on the main/render thread via proxying) — queue the
+// names and delete them on the next render-thread draw-state pass.
+static std::mutex g_glDelMtx;
+static std::vector<GLuint> g_glDelTex;
+static std::vector<GLuint> g_glDelBuf;
+
+void GLDeferDeleteTexture(GLuint id) {
+    if (id) { std::lock_guard<std::mutex> l(g_glDelMtx); g_glDelTex.push_back(id); }
+}
+void GLDeferDeleteBuffer(GLuint id) {
+    if (id) { std::lock_guard<std::mutex> l(g_glDelMtx); g_glDelBuf.push_back(id); }
+}
+static void GLDrainDeferredDeletes() {
+    std::vector<GLuint> tex, buf;
+    {
+        std::lock_guard<std::mutex> l(g_glDelMtx);
+        tex.swap(g_glDelTex);
+        buf.swap(g_glDelBuf);
+    }
+    if (!tex.empty()) glDeleteTextures((GLsizei)tex.size(), tex.data());
+    if (!buf.empty()) glDeleteBuffers((GLsizei)buf.size(), buf.data());
+}
 
 namespace {
     // D3D8 fixed-function emulation: two texture stages, texgen/texture transforms, lighting, fog, alpha test, RHW vertices.
@@ -124,7 +145,6 @@ namespace {
         "uniform ivec3 uAlphaStage1;\n"
         "uniform int uAlphaFunc;\n"
         "uniform float uAlphaRef;\n"
-        "uniform int uDbg;\n"
         "uniform int uFogMode;\n"
         "uniform vec4 uFogColor;\n"
         "uniform vec3 uFogParams;\n"
@@ -196,11 +216,6 @@ namespace {
         "    cur.rgb = mix(uFogColor.rgb, cur.rgb, clamp(f, 0.0, 1.0));\n"
         "  }\n"
         "  FragColor = cur;\n"
-        "  if (uDbg == 8) FragColor = vec4(vColor.rgb, 1.0);\n"
-        "  if (uDbg == 9) FragColor = vec4(texture(uTexture0, vTex0.xy / vTex0.w).bgr, 1.0);\n"
-        "  if (uDbg == 4) FragColor = vec4(clamp(vTex1.xy / vTex1.w, 0.0, 1.0), (vTex1.x < 0.0 || vTex1.x > 1.0 || vTex1.y < 0.0 || vTex1.y > 1.0) ? 1.0 : 0.0, 1.0);\n"
-        "  if (uDbg == 5) FragColor = vec4(texture(uTexture1, vTex1.xy / vTex1.w).aaa, 1.0);\n"
-        "  if (uDbg == 6) FragColor = vec4(textureLod(uTexture1, vec2(0.5), 0.0).aaa, 1.0);\n"
         "}\n";
 
     GLuint CompileShader(GLenum type, const char* source) {
@@ -221,7 +236,7 @@ namespace {
     struct SUniforms {
         GLint WV, Proj, RHW, Viewport, FlipY, TexMat0, TexMat1, TexGen, TTFF;
         GLint Lighting, HasNormal, HasColor, MatSrc, MatDiffuse, MatAmbient, MatEmissive, Ambient, LightDir, LightDiffuse, LightAmbient;
-        GLint Texture0, Texture1, UseTexture, TFactor, ColorStage0, AlphaStage0, ColorStage1, AlphaStage1, AlphaFunc, AlphaRef, Dbg;
+        GLint Texture0, Texture1, UseTexture, TFactor, ColorStage0, AlphaStage0, ColorStage1, AlphaStage1, AlphaFunc, AlphaRef;
         GLint FogMode, FogColor, FogParams;
     } u;
 
@@ -353,7 +368,6 @@ HRESULT IDirect3D8::CreateDevice(UINT Adapter, D3DDEVTYPE DeviceType, HWND hFocu
     u.AlphaStage1 = glGetUniformLocation(program, "uAlphaStage1");
     u.AlphaFunc = glGetUniformLocation(program, "uAlphaFunc");
     u.AlphaRef = glGetUniformLocation(program, "uAlphaRef");
-    u.Dbg = glGetUniformLocation(program, "uDbg");
     u.FogMode = glGetUniformLocation(program, "uFogMode");
     u.FogColor = glGetUniformLocation(program, "uFogColor");
     u.FogParams = glGetUniformLocation(program, "uFogParams");
@@ -394,8 +408,24 @@ HRESULT IDirect3DTexture8::LockRect(UINT Level, D3DLOCKED_RECT* pLockedRect, con
 }
 
 HRESULT IDirect3DTexture8::UnlockRect(UINT Level) {
-    if (Level > 0 || !glId || !pLockedData)
-        return S_OK;
+    if (Level == 0 && pLockedData)
+        needsUpload = true;
+    return S_OK;
+}
+
+// Render-thread-only: create the GL object and/or push pending pixels.
+// Called lazily from bind/FBO paths so worker threads never touch GL.
+void IDirect3DTexture8::Upload() {
+    if (!glId) {
+        glGenTextures(1, &glId);
+        glBindTexture(GL_TEXTURE_2D, glId);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    }
+    if (!needsUpload || !pLockedData)
+        return;
+    needsUpload = false;
 
     const void* pUpload = pLockedData;
     std::vector<DWORD> converted;
@@ -421,13 +451,12 @@ HRESULT IDirect3DTexture8::UnlockRect(UINT Level) {
     glBindTexture(GL_TEXTURE_2D, glId);
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
     glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, pUpload);
-    return S_OK;
 }
 
 ULONG IDirect3DTexture8::Release() {
     if (--refCount > 0)
         return refCount;
-    if (glId) glDeleteTextures(1, &glId);
+    GLDeferDeleteTexture(glId);
     if (pLockedData) free(pLockedData);
     if (pScratch) free(pScratch);
     delete this;
@@ -435,15 +464,12 @@ ULONG IDirect3DTexture8::Release() {
 }
 
 HRESULT IDirect3DDevice8::CreateTexture(UINT Width, UINT Height, UINT Levels, DWORD Usage, D3DFORMAT Format, D3DPOOL Pool, LPDIRECT3DTEXTURE8* ppTexture) {
+    // No GL here: this can run on a loader thread; the GL object is created
+    // lazily in Upload() on the render thread.
     IDirect3DTexture8* tex = new IDirect3DTexture8();
     tex->width = Width;
     tex->height = Height;
     tex->format = Format;
-    glGenTextures(1, &tex->glId);
-    glBindTexture(GL_TEXTURE_2D, tex->glId);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, Width, Height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     *ppTexture = tex;
     return S_OK;
 }
@@ -534,6 +560,7 @@ HRESULT IDirect3DDevice8::SetRenderTarget(LPDIRECT3DSURFACE8 pRenderTarget, LPDI
         return S_OK;
     }
 
+    pRenderTarget->pTexture->Upload();
     if (!m_glFbo) glGenFramebuffers(1, &m_glFbo);
     glBindFramebuffer(GL_FRAMEBUFFER, m_glFbo);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, pRenderTarget->pTexture->glId, 0);
@@ -694,7 +721,6 @@ HRESULT IDirect3DDevice8::LightEnable(DWORD index, BOOL bEnable) {
 }
 
 void IDirect3DDevice8::ApplyDrawState(const BYTE* pVertexBase, UINT uStride) {
-    ++g_uDbgDraws;
     glUseProgram(program);
 
     DWORD fvf = m_dwFVF;
@@ -783,11 +809,13 @@ void IDirect3DDevice8::ApplyDrawState(const BYTE* pVertexBase, UINT uStride) {
         glUniform4fv(u.LightAmbient, MAX_LIGHTS, afAmbient);
     }
 
+    GLDrainDeferredDeletes();
     GLint aiUseTexture[MAX_STAGES] = { 0, 0 };
     for (int i = 0; i < MAX_STAGES; ++i) {
         IDirect3DTexture8* pTex = m_apTexture[i];
         glActiveTexture(GL_TEXTURE0 + i);
-        if (pTex && pTex->glId) {
+        if (pTex) {
+            pTex->Upload();
             glBindTexture(GL_TEXTURE_2D, pTex->glId);
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, ToGLWrap(m_adwAddressU[i]));
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, ToGLWrap(m_adwAddressV[i]));
@@ -808,7 +836,6 @@ void IDirect3DDevice8::ApplyDrawState(const BYTE* pVertexBase, UINT uStride) {
     glUniform3i(u.AlphaStage1, (GLint)m_adwAlphaOp[1], (GLint)m_adwAlphaArg1[1], (GLint)m_adwAlphaArg2[1]);
     glUniform1i(u.AlphaFunc, m_bAlphaTest ? (GLint)m_dwAlphaFunc : D3DCMP_ALWAYS);
     glUniform1f(u.AlphaRef, (m_dwAlphaRef & 0xff) / 255.0f);
-    glUniform1i(u.Dbg, (g_iDbgSolid >= 4 && !bRHW && fvf == (D3DFVF_XYZ | D3DFVF_NORMAL) && (g_iDbgSolid < 8 || m_bLighting)) ? g_iDbgSolid : 0);
 
     GLint iFogMode = 0;
     if (m_bFogEnable && !bRHW)
@@ -818,58 +845,13 @@ void IDirect3DDevice8::ApplyDrawState(const BYTE* pVertexBase, UINT uStride) {
         SetColorUniform(u.FogColor, GLCOLOR((unsigned int)m_dwFogColor));
         glUniform3f(u.FogParams, m_fFogStart, m_fFogEnd, m_fFogDensity);
     }
-
-    if (g_iDbgSolid >= 2 && !bRHW && fvf == (D3DFVF_XYZ | D3DFVF_NORMAL)) {
-        SetColorUniform(u.TFactor, GLCOLOR(0xffffffffu));
-        glUniform3i(u.ColorStage0, D3DTOP_SELECTARG1, D3DTA_TEXTURE, D3DTA_TEXTURE);
-        glUniform3i(u.AlphaStage0, D3DTOP_SELECTARG1, D3DTA_TFACTOR, D3DTA_TFACTOR);
-        glUniform3i(u.ColorStage1, g_iDbgSolid == 3 ? D3DTOP_SELECTARG1 : D3DTOP_DISABLE, D3DTA_TEXTURE | (g_iDbgSolid == 3 ? 0x20 : 0), D3DTA_TEXTURE);
-        glUniform3i(u.AlphaStage1, D3DTOP_SELECTARG1, D3DTA_TFACTOR, D3DTA_TFACTOR);
-        glUniform1i(u.AlphaFunc, D3DCMP_ALWAYS);
-    }
-    else if (g_iDbgSolid == 1 && !bRHW) {
-        SetColorUniform(u.TFactor, GLCOLOR(fvf == (D3DFVF_XYZ | D3DFVF_NORMAL) ? 0xffff0000u : (fvf == (D3DFVF_XYZ | D3DFVF_TEX1) ? 0xff00ff00u : 0xff0000ffu)));
-        glUniform3i(u.ColorStage0, D3DTOP_SELECTARG1, D3DTA_TFACTOR, D3DTA_TFACTOR);
-        glUniform3i(u.AlphaStage0, D3DTOP_SELECTARG1, D3DTA_TFACTOR, D3DTA_TFACTOR);
-        glUniform3i(u.ColorStage1, D3DTOP_DISABLE, 0, 0);
-        glUniform1i(u.AlphaFunc, D3DCMP_ALWAYS);
-    }
-    if (g_bDbgDump) {
-        static std::set<unsigned long long> s_kSeen;
-        unsigned long long ullKey = ((unsigned long long)m_dwFVF << 40) ^ ((unsigned long long)fvf << 16) ^ uStride ^ ((unsigned long long)m_adwTexCoordIndex[0] << 8);
-        if (s_kSeen.insert(ullKey).second && s_kSeen.size() < 60)
-            LOGI("DBG combo setfvf=%x fvf=%x stride=%u tci0=%x tex0=%u lit=%d", m_dwFVF, fvf, uStride, m_adwTexCoordIndex[0], m_apTexture[0] ? m_apTexture[0]->glId : 0, bLighting);
-        static int s_iTerrLogs = 0;
-        if (fvf == (D3DFVF_XYZ | D3DFVF_NORMAL) && s_iTerrLogs < 12) {
-            ++s_iTerrLogs;
-            const GLMATRIX& t0 = m_amatTexture[0];
-            LOGI("DBG terr tm0=[%.4g %.4g %.4g %.4g|%.4g %.4g %.4g %.4g|%.4g %.4g %.4g %.4g|%.4g %.4g %.4g %.4g] fog=%d %.1f-%.1f col=%08x wv41=%.1f,%.1f,%.1f",
-                t0._11, t0._12, t0._13, t0._14, t0._21, t0._22, t0._23, t0._24, t0._31, t0._32, t0._33, t0._34, t0._41, t0._42, t0._43, t0._44,
-                iFogMode, m_fFogStart, m_fFogEnd, m_dwFogColor, wv._41, wv._42, wv._43);
-            const GLMATRIX& t1 = m_amatTexture[1];
-            LOGI("DBG terr tm1=[%.4g %.4g %.4g %.4g|%.4g %.4g %.4g %.4g|%.4g %.4g %.4g %.4g|%.4g %.4g %.4g %.4g] addr1=%u,%u",
-                t1._11, t1._12, t1._13, t1._14, t1._21, t1._22, t1._23, t1._24, t1._31, t1._32, t1._33, t1._34, t1._41, t1._42, t1._43, t1._44,
-                m_adwAddressU[1], m_adwAddressV[1]);
-        }
-        if (fvf == (D3DFVF_XYZ | D3DFVF_NORMAL) && s_iTerrLogs < 12) LOGI("DBG draw fvf=%x stride=%u rhw=%d lit=%d tex=%u/%u c0=%d,%x,%x a0=%d,%x,%x c1=%d,%x,%x a1=%d,%x,%x tci=%x/%x ttff=%x/%x at=%d af=%d ref=%x blend=%d fog=%d tf=%08x",
-            fvf, uStride, bRHW, bLighting, m_apTexture[0] ? m_apTexture[0]->glId : 0, m_apTexture[1] ? m_apTexture[1]->glId : 0,
-            m_adwColorOp[0], m_adwColorArg1[0], m_adwColorArg2[0], m_adwAlphaOp[0], m_adwAlphaArg1[0], m_adwAlphaArg2[0],
-            m_adwColorOp[1], m_adwColorArg1[1], m_adwColorArg2[1], m_adwAlphaOp[1], m_adwAlphaArg1[1], m_adwAlphaArg2[1],
-            m_adwTexCoordIndex[0], m_adwTexCoordIndex[1], m_adwTextureTransformFlags[0], m_adwTextureTransformFlags[1],
-            m_bAlphaTest, m_dwAlphaFunc, m_dwAlphaRef, glIsEnabled(GL_BLEND), iFogMode, m_dwTextureFactor);
-        if (bLighting)
-            LOGI("DBG   mat d=%.2f,%.2f,%.2f a=%.2f,%.2f,%.2f amb=%08x l0en=%d l0dir=%.2f,%.2f,%.2f l0d=%.2f,%.2f,%.2f",
-                m_material.Diffuse.r, m_material.Diffuse.g, m_material.Diffuse.b, m_material.Ambient.r, m_material.Ambient.g, m_material.Ambient.b,
-                m_dwAmbient, m_abLightEnable[0], m_aLight[0].Direction.x, m_aLight[0].Direction.y, m_aLight[0].Direction.z,
-                m_aLight[0].Diffuse.r, m_aLight[0].Diffuse.g, m_aLight[0].Diffuse.b);
-    }
 }
 
 HRESULT IDirect3DDevice8::DrawPrimitive(D3DPRIMITIVETYPE Type, UINT StartVertex, UINT PrimitiveCount) {
     if (!m_pStreamSource || !m_StreamStride) return S_OK;
     GLsizei count;
     GLenum mode = ToGLMode(Type, PrimitiveCount, &count);
-    glBindBuffer(GL_ARRAY_BUFFER, m_pStreamSource->glVbo);
+    m_pStreamSource->Commit();
     ApplyDrawState((const BYTE*)0, m_StreamStride);
     glDrawArrays(mode, StartVertex, count);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -878,12 +860,11 @@ HRESULT IDirect3DDevice8::DrawPrimitive(D3DPRIMITIVETYPE Type, UINT StartVertex,
 
 HRESULT IDirect3DDevice8::DrawIndexedPrimitive(D3DPRIMITIVETYPE Type, UINT MinIndex, UINT NumVertices, UINT StartIndex, UINT PrimitiveCount) {
     if (!m_pStreamSource || !m_StreamStride || !m_pIndexBuffer) return S_OK;
-    if (g_iDbgSolid == 7 && m_bLighting && m_dwFVF == (D3DFVF_XYZ | D3DFVF_NORMAL)) return S_OK;
     GLsizei count;
     GLenum mode = ToGLMode(Type, PrimitiveCount, &count);
-    glBindBuffer(GL_ARRAY_BUFFER, m_pStreamSource->glVbo);
+    m_pStreamSource->Commit();
     ApplyDrawState((const BYTE*)0 + (size_t)m_BaseVertexIndex * m_StreamStride, m_StreamStride);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_pIndexBuffer->glIbo);
+    m_pIndexBuffer->Commit();
     UINT indexSize = m_pIndexBuffer->indexSize;
     glDrawElements(mode, count, indexSize == 4 ? GL_UNSIGNED_INT : GL_UNSIGNED_SHORT, (void*)(size_t)(StartIndex * indexSize));
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
@@ -923,30 +904,7 @@ HRESULT IDirect3DDevice8::BeginScene() { return S_OK; }
 HRESULT IDirect3DDevice8::EndScene() { return S_OK; }
 HRESULT IDirect3DDevice8::Present(const RECT* pSourceRect, const RECT* pDestRect, HWND hDestWindowOverride, const void* pDirtyRegion) {
 #ifdef M2_PORT
-    static unsigned s_uFrame = 0;
-    EGLBoolean ok = M2Plat::PresentFrame() ? EGL_TRUE : EGL_FALSE;
-    static DWORD s_dwLastLog = 0;
-    DWORD dwNow = timeGetTime();
-    ++s_uFrame;
-    if (dwNow - s_dwLastLog >= 10000) {
-        s_dwLastLog = dwNow;
-        LOGI("DBG Present frame=%u swap=%d eglErr=0x%x glErr=0x%x draws=%u vp=%.0fx%.0f", s_uFrame, ok, eglGetError(), glGetError(), g_uDbgDraws, m_fViewportWidth, m_fViewportHeight);
-    }
-    static unsigned s_uDumpSerial = 0;
-    g_bDbgDump = false;
-    if ((s_uFrame % 5) == 0) {
-        char szValue[92] = {};
-        M2Plat::GetDebugProperty("debug.m2.dump", szValue, sizeof(szValue));
-        unsigned uSerial = (unsigned)atoi(szValue);
-        g_bDbgDump = uSerial != s_uDumpSerial;
-        char szSolid[92] = {};
-        M2Plat::GetDebugProperty("debug.m2.solid", szSolid, sizeof(szSolid));
-        g_iDbgSolid = szSolid[0] ? szSolid[0] - '0' : 0;
-        s_uDumpSerial = uSerial;
-    }
-    if (g_bDbgDump) {
-        LOGI("DBG dump begin");
-    }
+    M2Plat::PresentFrame();
 #endif
     return S_OK;
 }

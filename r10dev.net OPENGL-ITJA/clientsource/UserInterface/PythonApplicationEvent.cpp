@@ -240,7 +240,6 @@ void CPythonApplication::OnMouseRender()
 void CPythonApplication::OnPortKeyEvent(int action, int keyCode, int unicodeChar)
 {
 	int iDIK = M2Plat::KeyToDIK(keyCode);
-
 	if (action == 1)
 	{
 		if (iDIK)

@@ -646,208 +646,188 @@ inline void DecodeAlpha3BitLinear(DWORD* pImPos, DXTAlphaBlock3BitLinear* pAlpha
 
 void CDXTCImage::DecompressDXT1(int miplevel, DWORD* pdwDest)
 {
-	// This was hacked up pretty quick & slopily
-	// decompresses to 32 bit format 0xARGB
-	int xblocks, yblocks;
-#ifdef DEBUG
-	if ((ddsd.dwWidth % 4) != 0)
+	// decompresses to 32 bit format 0xARGB.
+	// NOTE: rewritten for the wasm port — the original type-punned
+	// DXTColBlock/WORD* walk was miscompiled (decodes produced all-zero
+	// output). This version uses plain byte indexing throughout.
+	const int nWidth = m_nWidth >> miplevel;
+	const int nHeight = m_nHeight >> miplevel;
+	const int xblocks = nWidth / 4;
+	const int yblocks = nHeight / 4;
+	const BYTE* pPos = &m_bCompVector[miplevel][0];
+
+	for (int y = 0; y < yblocks; ++y)
 	{
-		Tracef("****** warning width not div by 4!  %d\n", ddsd.dwWidth);
-	}
-
-	if ((ddsd.dwHeight % 4) != 0)
-	{
-		Tracef("****** warning Height not div by 4! %d\n", ddsd.dwHeight);
-	}
-
-	Tracef("end check\n");
-#endif
-	UINT nWidth = m_nWidth >> miplevel;
-	UINT nHeight = m_nHeight >> miplevel;
-
-	xblocks = nWidth / 4;
-	yblocks = nHeight / 4;
-
-	int		x, y;
-	DWORD* pBase = (DWORD*)pdwDest;
-	WORD* pPos = (WORD*)&m_bCompVector[miplevel][0];;	// pos in compressed data
-	DWORD* pImPos;
-
-	DXTColBlock* pBlock;
-
-	Color8888 col_0, col_1, col_2, col_3;
-	WORD wrd;
-
-	for (y = 0; y < yblocks; ++y)
-	{
-		// 8 bytes per block
-		pBlock = (DXTColBlock*)((uintptr_t)pPos + y * xblocks * 8);
-
-		for (x = 0; x < xblocks; ++x, ++pBlock)
+		for (int x = 0; x < xblocks; ++x)
 		{
-			// inline func:
-			GetColorBlockColors(pBlock, &col_0, &col_1, &col_2, &col_3, wrd);
+			const BYTE* pBlock = pPos + (y * xblocks + x) * 8;
+			const DWORD col0 = (DWORD)pBlock[0] | ((DWORD)pBlock[1] << 8);
+			const DWORD col1 = (DWORD)pBlock[2] | ((DWORD)pBlock[3] << 8);
+			const DWORD bits = (DWORD)pBlock[4] | ((DWORD)pBlock[5] << 8)
+				| ((DWORD)pBlock[6] << 16) | ((DWORD)pBlock[7] << 24);
 
-			pImPos = (DWORD*)((uintptr_t)pBase + x * 16 + (y * 4) * nWidth * 4);
-			DecodeColorBlock(pImPos, pBlock, nWidth, (DWORD*)&col_0, (DWORD*)&col_1, (DWORD*)&col_2, (DWORD*)&col_3);
-			// Set to RGB test pattern
-			//	pImPos = (DWORD*) ((uintptr_t)pBase + i * 4 + j * m_nWidth * 4);
-			//	*pImPos = ((i * 4) << 16) | ((j * 4) << 8) | ((63 - i) * 4);
+			DWORD color[4];
+			color[0] = 0xff000000
+				| (((col0 >> 11) & 31) << 19)
+				| (((col0 >> 5) & 63) << 10)
+				| ((col0 & 31) << 3);
+			color[1] = 0xff000000
+				| (((col1 >> 11) & 31) << 19)
+				| (((col1 >> 5) & 63) << 10)
+				| ((col1 & 31) << 3);
+			if (col0 > col1)
+			{
+				color[2] = 0xff000000 | (((2 * (color[0] >> 16 & 0xff) + (color[1] >> 16 & 0xff)) / 3) << 16)
+					| (((2 * (color[0] >> 8 & 0xff) + (color[1] >> 8 & 0xff)) / 3) << 8)
+					| ((2 * (color[0] & 0xff) + (color[1] & 0xff)) / 3);
+				color[3] = 0xff000000 | ((((color[0] >> 16 & 0xff) + 2 * (color[1] >> 16 & 0xff)) / 3) << 16)
+					| ((((color[0] >> 8 & 0xff) + 2 * (color[1] >> 8 & 0xff)) / 3) << 8)
+					| (((color[0] & 0xff) + 2 * (color[1] & 0xff)) / 3);
+			}
+			else
+			{
+				color[2] = 0xff000000 | ((((color[0] >> 16 & 0xff) + (color[1] >> 16 & 0xff)) / 2) << 16)
+					| ((((color[0] >> 8 & 0xff) + (color[1] >> 8 & 0xff)) / 2) << 8)
+					| (((color[0] & 0xff) + (color[1] & 0xff)) / 2);
+				color[3] = 0;
+			}
 
-			// checkerboard of only col_0 and col_1 basis colors:
-			//	pImPos = (DWORD *) ((uintptr_t)pBase + i * 8 + j * m_nWidth * 8);
-			//	*pImPos = *((DWORD *) &col_0);
-			//	pImPos += 1 + m_nWidth;
-			//	*pImPos = *((DWORD *) &col_1);
+			DWORD* pImPos = pdwDest + (y * 4) * nWidth + x * 4;
+			for (int row = 0; row < 4; ++row, pImPos += nWidth)  // pImPos[pix] indexes within the row
+			{
+				for (int pix = 0; pix < 4; ++pix)
+				{
+					pImPos[pix] = color[(bits >> (2 * (4 * row + pix))) & 3];
+				}
+			}
 		}
 	}
 }
 
 void CDXTCImage::DecompressDXT3(int miplevel, DWORD* pdwDest)
 {
-	int xblocks, yblocks;
-#ifdef DEBUG
-	if ((ddsd.dwWidth % 4) != 0)
+	// decompresses to 32 bit format 0xARGB.
+	// NOTE: rewritten for the wasm port — same reason as DecompressDXT1
+	// (type-punned block walks were miscompiled).
+	const int nWidth = m_nWidth >> miplevel;
+	const int nHeight = m_nHeight >> miplevel;
+	const int xblocks = nWidth / 4;
+	const int yblocks = nHeight / 4;
+	const BYTE* pPos = &m_bCompVector[miplevel][0];
+
+	for (int y = 0; y < yblocks; ++y)
 	{
-		Tracef("****** warning width not div by 4! %d\n", ddsd.dwWidth);
-	}
-
-	if ((ddsd.dwHeight % 4) != 0)
-	{
-		Tracef("****** warning Height not div by 4! %d\n", ddsd.dwHeight);
-	}
-
-	Tracef("end check\n");
-#endif
-	UINT nWidth = m_nWidth >> miplevel;
-	UINT nHeight = m_nHeight >> miplevel;
-
-	xblocks = nWidth / 4;
-	yblocks = nHeight / 4;
-
-	int		x, y;
-	DWORD* pBase = (DWORD*)pdwDest;
-	WORD* pPos = (WORD*)&m_bCompVector[miplevel][0]; // pos in compressed data
-	DWORD* pImPos;	// pos in decompressed data
-
-	DXTColBlock* pBlock;
-	DXTAlphaBlockExplicit* pAlphaBlock;
-
-	Color8888 col_0, col_1, col_2, col_3;
-	WORD wrd;
-
-	// fill alphazero with appropriate value to zero out alpha when
-	//  alphazero is ANDed with the image color 32 bit DWORD:
-	col_0.a = 0;
-	col_0.r = col_0.g = col_0.b = 0xff;
-
-	DWORD alphazero = *((DWORD*)&col_0);
-
-	for (y = 0; y < yblocks; ++y)
-	{
-		// 8 bytes per block
-		// 1 block for alpha, 1 block for color
-		pBlock = (DXTColBlock*)((uintptr_t)pPos + y * xblocks * 16);
-
-		for (x = 0; x < xblocks; ++x, ++pBlock)
+		for (int x = 0; x < xblocks; ++x)
 		{
-			// inline
-			// Get alpha block
-			pAlphaBlock = (DXTAlphaBlockExplicit*)pBlock;
+			const BYTE* pBlock = pPos + (y * xblocks + x) * 16;
+			const BYTE* pColor = pBlock + 8;
 
-			// inline func:
-			// Get color block & colors
-			pBlock++;
-			GetColorBlockColors(pBlock, &col_0, &col_1, &col_2, &col_3, wrd);
+			DWORD color[4];
+			const DWORD col0 = (DWORD)pColor[0] | ((DWORD)pColor[1] << 8);
+			const DWORD col1 = (DWORD)pColor[2] | ((DWORD)pColor[3] << 8);
+			const DWORD bits = (DWORD)pColor[4] | ((DWORD)pColor[5] << 8)
+				| ((DWORD)pColor[6] << 16) | ((DWORD)pColor[7] << 24);
+			color[0] = (((col0 >> 11) & 31) << 19)
+				| (((col0 >> 5) & 63) << 10)
+				| ((col0 & 31) << 3);
+			color[1] = (((col1 >> 11) & 31) << 19)
+				| (((col1 >> 5) & 63) << 10)
+				| ((col1 & 31) << 3);
+			// DXT3 color blocks always use the 4-color palette (unlike DXT1,
+			// col0<=col1 does not switch to 3-color+transparent).
+			color[2] = (((2 * (color[0] >> 16 & 0xff) + (color[1] >> 16 & 0xff)) / 3) << 16)
+				| (((2 * (color[0] >> 8 & 0xff) + (color[1] >> 8 & 0xff)) / 3) << 8)
+				| ((2 * (color[0] & 0xff) + (color[1] & 0xff)) / 3);
+			color[3] = ((((color[0] >> 16 & 0xff) + 2 * (color[1] >> 16 & 0xff)) / 3) << 16)
+				| ((((color[0] >> 8 & 0xff) + 2 * (color[1] >> 8 & 0xff)) / 3) << 8)
+				| (((color[0] & 0xff) + 2 * (color[1] & 0xff)) / 3);
 
-			// Decode the color block into the bitmap bits
-			// inline func:
-			pImPos = (DWORD*)((uintptr_t)pBase + x * 16 + (y * 4) * nWidth * 4);
-
-			DecodeColorBlock(pImPos,
-				pBlock,
-				nWidth,
-				(DWORD*)&col_0, (DWORD*)&col_1, (DWORD*)&col_2, (DWORD*)&col_3);
-
-			// Overwrite the previous alpha bits with the alpha block
-			//  info
-			// inline func:
-			DecodeAlphaExplicit(pImPos, pAlphaBlock, nWidth, alphazero);
+			DWORD* pImPos = pdwDest + (y * 4) * nWidth + x * 4;
+			for (int row = 0; row < 4; ++row, pImPos += nWidth)  // pImPos[pix] indexes within the row
+			{
+				const DWORD abits = (DWORD)pBlock[row * 2] | ((DWORD)pBlock[row * 2 + 1] << 8);
+				for (int pix = 0; pix < 4; ++pix)
+				{
+					const DWORD a = (abits >> (4 * pix)) & 0xf;
+					pImPos[pix] = (a | (a << 4)) << 24 | color[(bits >> (2 * (4 * row + pix))) & 3];
+				}
+			}
 		}
 	}
 }
 
 void CDXTCImage::DecompressDXT5(int level, DWORD* pdwDest)
 {
-	int xblocks, yblocks;
-#ifdef DEBUG
-	if ((ddsd.dwWidth % 4) != 0)
+	// decompresses to 32 bit format 0xARGB.
+	// NOTE: rewritten for the wasm port — same reason as DecompressDXT1
+	// (type-punned block walks were miscompiled).
+	const int nWidth = m_nWidth >> level;
+	const int nHeight = m_nHeight >> level;
+	const int xblocks = nWidth / 4;
+	const int yblocks = nHeight / 4;
+	const BYTE* pPos = &m_bCompVector[level][0];
+
+	for (int y = 0; y < yblocks; ++y)
 	{
-		Tracef("****** warning width not div by 4! %d\n", ddsd.dwWidth);
-	}
-
-	if ((ddsd.dwHeight % 4) != 0)
-	{
-		Tracef("****** warning Height not div by 4! %d\n", ddsd.dwHeight);
-	}
-
-	Tracef("end check\n");
-#endif
-	UINT nWidth = m_nWidth >> level;
-	UINT nHeight = m_nHeight >> level;
-
-	xblocks = nWidth / 4;
-	yblocks = nHeight / 4;
-
-	int x, y;
-
-	DWORD* pBase = (DWORD*)pdwDest;
-	WORD* pPos = pPos = (WORD*)&m_bCompVector[level][0]; // pos in compressed data
-	DWORD* pImPos;	// pos in decompressed data
-
-	DXTColBlock* pBlock;
-	DXTAlphaBlock3BitLinear* pAlphaBlock;
-
-	Color8888 col_0, col_1, col_2, col_3;
-	WORD wrd;
-
-	// fill alphazero with appropriate value to zero out alpha when
-	// alphazero is ANDed with the image color 32 bit DWORD:
-	col_0.a = 0;
-	col_0.r = col_0.g = col_0.b = 0xff;
-	DWORD alphazero = *((DWORD*)&col_0);
-
-	////////////////////////////////
-	// Tracef("blocks: x: %d y: %d\n", xblocks, yblocks);
-	for (y = 0; y < yblocks; ++y)
-	{
-		// 8 bytes per block
-		// 1 block for alpha, 1 block for color
-		pBlock = (DXTColBlock*)((uintptr_t)pPos + y * xblocks * 16);
-
-		for (x = 0; x < xblocks; ++x, ++pBlock)
+		for (int x = 0; x < xblocks; ++x)
 		{
-			// inline
-			// Get alpha block
-			pAlphaBlock = (DXTAlphaBlock3BitLinear*)pBlock;
+			const BYTE* pBlock = pPos + (y * xblocks + x) * 16;
+			const BYTE* pColor = pBlock + 8;
 
-			// inline func:
-			// Get color block & colors
-			pBlock++;
+			BYTE alphas[8];
+			alphas[0] = pBlock[0];
+			alphas[1] = pBlock[1];
+			if (alphas[0] > alphas[1])
+			{
+				alphas[2] = (BYTE)((6 * alphas[0] + 1 * alphas[1]) / 7);
+				alphas[3] = (BYTE)((5 * alphas[0] + 2 * alphas[1]) / 7);
+				alphas[4] = (BYTE)((4 * alphas[0] + 3 * alphas[1]) / 7);
+				alphas[5] = (BYTE)((3 * alphas[0] + 4 * alphas[1]) / 7);
+				alphas[6] = (BYTE)((2 * alphas[0] + 5 * alphas[1]) / 7);
+				alphas[7] = (BYTE)((1 * alphas[0] + 6 * alphas[1]) / 7);
+			}
+			else
+			{
+				alphas[2] = (BYTE)((4 * alphas[0] + 1 * alphas[1]) / 5);
+				alphas[3] = (BYTE)((3 * alphas[0] + 2 * alphas[1]) / 5);
+				alphas[4] = (BYTE)((2 * alphas[0] + 3 * alphas[1]) / 5);
+				alphas[5] = (BYTE)((1 * alphas[0] + 4 * alphas[1]) / 5);
+				alphas[6] = 0;
+				alphas[7] = 255;
+			}
 
-			// Tracef("pBlock: 0x%.8x\n", pBlock);
-			GetColorBlockColors(pBlock, &col_0, &col_1, &col_2, &col_3, wrd);
+			DWORD color[4];
+			const DWORD col0 = (DWORD)pColor[0] | ((DWORD)pColor[1] << 8);
+			const DWORD col1 = (DWORD)pColor[2] | ((DWORD)pColor[3] << 8);
+			const DWORD bits = (DWORD)pColor[4] | ((DWORD)pColor[5] << 8)
+				| ((DWORD)pColor[6] << 16) | ((DWORD)pColor[7] << 24);
+			color[0] = (((col0 >> 11) & 31) << 19)
+				| (((col0 >> 5) & 63) << 10)
+				| ((col0 & 31) << 3);
+			color[1] = (((col1 >> 11) & 31) << 19)
+				| (((col1 >> 5) & 63) << 10)
+				| ((col1 & 31) << 3);
+			// DXT5 color blocks always use the 4-color palette.
+			color[2] = (((2 * (color[0] >> 16 & 0xff) + (color[1] >> 16 & 0xff)) / 3) << 16)
+				| (((2 * (color[0] >> 8 & 0xff) + (color[1] >> 8 & 0xff)) / 3) << 8)
+				| ((2 * (color[0] & 0xff) + (color[1] & 0xff)) / 3);
+			color[3] = ((((color[0] >> 16 & 0xff) + 2 * (color[1] >> 16 & 0xff)) / 3) << 16)
+				| ((((color[0] >> 8 & 0xff) + 2 * (color[1] >> 8 & 0xff)) / 3) << 8)
+				| (((color[0] & 0xff) + 2 * (color[1] & 0xff)) / 3);
 
-			// Decode the color block into the bitmap bits
-			// inline func:
-			pImPos = (DWORD*)((uintptr_t)pBase + x * 16 + (y * 4) * nWidth * 4);
-
-			//DecodeColorBlock(pImPos, pBlock, nWidth, (DWORD *)&col_0, (DWORD *)&col_1, (DWORD *)&col_2, (DWORD *)&col_3);
-			DecodeColorBlock(pImPos, pBlock, nWidth, (DWORD*)&col_0, (DWORD*)&col_1, (DWORD*)&col_2, (DWORD*)&col_3);
-
-			// Overwrite the previous alpha bits with the alpha block
-			//  info
-			DecodeAlpha3BitLinear(pImPos, pAlphaBlock, nWidth, alphazero);
+			DWORD* pImPos = pdwDest + (y * 4) * nWidth + x * 4;
+			for (int row = 0; row < 4; ++row, pImPos += nWidth)  // pImPos[pix] indexes within the row
+			{
+				// 3-bit alpha indices: rows 0-1 in bytes 2-4, rows 2-3 in bytes 5-7
+				const DWORD abits = (DWORD)pBlock[2 + (row >> 1) * 3]
+					| ((DWORD)pBlock[3 + (row >> 1) * 3] << 8)
+					| ((DWORD)pBlock[4 + (row >> 1) * 3] << 16);
+				for (int pix = 0; pix < 4; ++pix)
+				{
+					const DWORD a = alphas[(abits >> (3 * (4 * (row & 1) + pix))) & 7];
+					pImPos[pix] = (a << 24) | color[(bits >> (2 * (4 * row + pix))) & 3];
+				}
+			}
 		}
 	}
 }	// dxt5

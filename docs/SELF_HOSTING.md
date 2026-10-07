@@ -375,7 +375,51 @@ Notes:
   headless Chrome over CDP — screenshots, console capture and a timed
   action list for scripted login tests.
 
+
+### 5.3 Serverless single player (no server, no bridge)
+
+`local.html` runs everything in the page: the client plus the
+`m2dev-server-src` db and game binaries compiled to wasm, talking over an
+in-page SharedArrayBuffer loopback. Static hosting only.
+
+```bash
+# client wasm (as in 5.2)
+"r10dev.net OPENGL-ITJA/web/build.sh"
+
+# server wasm -> bin/m2{db,game}.{js,wasm}
+source ~/emsdk/emsdk_env.sh
+mkdir -p /tmp/m2srv-wasm && cd /tmp/m2srv-wasm
+emcmake cmake -GNinja \
+    -DM2_SERVER_SRC=/path/to/m2dev-server-src \
+    "/path/to/repo/r10dev.net OPENGL-ITJA/server"
+ninja
+
+# server data pack (share/ tree + seeded sqlite dbs)
+"r10dev.net OPENGL-ITJA/server/tools/make-server-pack.sh" \
+    /path/to/m2dev-server/share /path/to/sqlite-seed-dir /tmp/srvpack
+
+# assemble the webroot (packs, html, js, wasm)
+"r10dev.net OPENGL-ITJA/web/make-webroot.sh" ~/m2data-web /tmp/srvpack ~/m2webroot
+
+python3 "r10dev.net OPENGL-ITJA/web/serve.py" --root ~/m2webroot --port 8081
+```
+
+Open `http://<host>:8081/local.html`. First load streams ~1 GB of
+`.m2pack` archives (gzip, unpacked to MEMFS while the progress bar shows
+per-part state); everything is IndexedDB-cached so repeat loads are
+offline. The sqlite databases additionally mount IDBFS, so characters
+survive reloads.
+
+- Login: `test` / `test123` (seeded account).
+- The channel server needs ~2-3 min on first boot (map `server_attr`
+  LZO decode inside its loop) — the page holds the client engine until
+  auth (:11000) and channel (:11011) listeners are bound, so login can't
+  fire early.
+- `?m2auto=1` auto-logs-in via a generated `loginInfo.py` (scripted
+  testing); `?m2_boot=1` waits for every pack before the engine starts.
+
 ## 6. Reaching the server from a phone
+
 
 - **Same Wi-Fi:** set `m2.serverHost` to the server's LAN IP and make sure the
   cores advertise that IP (section 2.5). No offset is needed.

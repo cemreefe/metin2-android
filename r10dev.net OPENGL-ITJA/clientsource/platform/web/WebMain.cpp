@@ -180,15 +180,15 @@ const char* M2Plat::FontFilePath() { return "font.ttf"; }
 
 void M2Plat::SetKeyboardVisible(bool visible, float focusBottomFraction)
 {
-	// runs on a worker under PROXY_TO_PTHREAD: forward through globalThis,
-	// where emscripten exposes the main thread's Module hooks
-	EM_ASM_({ if (Module.m2ShowKeyboard) Module.m2ShowKeyboard($0, $1); },
+	// The game runs on a pthread (PROXY_TO_PTHREAD) where Module lacks the
+	// page-installed hooks — run on the browser main thread instead.
+	MAIN_THREAD_ASYNC_EM_ASM({ if (Module.m2ShowKeyboard) Module.m2ShowKeyboard($0, $1); },
 		(int)visible, (double)focusBottomFraction);
 }
 
 void M2Plat::SetGameControlsVisible(bool visible)
 {
-	EM_ASM_({ if (Module.m2SetGameControls) Module.m2SetGameControls($0); }, (int)visible);
+	MAIN_THREAD_ASYNC_EM_ASM({ if (Module.m2SetGameControls) Module.m2SetGameControls($0); }, (int)visible);
 }
 
 void M2Plat::SetTouchBlockers(const SRect* rects, int count, int width, int height)

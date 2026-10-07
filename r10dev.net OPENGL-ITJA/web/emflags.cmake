@@ -34,6 +34,8 @@ add_link_options(
     -sALLOW_MEMORY_GROWTH=1
     -sINITIAL_MEMORY=268435456
     -sEXIT_RUNTIME=1
+    -sEXPORTED_RUNTIME_METHODS=HEAP8,HEAP32,HEAPU8
+    -sSTACK_SIZE=4194304
     -lwebsocket.js
     --shell-file=${CMAKE_CURRENT_SOURCE_DIR}/../web/shell.html
 )

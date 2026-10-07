@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>metin2 — offline</title>
+<style>
+  html, body { margin: 0; padding: 0; height: 100%; background: #000; overflow: hidden; }
+  #canvas { width: 100vw; height: 100vh; display: block; }
+  #status {
+    position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%);
+    color: #888; font: 14px monospace; pointer-events: none; white-space: pre;
+    text-align: center;
+  }
+  #bar { width: 320px; height: 6px; background: #222; margin: 8px auto 0; }
+  #barfill { height: 100%; width: 0%; background: #888; transition: width .2s; }
+</style>
+</head>
+<body>
+<canvas id="canvas"></canvas>
+<div id="status">starting…<div id="bar"><div id="barfill"></div></div></div>
+<script src="m2pack.js"></script>
+<script src="m2hud.js"></script>
+<script>
+// Single player, zero backend: the whole m2dev-server (db + auth + channel)
+// runs as wasm modules in workers on this page. Client and servers talk
+// over a SharedArrayBuffer loopback (server/web/m2lb.h); each module has its
+// own MEMFS, staged from .m2pack bundles cached in IndexedDB.
+//
+// Layout mirrors EmbeddedServer.java: db(:9000), auth(:11000),
+// channel1_core1(:11011); per-node cwd with symlinked share dirs + CONFIG.
+
+var statusEl = document.getElementById('status');
+var barEl = document.getElementById('barfill');
+var barWrap = document.getElementById('bar');
+var lastDl = '', worldTxt = '';
+function setStatus(txt, frac) {
+  if (txt !== undefined) lastDl = txt;
+  statusEl.childNodes[0].textContent = lastDl + worldTxt;
+  if (frac !== undefined) barEl.style.width = Math.round(frac * 100) + '%';
+}
+
+// SharedArrayBuffer loopback table (must exist before any module inits).
+var M2LB_SIZE = 8192 + 32 * (32 + 2 * 131072);
+var m2sab = new SharedArrayBuffer(M2LB_SIZE);
+new Int32Array(m2sab)[0] = 0x424C324D;
+self.m2lbSab = m2sab;
+
+// Deliver the SAB to every pthread: Worker spawns post {m2:'sab'} at
+// construction, and the client module's own pthreads (URL metin2_web.js)
+// are rerouted through srv_worker.js so they wait for it before loading.
+(function () {
+  var RealWorker = self.Worker;
+  self.Worker = function (url, opts) {
+    var u = url;
+    if (typeof u === 'string' && /(^|\/)metin2_web\.js$/.test(u))
+      u = 'srv_worker.js#metin2_web.js';
+    var w = new RealWorker(u, opts);
+    try { w.postMessage({ m2: 'sab', sab: m2sab }); } catch (e) {}
+    return w;
+  };
+  self.Worker.prototype = RealWorker.prototype;
+})();
+
+var MAP_ALLOW = "1 41";
+
+function spawnSrv(tag, cfg) {
+  var w = new Worker('srv_worker.js#' + tag);
+  cfg.m2 = 'init';
+  cfg.sab = m2sab;
+  w.onmessage = function (e) {
+    var d = e.data;
+    if (d && d.m2 === 'err') console.warn('[' + tag + ']', d.s);
+    else if (d && d.m2 === 'log') console.log('[' + tag + ']', d.s);
+    else if (d && d.m2 === 'ready') console.log('[' + tag + '] ready');
+  };
+  w.onerror = function (e) { console.warn('[' + tag + ']', e.message || e); };
+  w.postMessage(cfg);
+  return w;
+}
+
+var Module = {
+  canvas: document.getElementById('canvas'),
+  print: function (s) { console.log(s); },
+  printErr: function (s) { console.warn(s); },
+  m2lbSab: m2sab,
+  preRun: [
+    function () {
+      FS.mkdir('/data');
+      // local server list: auth :11000, channel :11011 on the loopback
+      FS.writeFile('/data/m2profile.py',
+        'SERVER_IP = "127.0.0.1"\nPORT_AUTH = 11000\nPORT_1 = 11011\n');
+      // ?m2auto=1 — scripted-login shortcut: loginInfo.py drives the
+      // client's own autoLogin/autoSelect path (chan :11011, auth :11000).
+      if (new URLSearchParams(location.search).get('m2auto') === '1') {
+        FS.writeFile('/data/loginInfo.py',
+          'addr = "127.0.0.1"\nport = 11011\n' +
+          'account_addr = "127.0.0.1"\naccount_port = 11000\n' +
+          'id = "test"\npwd = "test123"\n' +
+          'autoLogin = 1\nautoSelect = 1\nslot = 0\n');
+      }
+      addRunDependency('m2data');
+      // Don't let the engine reach main() until the in-page channel is
+      // listening: the login flow connects straight to :11011 and a too-early
+      // attempt just wedges on "connecting". Watch the shared listener table.
+      addRunDependency('m2chan');
+      var chanPoll = setInterval(function () {
+        var i32 = new Int32Array(m2sab), auth = false, chan = false;
+        for (var i = 0; i < 64; i++) {
+          var b = 32 + i * 24;
+          if (i32[b] === 1) {
+            if (i32[b + 1] === 11000) auth = true;
+            if (i32[b + 1] === 11011) chan = true;
+          }
+        }
+        worldTxt = ' · world: auth ' + (auth ? 'up' : '…') +
+          ', channel ' + (chan ? 'up' : '…');
+        if (!lastDl) setStatus('world loading'); else setStatus();
+        if (auth && chan) {
+          clearInterval(chanPoll);
+          worldTxt = '';
+          removeRunDependency('m2chan');
+        }
+      }, 1000);
+      m2boot().catch(function (e) {
+        statusEl.textContent = 'boot failed: ' + (e && e.message || e);
+      });
+    },
+  ],
+  postRun: [
+    function () {
+      statusEl.style.display = 'none';
+    },
+  ],
+};
+
+// Mobile HUD (floating joystick + soft keyboard), same extras as the
+// Android build; the engine shows/hides it by game phase.
+m2HudInit(Module);
+
+async function m2boot() {
+  var packs;
+  try {
+    packs = await (await fetch('packs.json')).json();
+  } catch (e) {
+    statusEl.textContent = 'packs.json: ' + e;
+    throw e;
+  }
+  var share = Object.assign({}, packs['srv-share'], { dest: '/srv/share' });
+  var sqlite = packs['srv-sqlite'];
+
+  // Server workers stage + boot in parallel with the client download.
+  // Each worker has a private FS -> every node gets its own seeded sqlite
+  // dir; only db's is IDBFS-persistent (player/account writes all go
+  // through db over the loopback).
+  setStatus('starting server…');
+  spawnSrv('m2db.js', {
+    argv: [], cwd: '/srv/db',
+    packs: [share],
+    sqliteDir: '/srv/db/sqlite', sqliteIdb: true,
+    sqlitePacks: [sqlite],
+    env: { M2_SQLITE_DIR: '/srv/db/sqlite' },
+  });
+  spawnSrv('m2game.js', {
+    argv: ['-I', '127.0.0.1'], cwd: '/srv/auth',
+    packs: [share],
+    sqliteDir: '/srv/auth/sqlite',
+    sqlitePacks: [sqlite],
+    env: { M2_SQLITE_DIR: '/srv/auth/sqlite' },
+    config: 'HOSTNAME: auth\nCHANNEL: 1\nPORT: 11000\nP2P_PORT: 12100\nAUTH_SERVER: master\n',
+  });
+  spawnSrv('m2game.js', {
+    argv: ['-I', '127.0.0.1'], cwd: '/srv/chan1',
+    packs: [share],
+    sqliteDir: '/srv/chan1/sqlite',
+    sqlitePacks: [sqlite],
+    env: { M2_SQLITE_DIR: '/srv/chan1/sqlite' },
+    config: 'HOSTNAME: channel1_1\nCHANNEL: 1\nPORT: 11011\nP2P_PORT: 12111\nMAP_ALLOW: ' + MAP_ALLOW + '\n',
+  });
+
+  var client = packs['client'];
+  var bootAll = new URLSearchParams(location.search).get('m2_boot') === '1';
+  var partName = 'pack';
+  await m2LoadPack(FS, client, '/data', {
+    onPart: function (i, n, isBoot) {
+      partName = isBoot ? 'boot pack' : 'pack ' + i + '/' + (n - 1);
+    },
+    onProgress: function (f) {
+      setStatus('downloading ' + partName + ' — ' + Math.round(f * 100) + '%', f);
+    },
+    onFile: function (path, i, total) {
+      setStatus('unpacking ' + partName + ' — ' + i + ' / ' + total, i / total);
+    },
+    bootReady: bootAll ? null : function () {
+      setStatus('starting…');
+      removeRunDependency('m2data');
+    },
+  });
+  if (bootAll) removeRunDependency('m2data');
+}
+
+document.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+</script>
+{{{ SCRIPT }}}
+</body>
+</html>

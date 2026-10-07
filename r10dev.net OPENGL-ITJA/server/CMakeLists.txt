@@ -35,6 +35,12 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(GIT_DESCRIBE_VERSION "66068c1-android")
 
 include_directories(BEFORE ${CMAKE_CURRENT_SOURCE_DIR}/sqlite-mysql/include ${CMAKE_CURRENT_SOURCE_DIR}/sqlite-mysql/sqlite3)
+if(EMSCRIPTEN)
+	# m2lb.h for the patched libthecore; impl is added to the executables below.
+	include_directories(BEFORE ${CMAKE_CURRENT_SOURCE_DIR}/web)
+	# -sUSE_PTHREADS at link requires every object built with atomics.
+	add_compile_options(-sUSE_PTHREADS=1 -pthread)
+endif()
 include_directories(${M2_SERVER_SRC}/src ${M2_SERVER_SRC}/include)
 
 # Stands in for the vendored mariadbclient target the server links against.
@@ -67,6 +73,26 @@ add_subdirectory(${M2_SERVER_SRC}/vendor/cryptopp vendor/cryptopp EXCLUDE_FROM_A
 set(CMAKE_CXX_FLAGS "${M2_SAVED_CXX_FLAGS}")
 add_subdirectory(${M2_SERVER_SRC}/src src)
 target_compile_options(libthecore PRIVATE "SHELL:-include \"${CMAKE_CURRENT_SOURCE_DIR}/compat/select_nfds.h\"")
+
+if(EMSCRIPTEN)
+	# Loopback transport: the patched server sources route socket calls to
+	# the m2lp facade; the SAB protocol lives in web/m2lb_bridge.cpp.
+	foreach(t db game)
+		target_sources(${t} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/web/m2lb_bridge.cpp)
+		target_link_options(${t} PRIVATE
+			-sUSE_PTHREADS=1
+			-sPROXY_TO_PTHREAD=1
+			-sPTHREAD_POOL_SIZE=8
+			-sFORCE_FILESYSTEM=1
+			-sALLOW_MEMORY_GROWTH=1
+			-sINITIAL_MEMORY=134217728
+			-sASSERTIONS=1)
+		set_target_properties(${t} PROPERTIES OUTPUT_NAME "m2${t}" SUFFIX ".js")
+	endforeach()
+	# sqlite databases mount IDBFS so character data survives reloads.
+	target_link_options(db PRIVATE -lidbfs.js)
+	target_compile_options(liblua PRIVATE -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0)
+endif()
 
 if(ANDROID)
 	# Packaged as lib<name>.so so the APK installer extracts them into

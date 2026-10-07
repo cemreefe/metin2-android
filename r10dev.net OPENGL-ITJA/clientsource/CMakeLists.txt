@@ -405,6 +405,8 @@ elseif(M2_TARGET STREQUAL "web")
     set(PLATFORM_SOURCES
         platform/web/WebMain.cpp
         platform/web/M2WebNet.cpp
+        # SAB loopback transport (shared with the wasm server modules)
+        ${CMAKE_CURRENT_SOURCE_DIR}/../server/web/m2lb_bridge.cpp
     )
 endif()
 

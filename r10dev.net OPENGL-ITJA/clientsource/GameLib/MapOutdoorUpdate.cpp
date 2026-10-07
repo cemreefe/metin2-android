@@ -99,7 +99,6 @@ bool CMapOutdoor::Update(float fX, float fY, float fZ)
 				LoadArea(usX, usY, wCellCoordX, wCellCoordY);
 			}
 		}
-
 		AssignTerrainPtr();
 		m_lOldReadX = -1;
 

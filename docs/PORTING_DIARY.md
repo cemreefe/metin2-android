@@ -453,3 +453,43 @@ timed action list (`click`/`type`/`key`/`eval` ops). Synthetic
 events with `charCode` for typing into the login fields. Boot to a live
 ws connection plus a scripted server-select/OK/type/Connect run is the
 smoke test.
+
+### Serverless: db + game servers as wasm in the same page
+
+`local.html` is the fully in-browser build: no ws bridge, no backend —
+the two server binaries (`m2dev-server-src` db + game) compile to wasm
+unchanged and run as emscripten pthread workers inside the page, next to
+the client. Three binaries, one page, zero network after first load.
+
+- **Build**: `server/CMakeLists.txt` gains an `EMSCRIPTEN` block —
+  `m2db.{js,wasm}` and `m2game.{js,wasm}` with `PROXY_TO_PTHREAD`,
+  `FORCE_FILESYSTEM`, `ALLOW_MEMORY_GROWTH`; the sqlite-mysql shim already
+  solved the DB dependency for Android, and `fdwatch` falls back to
+  `select()`. Only patch to upstream source: `server/m2dev-server-src-web.patch`
+  (~110 lines) rerouting libthecore `socket_*` calls through the m2lp
+  facade and pinning `g_szPublicIP = 127.0.0.1`.
+- **Loopback transport**: `server/web/m2lb_bridge.cpp` implements
+  socket/bind/listen/accept/connect/send/recv/select on ONE 8 MB
+  `SharedArrayBuffer` — listener registry + 32 conn slots, each with two
+  128 KB byte rings. Every worker sees the same SAB (posted by the page
+  on worker start; pthreads receive it because they share the parent's
+  memory object). All synchronous — no postMessage on the data path, so
+  the transport can't starve like the input mailbox did.
+- **Staging**: `web/srv_worker.js` wraps each server worker: waits for the
+  SAB, mounts `srv-share.m2pack` (map/quest data) into MEMFS and
+  `srv-sqlite.m2pack` (seed DBs) into IDBFS so characters persist, writes
+  `CONFIG`, then loads the module script. `server/tools/make-server-pack.sh`
+  builds those packs from an m2dev-server share dir + seeded sqlite files.
+- **Client side**: `M2WebNet` picks the loopback when `Module.m2lbSab`
+  exists — same `M2Net` port, transport invisible to the game.
+- **Channel boot is slow**: the channel game worker loads map
+  `server_attr` blobs (LZO) inside its io_loop before it accepts —
+  ~2-3 min before :11011 answers. `local.html` gates engine start on a
+  `m2chan` run-dependency that polls the SAB listener table until both
+  :11000 (auth) and :11011 (channel) are bound, so the client never
+  connects into a server that can't accept yet.
+- **Accounts**: seed accounts live in the sqlite `account` DB —
+  `test`/`test123` works out of the box.
+- **Auto-login**: `?m2auto=1` writes a `loginInfo.py` (addr/port + id/pwd
+  + autoLogin/autoSelect) — deterministic scripted login for headless
+  tests, no board clicking needed.

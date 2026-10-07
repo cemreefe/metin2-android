@@ -357,6 +357,10 @@ bool CGraphicImageTexture::CreateFromMemoryFile(UINT bufSize, const void* c_pvBu
 			{
 				image.Decompress(0, (DWORD*)lockedRect.pBits);
 				m_lpd3dTexture->UnlockRect(0);
+				const DWORD* px = (const DWORD*)lockedRect.pBits;
+				unsigned long long sum = 0; int zeroA = 0;
+				for (size_t i = 0; i < (size_t)m_width * m_height; ++i) { sum += px[i]; if ((px[i] >> 24) == 0) ++zeroA; }
+				const BYTE* cv = image.m_bCompVector[0].empty() ? NULL : &image.m_bCompVector[0][0];
 			}
 			m_bEmpty = false;
 			return true;
