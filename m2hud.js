@@ -100,14 +100,15 @@
       ime.setAttribute("autocomplete", "off");
       ime.style.cssText = "position:fixed;left:-200px;top:0;width:10px;height:10px;opacity:.01";
       document.body.appendChild(ime);
-      // Char input takes two DOM paths when this input is focused: the
-      // native keypress bubbles to the window listener (engine char #1) and
-      // 'input' fires with the text (would be char #2). Stop the bubble and
-      // forward only the inserted delta via a synthetic keypress, so each
-      // character reaches the engine exactly once. Backspace/arrows still
-      // travel keydown -> window -> engine unmodified.
+      // Char input takes two DOM paths when this input is focused: a
+      // physical keyboard fires keypress (the engine's window listener runs
+      // in the capture phase, so it already has the char) and then 'input'.
+      // Mobile soft keyboards skip keypress (keyCode 229) and only fire
+      // 'input'. Forward the inserted delta only when no keypress carried
+      // it, so each character reaches the engine exactly once.
       let imePrev = "";
-      ime.addEventListener("keypress", (e) => e.stopPropagation());
+      let sawKeypress = false;
+      ime.addEventListener("keypress", () => { sawKeypress = true; });
       ime.addEventListener("input", () => {
         const v = ime.value;
         let i = 0;
@@ -115,6 +116,7 @@
         const added = v.length >= imePrev.length ? v.slice(i) : "";
         imePrev = v;
         if (v.length > 256) { ime.value = ""; imePrev = ""; }
+        if (sawKeypress) { sawKeypress = false; return; }
         for (const ch of added)
           window.dispatchEvent(new KeyboardEvent("keypress", { charCode: ch.charCodeAt(0), bubbles: true }));
       });

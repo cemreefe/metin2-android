@@ -176,6 +176,17 @@ var Module = {
   canvas: document.getElementById('canvas'),
   print: function (s) { console.log(s); setDetail(s); },
   printErr: function (s) { console.warn(s); },
+  onExit: function (code) {
+    console.error('[m2] engine exited: ' + code);
+    statusEl.style.display = '';
+    setStatus('game stopped (exit ' + code + ') — reload to restart');
+  },
+  onAbort: function (what) {
+    window.__m2abort = String(what);
+    console.error('[m2] engine aborted: ' + what);
+    statusEl.style.display = '';
+    setStatus('engine crashed: ' + what);
+  },
   m2lbSab: m2sab,
   preRun: [
     function () {
