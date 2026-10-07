@@ -88,8 +88,27 @@
   let joy = null;
   window.m2HudInit = function (Module) {
     if (!joy) joy = makeJoystick();
+    if (!document.getElementById("m2fs") && document.documentElement.requestFullscreen) {
+      const fs = document.createElement("button");
+      fs.id = "m2fs";
+      fs.title = "Fullscreen";
+      fs.innerHTML = '<svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#fff" stroke-width="2"><path d="M2 7V2h5M13 2h5v5M18 13v5h-5M7 18H2v-5"/></svg>';
+      fs.style.cssText = "position:fixed;top:4px;left:50%;transform:translateX(-50%);z-index:20;" +
+        "width:44px;height:32px;border:0;border-radius:6px;background:rgba(0,0,0,.45);" +
+        "color:#fff;font:20px sans-serif;opacity:.5;cursor:pointer;padding:0";
+      fs.onmouseenter = () => { fs.style.opacity = "1"; };
+      fs.onmouseleave = () => { fs.style.opacity = ".5"; };
+      fs.addEventListener("click", (e) => {
+        e.stopPropagation();
+        if (document.fullscreenElement) document.exitFullscreen();
+        else document.documentElement.requestFullscreen().catch(() => {});
+        fs.blur();
+      });
+      document.body.appendChild(fs);
+    }
+    const touchPrimary = matchMedia("(pointer: coarse)").matches;
     Module.m2SetGameControls = function (v) {
-      joy.el.style.display = v ? "block" : "none";
+      joy.el.style.display = v && touchPrimary ? "block" : "none";
       if (!v) joy.release();
     };
     // Soft keyboard: hidden input that pulls the OS keyboard up on mobile.
