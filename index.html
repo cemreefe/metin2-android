@@ -1,0 +1,359 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>metin2 — offline</title>
+<style>
+  html, body { margin: 0; padding: 0; height: 100%; background: #000; overflow: hidden; }
+  #canvas { width: 100vw; height: 100vh; display: block; }
+  #status {
+    position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%);
+    color: #888; font: 14px monospace; pointer-events: none; white-space: pre;
+    text-align: center;
+  }
+  #bar { width: 320px; height: 6px; background: #222; margin: 8px auto 0; }
+  #barfill { height: 100%; width: 0%; background: #888; transition: width .2s; }
+  #srv { color: #555; font-size: 11px; margin-top: 8px; max-width: 90vw;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #detail { color: #444; font-size: 10px; margin-top: 4px; max-width: 90vw;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #spin { width: 18px; height: 18px; margin: 0 auto 10px;
+    border: 2px solid #333; border-top-color: #999; border-radius: 50%;
+    animation: m2rot .8s linear infinite; }
+  @keyframes m2rot { to { transform: rotate(360deg); } }
+  #gate {
+    position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%);
+    display: none; text-align: center; font: 14px monospace;
+  }
+  #gate input {
+    background: #111; border: 1px solid #444; color: #ccc;
+    font: 16px monospace; padding: 6px 10px; width: 220px;
+  }
+  #gate button {
+    background: #222; border: 1px solid #444; color: #ccc;
+    font: 16px monospace; padding: 6px 14px; cursor: pointer;
+  }
+  #gate .hint { color: #555; margin-top: 10px; }
+</style>
+</head>
+<body>
+<canvas id="canvas"></canvas>
+<div id="status"><div id="spin"></div><span>starting…</span><div id="bar"><div id="barfill"></div></div><div id="srv"></div><div id="detail"></div></div>
+<div id="gate"><div><input id="pw" type="password" placeholder="passphrase" autocomplete="off"><button id="pwgo">play</button></div><div class="hint"></div></div>
+<script src="m2pack.js"></script>
+<script src="m2hud.js"></script>
+<script>
+// SharedArrayBuffer needs cross-origin isolation. On hosts that don't send
+// COOP/COEP (plain static hosting), a service worker injects the headers —
+// first visit installs it and reloads once.
+if (self.crossOriginIsolated === false) {
+  var coiMsg = document.querySelector('#status span');
+  if (!('serviceWorker' in navigator)) {
+    coiMsg.textContent = 'this browser can\'t run the in-page server\n' +
+      '(SharedArrayBuffer needs COOP/COEP) — use Chrome';
+  } else {
+    coiMsg.textContent = 'preparing page (one-time setup)…';
+    var coiTries = 0;
+    try { coiTries = +sessionStorage.getItem('m2coi') || 0; } catch (e) {}
+    function coiReload() {
+      if (coiTries >= 2) {
+        coiMsg.textContent = 'cross-origin isolation failed — try a hard reload';
+        return;
+      }
+      try { sessionStorage.setItem('m2coi', String(coiTries + 1)); } catch (e) {}
+      location.reload();
+    }
+    navigator.serviceWorker.register('coi-sw.js').then(function (reg) {
+      if (navigator.serviceWorker.controller) {
+        // SW controlled yet still not isolated: headers didn't take.
+        coiMsg.textContent = 'cross-origin isolation failed — try a hard reload';
+      } else if (reg.active || reg.installing || reg.waiting) {
+        coiReload();
+      }
+      // else: registration produced no worker — watchdog below fires.
+    }).catch(function () {});
+    // Watchdog: registration/install hung or produced nothing — reload
+    // ourselves after 15s (bounded by m2coi) rather than sitting here.
+    setTimeout(function () {
+      if (self.crossOriginIsolated === false && !navigator.serviceWorker.controller)
+        coiReload();
+      else if (self.crossOriginIsolated === false)
+        coiMsg.textContent = 'cross-origin isolation failed — try a hard reload';
+    }, 15000);
+  }
+} else {
+  try { sessionStorage.removeItem('m2coi'); } catch (e) {}
+}
+</script>
+<script>
+// Single player, zero backend: the whole m2dev-server (db + auth + channel)
+// runs as wasm modules in workers on this page. Client and servers talk
+// over a SharedArrayBuffer loopback (server/web/m2lb.h); each module has its
+// own MEMFS, staged from .m2pack bundles cached in IndexedDB.
+//
+// Layout mirrors EmbeddedServer.java: db(:9000), auth(:11000),
+// channel1_core1(:11011); per-node cwd with symlinked share dirs + CONFIG.
+
+var statusEl = document.getElementById('status');
+var barEl = document.getElementById('barfill');
+var barWrap = document.getElementById('bar');
+var srvEl = document.getElementById('srv');
+var detailEl = document.getElementById('detail');
+var detailT = 0;
+function setDetail(path) {
+  // throttle: show at most ~8 updates/sec
+  var now = Date.now();
+  if (now - detailT < 120) return;
+  detailT = now;
+  detailEl.textContent = path;
+}
+var lastDl = '', worldTxt = '';
+var statusTxt = statusEl.querySelector('span');
+function setStatus(txt, frac) {
+  if (txt !== undefined) lastDl = txt;
+  statusTxt.textContent = lastDl + worldTxt;
+  if (frac !== undefined) barEl.style.width = Math.round(frac * 100) + '%';
+}
+// Latest line from each server worker, so the boot never looks dead.
+var srvLines = {};
+function setSrv(tag, s) {
+  srvLines[tag] = s;
+  var order = ['m2db.js', 'm2game.js'];
+  var out = [];
+  for (var i = 0; i < order.length; i++)
+    if (srvLines[order[i]]) out.push(order[i].replace(/\.js$/, '') + ': ' + srvLines[order[i]]);
+  srvEl.textContent = out.join('   ·   ');
+}
+
+// SharedArrayBuffer loopback table (must exist before any module inits).
+// If isolation never landed, don't die silently — the COI script above
+// already swapped the status text; bail before touching the page further.
+if (self.crossOriginIsolated === false || typeof SharedArrayBuffer !== 'function')
+  throw new Error('cross-origin isolation missing');
+var M2LB_SIZE = 8192 + 32 * (32 + 2 * 131072);
+var m2sab = new SharedArrayBuffer(M2LB_SIZE);
+new Int32Array(m2sab)[0] = 0x424C324D;
+self.m2lbSab = m2sab;
+statusTxt.textContent = 'loading engine…';
+
+// Deliver the SAB to every pthread: Worker spawns post {m2:'sab'} at
+// construction, and the client module's own pthreads (URL metin2_web.js)
+// are rerouted through srv_worker.js so they wait for it before loading.
+(function () {
+  var RealWorker = self.Worker;
+  self.Worker = function (url, opts) {
+    var u = url;
+    if (typeof u === 'string' && /(^|\/)metin2_web\.js$/.test(u))
+      u = 'srv_worker.js#metin2_web.js';
+    var w = new RealWorker(u, opts);
+    try { w.postMessage({ m2: 'sab', sab: m2sab }); } catch (e) {}
+    return w;
+  };
+  self.Worker.prototype = RealWorker.prototype;
+})();
+
+var MAP_ALLOW = "1 41";
+
+function spawnSrv(tag, cfg) {
+  var w = new Worker('srv_worker.js#' + tag);
+  cfg.m2 = 'init';
+  cfg.sab = m2sab;
+  w.onmessage = function (e) {
+    var d = e.data;
+    if (d && d.m2 === 'err') { console.warn('[' + tag + ']', d.s); setSrv(tag, d.s); }
+    else if (d && d.m2 === 'log') { console.log('[' + tag + ']', d.s); setSrv(tag, d.s); }
+    else if (d && d.m2 === 'stage') setSrv(tag, d.s);
+    else if (d && d.m2 === 'ready') { console.log('[' + tag + '] ready'); setSrv(tag, 'ready'); }
+  };
+  w.onerror = function (e) { console.warn('[' + tag + ']', e.message || e); };
+  w.postMessage(cfg);
+  return w;
+}
+
+var Module = {
+  canvas: document.getElementById('canvas'),
+  print: function (s) { console.log(s); setDetail(s); },
+  printErr: function (s) { console.warn(s); },
+  m2lbSab: m2sab,
+  preRun: [
+    function () {
+      FS.mkdir('/data');
+      // local server list: auth :11000, channel :11011 on the loopback
+      FS.writeFile('/data/m2profile.py',
+        'SERVER_IP = "127.0.0.1"\nPORT_AUTH = 11000\nPORT_1 = 11011\n');
+      // ?m2auto=1 — scripted-login shortcut: loginInfo.py drives the
+      // client's own autoLogin/autoSelect path (chan :11011, auth :11000).
+      if (new URLSearchParams(location.search).get('m2auto') === '1') {
+        FS.writeFile('/data/loginInfo.py',
+          'addr = "127.0.0.1"\nport = 11011\n' +
+          'account_addr = "127.0.0.1"\naccount_port = 11000\n' +
+          'id = "test"\npwd = "test123"\n' +
+          'autoLogin = 1\nautoSelect = 1\nslot = 0\n');
+      }
+      addRunDependency('m2data');
+      // Don't let the engine reach main() until the in-page channel is
+      // listening: the login flow connects straight to :11011 and a too-early
+      // attempt just wedges on "connecting". Watch the shared listener table.
+      addRunDependency('m2chan');
+      var chanPoll = setInterval(function () {
+        var i32 = new Int32Array(m2sab), auth = false, chan = false;
+        for (var i = 0; i < 64; i++) {
+          var b = 8 + i * 24;
+          if (i32[b] === 1) {
+            if (i32[b + 1] === 11000) auth = true;
+            if (i32[b + 1] === 11011) chan = true;
+          }
+        }
+        worldTxt = ' · world: auth ' + (auth ? 'up' : '…') +
+          ', channel ' + (chan ? 'up' : '…');
+        if (!lastDl) setStatus('world loading'); else setStatus();
+        if (auth && chan) {
+          clearInterval(chanPoll);
+          worldTxt = '';
+          removeRunDependency('m2chan');
+        }
+      }, 1000);
+      m2boot().catch(function (e) {
+        statusEl.textContent = 'boot failed: ' + (e && e.message || e);
+      });
+    },
+  ],
+  postRun: [
+    function () {
+      statusEl.style.display = 'none';
+    },
+  ],
+};
+
+// Mobile HUD (floating joystick + soft keyboard), same extras as the
+// Android build; the engine shows/hides it by game phase.
+m2HudInit(Module);
+
+// Passphrase gate: ?m2pw=<pw> skips the prompt (headless tests); a correct
+// entry is remembered in sessionStorage so in-app restarts (which reload
+// the page) don't re-ask. sessionStorage clears when the tab closes.
+var m2pw = new URLSearchParams(location.search).get('m2pw');
+if (m2pw === null)
+  try { m2pw = sessionStorage.getItem('m2pw'); } catch (e) {}
+
+function m2gate() {
+  return new Promise(function (res) {
+    if (m2pw !== null) return res(m2pw);
+    var g = document.getElementById('gate');
+    g.style.display = 'block';
+    document.getElementById('pw').focus();
+    function go() {
+      g.style.display = 'none';
+      var v = document.getElementById('pw').value;
+      res(v);
+    }
+    document.getElementById('pwgo').onclick = go;
+    document.getElementById('pw').onkeydown = function (e) {
+      if (e.key === 'Enter') go();
+    };
+  });
+}
+
+// Wrong passphrase -> AES-GCM decrypt throws. Verify against the first
+// client pack before booting (its bytes land in IDB, so the real unpack
+// reuses them); a bad or remembered-but-wrong value re-asks.
+async function m2gateLoop(checkSpec) {
+  while (true) {
+    var pw = await m2gate();
+    if (pw) await m2packSetPassphrase(pw);
+    setStatus('checking key…');
+    try {
+      await m2packDecrypt(await (await m2packFetch(checkSpec)).arrayBuffer());
+      m2pw = pw;
+      try { sessionStorage.setItem('m2pw', pw); } catch (e) {}
+      return pw;
+    } catch (e) {
+      if (!/encrypt|decrypt|required|OperationError/i.test(e && e.message || '' + e)) throw e;
+      m2pw = null;
+      try { sessionStorage.removeItem('m2pw'); } catch (e2) {}
+      document.querySelector('#gate .hint').textContent = 'wrong passphrase';
+    }
+  }
+}
+
+async function m2boot() {
+  var packs;
+  try {
+    packs = await (await fetch('packs.json')).json();
+  } catch (e) {
+    statusEl.textContent = 'packs.json: ' + e;
+    throw e;
+  }
+
+  var client = packs['client'];
+  var firstSpec = client.boot || (client.parts && client.parts[0]) || client;
+  var pw = await m2gateLoop(firstSpec);
+  var share = Object.assign({}, packs['srv-share'], { dest: '/srv/share' });
+  var sqlite = packs['srv-sqlite'];
+
+  // Server workers stage + boot in parallel with the client download.
+  // Each worker has a private FS -> every node gets its own seeded sqlite
+  // dir; only db's is IDBFS-persistent (player/account writes all go
+  // through db over the loopback).
+  setStatus('starting server…');
+  spawnSrv('m2db.js', {
+    argv: [], cwd: '/srv/db',
+    packs: [share],
+    sqliteDir: '/srv/db/sqlite', sqliteIdb: true,
+    sqlitePacks: [sqlite],
+    env: { M2_SQLITE_DIR: '/srv/db/sqlite' },
+    pw: pw,
+  });
+  spawnSrv('m2game.js', {
+    argv: ['-I', '127.0.0.1'], cwd: '/srv/auth',
+    packs: [share],
+    sqliteDir: '/srv/auth/sqlite',
+    sqlitePacks: [sqlite],
+    env: { M2_SQLITE_DIR: '/srv/auth/sqlite' },
+    config: 'HOSTNAME: auth\nCHANNEL: 1\nPORT: 11000\nP2P_PORT: 12100\nAUTH_SERVER: master\n',
+    pw: pw,
+  });
+  spawnSrv('m2game.js', {
+    argv: ['-I', '127.0.0.1'], cwd: '/srv/chan1',
+    packs: [share],
+    sqliteDir: '/srv/chan1/sqlite',
+    sqlitePacks: [sqlite],
+    env: { M2_SQLITE_DIR: '/srv/chan1/sqlite' },
+    config: 'HOSTNAME: channel1_1\nCHANNEL: 1\nPORT: 11011\nP2P_PORT: 12111\nMAP_ALLOW: ' + MAP_ALLOW + '\n',
+    pw: pw,
+  });
+
+  var client = packs['client'];
+  var bootAll = new URLSearchParams(location.search).get('m2_boot') === '1';
+  var partName = 'pack';
+  await m2LoadPack(FS, client, '/data', {
+    onPart: function (i, n, isBoot) {
+      partName = isBoot ? 'boot pack' : 'pack ' + i + '/' + (n - 1);
+    },
+    onProgress: function (f) {
+      setStatus('downloading ' + partName + ' — ' + Math.round(f * 100) + '%', f);
+    },
+    onFile: function (path, i, total) {
+      setStatus('unpacking ' + partName + ' — ' + i + ' / ' + total, i / total);
+    },
+    bootReady: bootAll ? null : function () {
+      setStatus('starting…');
+      // Re-apply the user's saved display.cfg (ui_scale etc.): MEMFS is
+      // rebuilt from packs each boot, so M2Plat::RestartApp stashes it in
+      // localStorage before reloading.
+      try {
+        var cfg = localStorage.getItem('m2_display_cfg');
+        if (cfg) FS.writeFile('/data/display.cfg', cfg);
+      } catch (e) {}
+      removeRunDependency('m2data');
+    },
+  });
+  if (bootAll) removeRunDependency('m2data');
+}
+
+document.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+</script>
+<script async src="metin2_web.js"></script>
+</body>
+</html>

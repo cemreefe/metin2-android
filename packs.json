@@ -1,0 +1,98 @@
+{
+ "client": {
+  "boot": {
+   "url": "client-boot.m2pack",
+   "ver": "9e24224d7f6d012f-dost1"
+  },
+  "parts": [
+   {
+    "url": "client-p1.m2pack",
+    "ver": "0823fe0378e42c6b-dost1"
+   },
+   {
+    "url": "client-p2.m2pack",
+    "ver": "f87cb7ceb8931c64-dost1"
+   },
+   {
+    "url": "client-p3.m2pack",
+    "ver": "a7b7c0e3364d7183-dost1"
+   },
+   {
+    "url": "client-p4.m2pack",
+    "ver": "e591e59fba9464c7-dost1"
+   },
+   {
+    "url": "client-p5.m2pack",
+    "ver": "058280801a2b7ed4-dost1"
+   },
+   {
+    "url": "client-p6.m2pack",
+    "ver": "4632d3bf0831b3b1-dost1"
+   },
+   {
+    "url": "client-p7.m2pack",
+    "ver": "6b9bf0952158af44-dost1"
+   },
+   {
+    "url": "client-p8.m2pack",
+    "ver": "cbcee98ff31cfb69-dost1"
+   },
+   {
+    "url": "client-p9.m2pack",
+    "ver": "d721ca28ef8f8bef-dost1"
+   },
+   {
+    "url": "client-p10.m2pack",
+    "ver": "d6cdc8cc8f58841a-dost1"
+   },
+   {
+    "url": "client-p11.m2pack",
+    "ver": "067505cad138e731-dost1"
+   },
+   {
+    "url": "client-p12.m2pack",
+    "ver": "5cbc689153cf9dd7-dost1"
+   },
+   {
+    "url": "client-p13.m2pack",
+    "ver": "0ef662845fbe9736-dost1"
+   },
+   {
+    "url": "client-p14.m2pack",
+    "ver": "ab1302812e575d90-dost1"
+   },
+   {
+    "url": "client-p15.m2pack",
+    "ver": "72d50a87ad2a5e5a-dost1"
+   },
+   {
+    "url": "client-p16.m2pack",
+    "ver": "8815a745ef591b30-dost1"
+   },
+   {
+    "url": "client-p17.m2pack",
+    "ver": "c6f065d244a6d92b-dost1"
+   },
+   {
+    "url": "client-p18.m2pack",
+    "ver": "febd9f035e27e5e2-dost1"
+   }
+  ]
+ },
+ "srv-share": {
+  "parts": [
+   {
+    "url": "srv-share.m2pack",
+    "ver": "c722f74b1d656760-dost1"
+   }
+  ]
+ },
+ "srv-sqlite": {
+  "parts": [
+   {
+    "url": "srv-sqlite.m2pack",
+    "ver": "8575da49c6ecd330-dost1"
+   }
+  ]
+ }
+}
