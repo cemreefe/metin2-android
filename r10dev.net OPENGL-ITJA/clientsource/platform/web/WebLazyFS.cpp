@@ -40,6 +40,22 @@ namespace
 	bool s_loaded = false;
 	std::vector<std::string> s_urls;
 	std::unordered_map<std::string, SEntry> s_index;
+	std::unordered_set<std::string> s_dirs;
+
+	void MkdirP(const char* path)
+	{
+		char dir[1024];
+		strncpy(dir, path, sizeof(dir) - 1);
+		dir[sizeof(dir) - 1] = 0;
+		for (char* p = dir + 1; *p; ++p)
+		{
+			if (*p != '/')
+				continue;
+			*p = 0;
+			mkdir(dir, 0755);
+			*p = '/';
+		}
+	}
 
 	void LoadIndex()
 	{
@@ -67,26 +83,18 @@ namespace
 			if (*p != '\t')
 				continue;
 			s_index[p + 1] = e;
+			// Create the directory skeleton so access/stat/opendir on folders
+			// that only hold lazy files succeed (e.g. "property").
+			std::string full = std::string("/data/") + (p + 1);
+			std::string parent = full.substr(0, full.rfind('/'));
+			if (s_dirs.insert(parent).second)
+				MkdirP(full.c_str());
 		}
 		fclose(fp);
 		M2Plat::Log(M2Plat::LOG_INFO, "lazyfs", "%d files in %d blobs",
 			(int)s_index.size(), (int)s_urls.size());
 	}
 
-	void MkdirP(const char* path)
-	{
-		char dir[1024];
-		strncpy(dir, path, sizeof(dir) - 1);
-		dir[sizeof(dir) - 1] = 0;
-		for (char* p = dir + 1; *p; ++p)
-		{
-			if (*p != '/')
-				continue;
-			*p = 0;
-			mkdir(dir, 0755);
-			*p = '/';
-		}
-	}
 }
 
 namespace M2Plat

@@ -155,7 +155,18 @@
  
  		self.questButtonList = []
  		self.whisperButtonList = []
-@@ -964,6 +970,10 @@
+@@ -673,6 +679,10 @@
+ 		
+ 	def RemoveQuestDialog(self, key):
+ 		del self.wndQuestWindow[key]
++		# Some quest flows (e.g. skill group choice) close the last dialog
++		# without asking the curtain to lift, so the hidden HUD never came back.
++		if not self.wndQuestWindow and uiQuest.QuestDialog.__dict__.has_key("QuestCurtain"):
++			uiQuest.QuestDialog.QuestCurtain.CurtainMode = -1
+ 
+ 	## Exchange
+ 	def StartExchange(self):
+@@ -964,6 +974,10 @@
  			if False == self.wndInventory.IsShow():
  				self.wndInventory.Show()
  				self.wndInventory.SetTop()
@@ -166,7 +177,7 @@
  			else:
  				self.wndInventory.OverOutItem()
  				self.wndInventory.Close()
-@@ -1359,6 +1369,30 @@
+@@ -1359,6 +1373,30 @@
  			else:
  				btn.Show()
  
@@ -197,7 +208,7 @@
  	def __StartQuest(self, btn):
  		event.QuestButtonClick(btn.index)
  		self.__DestroyQuestButton(btn)
-@@ -1378,10 +1412,14 @@
+@@ -1378,10 +1416,14 @@
  	def HideAllQuestButton(self):
  		for btn in self.questButtonList:
  			btn.Hide()

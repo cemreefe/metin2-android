@@ -38,7 +38,10 @@ namespace M2Plat
 		NormalizePath(c_szPath, szNormalized, sizeof(szNormalized));
 		if (access(szNormalized, iMode) == 0)
 			return 0;
-		return MaterializeFile(c_szPath) ? access(szNormalized, iMode) : -1;
+		// Materializing also builds the lazy directory skeleton, so retry
+		// even when no file was copied (the path may be a folder).
+		MaterializeFile(c_szPath);
+		return access(szNormalized, iMode) == 0 ? 0 : -1;
 	}
 
 	__attribute__((weak)) bool MaterializeFile(const char*)

@@ -92,7 +92,7 @@
       const fs = document.createElement("button");
       fs.id = "m2fs";
       fs.title = "Fullscreen";
-      fs.textContent = "\u26F6";
+      fs.innerHTML = '<svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#fff" stroke-width="2"><path d="M2 7V2h5M13 2h5v5M18 13v5h-5M7 18H2v-5"/></svg>';
       fs.style.cssText = "position:fixed;top:4px;left:50%;transform:translateX(-50%);z-index:20;" +
         "width:44px;height:32px;border:0;border-radius:6px;background:rgba(0,0,0,.45);" +
         "color:#fff;font:20px sans-serif;opacity:.5;cursor:pointer;padding:0";
