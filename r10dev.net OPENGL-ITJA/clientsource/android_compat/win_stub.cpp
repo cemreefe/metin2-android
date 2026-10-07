@@ -7,6 +7,9 @@
 #include <pthread.h>
 #include <mutex>
 #include <fnmatch.h>
+#include <ctype.h>
+#include <set>
+#include "../platform/m2platform.h"
 #include <dirent.h>
 #include <vector>
 #include <string>
@@ -69,10 +72,27 @@ DWORD GetFullPathNameA(LPCSTR lpFileName, DWORD nBufferLength, LPSTR lpBuffer, L
 /* ---- FindFirstFile/FindNextFile over glob ---- */
 struct FindHandle {
     std::vector<std::string> paths;
+    std::vector<bool> lazyDir;
     size_t pos;
 };
 
-static void FillFindData(const char* path, LPWIN32_FIND_DATAA fd) {
+struct LazyFindCtx {
+    FindHandle* h;
+    const char* dir;
+    const char* mask;
+    std::set<std::string> seen;
+};
+
+static void AddLazyEntry(const char* name, bool isDir, void* user) {
+    LazyFindCtx* c = (LazyFindCtx*)user;
+    std::string lower = name;
+    for (char& ch : lower) ch = (char)tolower((unsigned char)ch);
+    if (fnmatch(c->mask, name, FNM_CASEFOLD) != 0 || !c->seen.insert(lower).second) return;
+    c->h->paths.push_back(std::string(c->dir) + "/" + name);
+    c->h->lazyDir.push_back(isDir);
+}
+
+static void FillFindData(const char* path, LPWIN32_FIND_DATAA fd, bool lazyDir = false) {
     memset(fd, 0, sizeof(*fd));
     const char* base = strrchr(path, '/');
     base = base ? base + 1 : path;
@@ -85,6 +105,8 @@ static void FillFindData(const char* path, LPWIN32_FIND_DATAA fd) {
             fd->dwFileAttributes |= FILE_ATTRIBUTE_DIRECTORY;
         if (!(st.st_mode & S_IWUSR))
             fd->dwFileAttributes |= FILE_ATTRIBUTE_READONLY;
+    } else if (lazyDir) {
+        fd->dwFileAttributes |= FILE_ATTRIBUTE_DIRECTORY;
     }
 }
 
@@ -135,6 +157,7 @@ HANDLE FindFirstFileA(LPCSTR lpFileName, LPWIN32_FIND_DATAA lpFindFileData) {
     if (strcmp(mask, "*.*") == 0) mask = "*";
     std::string resolvedDir = ResolveDirCaseInsensitive(dir);
     dir = resolvedDir.c_str();
+    LazyFindCtx lazy{h, dir, mask, {}};
     DIR* dp = opendir(dir);
     if (dp) {
         struct dirent* ent;
@@ -143,19 +166,29 @@ HANDLE FindFirstFileA(LPCSTR lpFileName, LPWIN32_FIND_DATAA lpFindFileData) {
                 char full[1100];
                 snprintf(full, sizeof(full), "%s/%s", dir, ent->d_name);
                 h->paths.push_back(full);
+                h->lazyDir.push_back(false);
+                std::string lower = ent->d_name;
+                for (char& ch : lower) ch = (char)tolower((unsigned char)ch);
+                lazy.seen.insert(lower);
             }
         }
         closedir(dp);
-    } else if (strchr(mask, '*') == NULL && strchr(mask, '?') == NULL) {
+    }
+    if (strchr(mask, '*') || strchr(mask, '?')) {
+        M2Plat::ListLazyDir(dir, AddLazyEntry, &lazy);
+    } else if (!dp && h->paths.empty()) {
         struct stat st;
-        if (stat(pattern, &st) == 0) h->paths.push_back(pattern);
+        if (stat(pattern, &st) == 0 || M2Plat::FileAccess(pattern, F_OK) == 0) {
+            h->paths.push_back(pattern);
+            h->lazyDir.push_back(false);
+        }
     }
     if (h->paths.empty()) {
         delete h;
         return INVALID_HANDLE_VALUE;
     }
     h->pos = 0;
-    FillFindData(h->paths[0].c_str(), lpFindFileData);
+    FillFindData(h->paths[0].c_str(), lpFindFileData, h->lazyDir[0]);
     h->pos = 1;
     return (HANDLE)h;
 }
@@ -164,7 +197,8 @@ BOOL FindNextFileA(HANDLE hFindFile, LPWIN32_FIND_DATAA lpFindFileData) {
     FindHandle* h = (FindHandle*)hFindFile;
     if (!h || h == (FindHandle*)INVALID_HANDLE_VALUE) return FALSE;
     if (h->pos >= h->paths.size()) return FALSE;
-    FillFindData(h->paths[h->pos++].c_str(), lpFindFileData);
+    FillFindData(h->paths[h->pos].c_str(), lpFindFileData, h->lazyDir[h->pos]);
+    ++h->pos;
     return TRUE;
 }
 

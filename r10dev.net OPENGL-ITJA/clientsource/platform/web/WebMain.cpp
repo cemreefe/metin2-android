@@ -97,12 +97,13 @@ namespace
 			// arrives with no preceding move would land at stale coords, so
 			// push a move first (on Windows a move always precedes the click).
 			CMSApplication::PushTouchEvent(2, x, y);
-			// Right button = camera rotate, like the desktop client.
-			CMSApplication::PushTouchEvent(e->button == 2 ? CMSApplication::TOUCH_RIGHT_DOWN : 0, x, y);
+			// A mouse drives the original desktop handlers (right drag = camera
+			// rotate); the touch gesture layer is only for touch input.
+			CMSApplication::PushTouchEvent(e->button == 2 ? CMSApplication::TOUCH_RIGHT_DOWN : CMSApplication::TOUCH_SYNTHETIC_DOWN, x, y);
 			break;
 		case EMSCRIPTEN_EVENT_MOUSEUP:
 			CMSApplication::PushTouchEvent(2, x, y);
-			CMSApplication::PushTouchEvent(e->button == 2 ? CMSApplication::TOUCH_RIGHT_UP : 1, x, y);
+			CMSApplication::PushTouchEvent(e->button == 2 ? CMSApplication::TOUCH_RIGHT_UP : CMSApplication::TOUCH_SYNTHETIC_UP, x, y);
 			break;
 		case EMSCRIPTEN_EVENT_MOUSEMOVE:
 			CMSApplication::PushTouchEvent(2, x, y);
@@ -209,6 +210,11 @@ void M2Plat::RestartApp()
 		} catch (e) {}
 		location.reload();
 	});
+}
+
+bool M2Plat::IsTouchPrimary()
+{
+	return MAIN_THREAD_EM_ASM_INT({ return matchMedia('(pointer: coarse)').matches ? 1 : 0; }) != 0;
 }
 
 int M2Plat::GetEnv(const char* name, char* out, size_t outSize)

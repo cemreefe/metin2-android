@@ -54,6 +54,14 @@ namespace M2Plat
 	// data) to its normalized path. False if the adapter does not know it.
 	bool MaterializeFile(const char* path);
 
+	// True when the main input is a touch screen (default HUD: mobile).
+	bool IsTouchPrimary();
+
+	// Entries of directory dir the adapter holds outside the filesystem and
+	// has not materialized yet, one call per name. No-op without such data.
+	typedef void (*ListDirFn)(const char* name, bool isDir, void* user);
+	void ListLazyDir(const char* dir, ListDirFn fn, void* user);
+
 	// Audio output owned by the adapter instead of the audio library's own
 	// device (web: AudioWorklet). render fills interleaved stereo floats.
 	// False when the adapter has none and the library should open a device.

@@ -13,6 +13,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 // Synchronous range read of a page-owned Blob URL. Runs on the calling
@@ -125,5 +126,36 @@ namespace M2Plat
 		if (ok)
 			s_index.erase(it);
 		return ok;
+	}
+
+	void ListLazyDir(const char* c_szDir, ListDirFn fn, void* user)
+	{
+		char szNorm[1024];
+		NormalizePath(c_szDir, szNorm, sizeof(szNorm));
+		std::string dir = szNorm;
+		while (dir.compare(0, 2, "./") == 0)
+			dir.erase(0, 2);
+		if (dir == "data" || dir == ".")
+			dir.clear();
+		else if (dir.compare(0, 5, "data/") == 0)
+			dir.erase(0, 5);
+		while (!dir.empty() && dir.back() == '/')
+			dir.pop_back();
+		const std::string prefix = dir.empty() ? "" : dir + "/";
+
+		std::lock_guard<std::mutex> lock(s_mtx);
+		if (!s_loaded)
+			LoadIndex();
+		std::unordered_set<std::string> seen;
+		for (const auto& kv : s_index)
+		{
+			const std::string& key = kv.first;
+			if (key.compare(0, prefix.size(), prefix) != 0)
+				continue;
+			size_t slash = key.find('/', prefix.size());
+			std::string name = key.substr(prefix.size(), slash == std::string::npos ? std::string::npos : slash - prefix.size());
+			if (!name.empty() && seen.insert(name).second)
+				fn(name.c_str(), slash != std::string::npos, user);
+		}
 	}
 }

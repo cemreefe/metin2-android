@@ -31,7 +31,7 @@ def IsMobileMode():
 		finally:
 			f.close()
 	except IOError:
-		return True
+		return app.IsTouchPrimary() != 0
 
 
 def SetMobileMode(mobile):
@@ -252,7 +252,7 @@ class HudOption:
 
 
 DISPLAY_CONFIG = "display.cfg"
-UI_SCALE_MIN = 1.0
+UI_SCALE_MIN = 0.5
 UI_SCALE_MAX = 1.5
 FONT_SCALE_MIN = 1.0
 FONT_SCALE_MAX = 1.6

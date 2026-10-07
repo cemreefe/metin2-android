@@ -576,3 +576,74 @@
  
  			if self.virtualKeyboard:
  				self.VIRTUAL_KEY_ALPHABET_UPPERS = Suffle(localeInfo.VIRTUAL_KEY_ALPHABET_UPPERS)
+--- a/uiquest.py
++++ b/uiquest.py
+@@ -68,43 +68,48 @@
+ 		self.TopBar.SetColor(0xff000000)
+ 		self.BottomBar.SetColor(0xff000000)
+ 
+-		self.TopBar.SetPosition(0,-self.BarHeight)
+ 		self.TopBar.SetSize(wndMgr.GetScreenWidth(),self.BarHeight)
+-
+-		self.BottomBar.SetPosition(0,wndMgr.GetScreenHeight())
+ 		self.BottomBar.SetSize(wndMgr.GetScreenWidth(),self.BarHeight)
+ 
+ 		self.CurtainMode = 0
+-
+-		self.lastclock = time.clock()
++		# Track the slide in floats on wall time: reading positions back
++		# truncates sub-pixel steps and time.clock() is CPU time on Linux.
++		self.offset = float(-self.BarHeight - 1)
++		self.__Place()
++
++		self.lastclock = app.GetTime()
++
++	def __Place(self):
++		y = int(self.offset)
++		self.TopBar.SetPosition(0, y)
++		self.BottomBar.SetPosition(0, wndMgr.GetScreenHeight() - self.BarHeight - y)
+ 
+ 	def Close(self):
+ 		self.CurtainMode = 0
+-		self.TopBar.SetPosition(0, -self.BarHeight-1)
+-		self.BottomBar.SetPosition(0, wndMgr.GetScreenHeight()+1)
++		self.offset = float(-self.BarHeight - 1)
++		self.__Place()
+ 		for OnDoneEvent in QuestCurtain.OnDoneEventList:
+ 			apply(OnDoneEvent,(self,))
+ 		QuestCurtain.OnDoneEventList = []
+ 
+ 	def OnUpdate(self):
+-		dt = time.clock() - self.lastclock
++		now = app.GetTime()
++		dt = min(0.1, max(0.0, now - self.lastclock))
++		self.lastclock = now
++
+ 		if self.CurtainMode>0:
+-			self.TopBar.SetPosition(0, int(self.TopBar.GetGlobalPosition()[1]+dt*self.CURTAIN_SPEED))
+-			self.BottomBar.SetPosition(0, int(self.BottomBar.GetGlobalPosition()[1]-dt*self.CURTAIN_SPEED))
+-			if self.TopBar.GetGlobalPosition()[1]>0:
+-				self.TopBar.SetPosition(0,0)
+-				self.BottomBar.SetPosition(0,wndMgr.GetScreenHeight()-self.BarHeight)
++			self.offset += dt*self.CURTAIN_SPEED
++			if self.offset >= 0:
++				self.offset = 0.0
+ 				self.CurtainMode = 0
++			self.__Place()
+ 
+ 		elif self.CurtainMode<0:
+-			self.TopBar.SetPosition(0, int(self.TopBar.GetGlobalPosition()[1]-dt*self.CURTAIN_SPEED))
+-			self.BottomBar.SetPosition(0, int(self.BottomBar.GetGlobalPosition()[1]+dt*self.CURTAIN_SPEED))
+-			if self.TopBar.GetGlobalPosition()[1]<-self.BarHeight:
+-				self.TopBar.SetPosition(0,-self.BarHeight-1)
+-				self.BottomBar.SetPosition(0,wndMgr.GetScreenHeight()+1)
++			self.offset -= dt*self.CURTAIN_SPEED
++			if self.offset < -self.BarHeight:
+ 				self.Close()
+-
+-		self.lastclock = time.clock()
++				return
++			self.__Place()
+ 
+ class EventCurtain(ui.Bar):
+ 

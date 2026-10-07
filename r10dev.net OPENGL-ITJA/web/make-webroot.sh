@@ -30,7 +30,7 @@ sed -e "s/{{{ SCRIPT }}}/<script async src=\"metin2_web.js?v=$M2V\"><\/script>/"
     -e "s/{{{ M2V }}}/$M2V/g" \
     "$HERE/local.html" > "$OUT/local.html"
 
-cp "$HERE/m2pack.js" "$HERE/srv_worker.js" "$OUT/"
+cp "$HERE/m2pack.js" "$HERE/srv_worker.js" "$HERE/m2hud.js" "$HERE/coi-sw.js" "$OUT/"
 cp "$SRV_BUILD/bin/m2db.js" "$SRV_BUILD/bin/m2db.wasm" "$OUT/"
 cp "$SRV_BUILD/bin/m2game.js" "$SRV_BUILD/bin/m2game.wasm" "$OUT/"
 

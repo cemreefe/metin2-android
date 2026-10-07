@@ -88,8 +88,27 @@
   let joy = null;
   window.m2HudInit = function (Module) {
     if (!joy) joy = makeJoystick();
+    if (!document.getElementById("m2fs") && document.documentElement.requestFullscreen) {
+      const fs = document.createElement("button");
+      fs.id = "m2fs";
+      fs.title = "Fullscreen";
+      fs.textContent = "\u26F6";
+      fs.style.cssText = "position:fixed;top:4px;left:50%;transform:translateX(-50%);z-index:20;" +
+        "width:44px;height:32px;border:0;border-radius:6px;background:rgba(0,0,0,.45);" +
+        "color:#fff;font:20px sans-serif;opacity:.5;cursor:pointer;padding:0";
+      fs.onmouseenter = () => { fs.style.opacity = "1"; };
+      fs.onmouseleave = () => { fs.style.opacity = ".5"; };
+      fs.addEventListener("click", (e) => {
+        e.stopPropagation();
+        if (document.fullscreenElement) document.exitFullscreen();
+        else document.documentElement.requestFullscreen().catch(() => {});
+        fs.blur();
+      });
+      document.body.appendChild(fs);
+    }
+    const touchPrimary = matchMedia("(pointer: coarse)").matches;
     Module.m2SetGameControls = function (v) {
-      joy.el.style.display = v ? "block" : "none";
+      joy.el.style.display = v && touchPrimary ? "block" : "none";
       if (!v) joy.release();
     };
     // Soft keyboard: hidden input that pulls the OS keyboard up on mobile.

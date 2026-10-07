@@ -424,9 +424,8 @@ void CPythonApplication::OnTouchEvent(int action, int x, int y)
 		}
 		if (m_eTouchMode == TOUCH_CAMERA)
 		{
-			CCamera* pkCmrCur = CCameraManager::Instance().GetCurrentCamera();
-			if (pkCmrCur)
-				pkCmrCur->DragBy((x - m_iTouchLastX) * m_fTouchCameraSensitivity, (y - m_iTouchLastY) * m_fTouchCameraSensitivity);
+			m_fTouchCameraDX += (x - m_iTouchLastX) * m_fTouchCameraSensitivity;
+			m_fTouchCameraDY += (y - m_iTouchLastY) * m_fTouchCameraSensitivity;
 			m_iTouchLastX = x;
 			m_iTouchLastY = y;
 			return;
@@ -441,6 +440,7 @@ void CPythonApplication::OnTouchEvent(int action, int x, int y)
 	{
 		ETouchMode eMode = m_eTouchMode;
 		m_eTouchMode = TOUCH_NONE;
+		m_fTouchCameraDX = m_fTouchCameraDY = 0.0f;
 		if (eMode == TOUCH_WORLD_PENDING && action == 1)
 		{
 			PushTouchEvent(TOUCH_SYNTHETIC_DOWN, m_iTouchStartX * iSurfW / (int)m_dwWidth, m_iTouchStartY * iSurfH / (int)m_dwHeight);
@@ -458,6 +458,15 @@ void CPythonApplication::OnTouchEvent(int action, int x, int y)
 
 void CPythonApplication::OnPortFrame()
 {
+	// Like the original per-frame cursor drag: the camera turns by exactly this
+	// frame's pointer movement, so it stops the frame the pointer stops.
+	if (m_eTouchMode == TOUCH_CAMERA)
+	{
+		if (CCamera* pkCmrCur = CCameraManager::Instance().GetCurrentCamera())
+			pkCmrCur->DragBy(m_fTouchCameraDX, m_fTouchCameraDY);
+		m_fTouchCameraDX = m_fTouchCameraDY = 0.0f;
+	}
+
 	if (m_eTouchMode == TOUCH_WORLD_PENDING && ELTimer_GetMSec() - m_dwTouchStartTime >= c_dwTouchHoldMs)
 	{
 		m_eTouchMode = TOUCH_WORLD_HOLD;

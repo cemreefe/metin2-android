@@ -46,6 +46,15 @@ namespace M2Plat
 		return false;
 	}
 
+	__attribute__((weak)) bool IsTouchPrimary()
+	{
+		return true;
+	}
+
+	__attribute__((weak)) void ListLazyDir(const char*, ListDirFn, void*)
+	{
+	}
+
 	__attribute__((weak)) bool OpenAudioOutput(unsigned, AudioRenderFn, void*)
 	{
 		return false;

@@ -295,6 +295,7 @@ public:
 	int m_iTouchStartX = 0, m_iTouchStartY = 0, m_iTouchLastX = 0, m_iTouchLastY = 0;
 	DWORD m_dwTouchStartTime = 0;
 	float m_fTouchCameraSensitivity = 1.0f;
+	float m_fTouchCameraDX = 0.0f, m_fTouchCameraDY = 0.0f;
 	bool m_bGameControlsVisible = false;
 #endif
 

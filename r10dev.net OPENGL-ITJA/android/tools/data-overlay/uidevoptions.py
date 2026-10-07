@@ -36,7 +36,7 @@ class DevOptionsWindow(ui.Window):
 	def __init__(self):
 		ui.Window.__init__(self)
 		self.SetWindowName("DevOptionsWindow")
-		self.H = self.PAD * 2 + 22 + self.ROW * (len(FONTS) + 1)
+		self.H = self.PAD * 2 + 22 * 2 + self.ROW * (len(FONTS) + 2)
 		self.SetSize(self.W, self.H)
 
 		self.board = ui.Bar()
@@ -59,6 +59,16 @@ class DevOptionsWindow(ui.Window):
 			btn.SetPosition((self.W - btn.GetWidth()) / 2, y)
 			self.fontButtons.append((btn, name, path))
 			y += self.ROW
+		self.hudTitle = ui.TextLine()
+		self.hudTitle.SetParent(self)
+		self.hudTitle.SetPosition(self.W / 2, y + 4)
+		self.hudTitle.SetHorizontalAlignCenter()
+		self.hudTitle.SetText("HUD")
+		self.hudTitle.Show()
+		y += 22
+		self.hudButton = _MakeButton(self, "", 0, y, ui.__mem_func__(self.OnToggleHud))
+		self.hudButton.SetPosition((self.W - self.hudButton.GetWidth()) / 2, y)
+		y += self.ROW
 		self.closeBtn = _MakeButton(self, "Close", 0, y, ui.__mem_func__(self.Hide))
 		self.closeBtn.SetPosition((self.W - self.closeBtn.GetWidth()) / 2, y)
 
@@ -69,6 +79,14 @@ class DevOptionsWindow(ui.Window):
 		current = uimobilehud.LoadDisplayConfig().get("font", "default")
 		for btn, name, path in self.fontButtons:
 			btn.SetText(("> %s <" % name) if path == current else name)
+		self.hudButton.SetText("Mobile" if uimobilehud.IsMobileMode() else "Desktop")
+
+	def OnToggleHud(self):
+		uimobilehud.SetMobileMode(not uimobilehud.IsMobileMode())
+		hud = getattr(uimobilehud, "_hud", None)
+		if hud:
+			hud.ApplyMode()
+		self.Refresh()
 
 	def OnPickFont(self, path):
 		if not app.SetPortFont("" if path == "default" else path, 1):

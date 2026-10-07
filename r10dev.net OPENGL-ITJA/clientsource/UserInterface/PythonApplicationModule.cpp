@@ -1,4 +1,5 @@
 #include "StdAfx.h"
+#include "../platform/m2platform.h"
 #include "Resource.h"
 #include "PythonApplication.h"
 #include "../EterLib/Camera.h"
@@ -64,6 +65,15 @@ PyObject* appHideWebPage(PyObject* poSelf, PyObject* poArgs)
 	CPythonApplication::Instance().HideWebPage();
 #endif
 	return Py_BuildNone();
+}
+
+PyObject* appIsTouchPrimary(PyObject* poSelf, PyObject* poArgs)
+{
+#ifdef M2_PORT
+	return Py_BuildValue("i", M2Plat::IsTouchPrimary() ? 1 : 0);
+#else
+	return Py_BuildValue("i", 0);
+#endif
 }
 
 PyObject* appIsWebPageMode(PyObject* poSelf, PyObject* poArgs)
@@ -1306,6 +1316,7 @@ void initapp()
 		{ "GetRandom",					appGetRandom,					METH_VARARGS },
 		{ "RunPythonFile",				appRunPythonFile,				METH_VARARGS },
 		{ "IsWebPageMode",				appIsWebPageMode,				METH_VARARGS },
+		{ "IsTouchPrimary",				appIsTouchPrimary,				METH_VARARGS },
 		{ "ShowWebPage",				appShowWebPage,					METH_VARARGS },
 		{ "MoveWebPage",				appMoveWebPage,					METH_VARARGS },
 		{ "HideWebPage",				appHideWebPage,					METH_VARARGS },
