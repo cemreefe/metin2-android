@@ -364,9 +364,12 @@ int main(int argc, char** argv)
 	attrs.preserveDrawingBuffer = EM_FALSE;
 	attrs.powerPreference = EM_WEBGL_POWER_PREFERENCE_DEFAULT;
 	attrs.failIfMajorPerformanceCaveat = EM_FALSE;
-	// main() runs on a pthread (PROXY_TO_PTHREAD): the canvas lives on the
-	// UI thread, so context creation and every GL call get proxied there
-	attrs.proxyContextToMainThread = EMSCRIPTEN_WEBGL_CONTEXT_PROXY_ALWAYS;
+	// main() runs on a pthread (PROXY_TO_PTHREAD). The canvas is transferred
+	// to it as an OffscreenCanvas, so GL runs on this thread directly.
+	// Proxying every GL call to the UI thread costs a synchronous round trip
+	// each and drops the game to ~1 fps; only fall back to it when the
+	// browser has no OffscreenCanvas WebGL.
+	attrs.proxyContextToMainThread = EMSCRIPTEN_WEBGL_CONTEXT_PROXY_FALLBACK;
 	EMSCRIPTEN_WEBGL_CONTEXT_HANDLE ctx = emscripten_webgl_create_context("#canvas", &attrs);
 	if (ctx <= 0)
 	{

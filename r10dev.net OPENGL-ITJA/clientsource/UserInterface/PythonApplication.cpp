@@ -1016,7 +1016,7 @@ bool CPythonApplication::CreateDevice(int width, int height, int Windowed, int b
 #include <emscripten/emscripten.h>
 
 // One cooperative slice of the blocking Loop(): drain the input queue, then run a
-// single frame. Called back by the browser once per rAF.
+// single frame. Called back by the browser's main-loop timer.
 static void EmscriptenFrameStep(void* pArg)
 {
 	CPythonApplication* pApp = (CPythonApplication*)pArg;
@@ -1033,9 +1033,13 @@ static void EmscriptenFrameStep(void* pArg)
 void CPythonApplication::Loop()
 {
 	// Called from Python mid-initialization. simulate_infinite_loop unwinds the
-	// wasm stack out of RunFile so the page keeps its rAF heartbeat while the
-	// python frame logically never returns — same semantics as the native loop.
-	emscripten_set_main_loop_arg(EmscriptenFrameStep, this, 0, 1);
+	// wasm stack out of RunFile so the python frame logically never returns —
+	// same semantics as the native loop.
+	// This runs on a pthread (PROXY_TO_PTHREAD). A worker's rAF only ticks
+	// when the page happens to produce a frame (e.g. on tab focus), so the
+	// rAF timing mode (fps 0) stalls the game. Use timer timing instead;
+	// Process() already paces frames itself with Sleep().
+	emscripten_set_main_loop_arg(EmscriptenFrameStep, this, 1000, 1);
 }
 #else
 void CPythonApplication::Loop()

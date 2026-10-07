@@ -33,7 +33,7 @@ cp "$SRV_BUILD/bin/m2db.js" "$SRV_BUILD/bin/m2db.wasm" "$OUT/"
 cp "$SRV_BUILD/bin/m2game.js" "$SRV_BUILD/bin/m2game.wasm" "$OUT/"
 
 python3 "$HERE/pack.py" --data-dir "$CLIENT_DATA" --out "$OUT/client.m2pack" \
-    --boot loose --boot lib/ --boot uiscript/ --boot locale/ \
+    --boot loose --boot lib/ --boot uiscript/ --boot locale/ --boot icon/ \
     --split-mb 150 \
     --manifest "$OUT/packs.json" --name client
 python3 "$HERE/pack.py" --data-dir "$SRV_PACK/share" --out "$OUT/srv-share.m2pack" \
