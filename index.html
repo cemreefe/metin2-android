@@ -182,7 +182,6 @@ var Module = {
     setStatus('game stopped (exit ' + code + ') — reload to restart');
   },
   onAbort: function (what) {
-    window.__m2abort = String(what);
     console.error('[m2] engine aborted: ' + what);
     statusEl.style.display = '';
     setStatus('engine crashed: ' + what);
@@ -336,32 +335,31 @@ async function m2boot() {
     pw: pw,
   });
 
-  var client = packs['client'];
-  var bootAll = new URLSearchParams(location.search).get('m2_boot') === '1';
-  var partName = 'pack';
-  await m2LoadPack(FS, client, '/data', {
-    onPart: function (i, n, isBoot) {
-      partName = isBoot ? 'boot pack' : 'pack ' + i + '/' + (n - 1);
-    },
+  // Boot tier (scripts, UI, icons) goes into MEMFS; everything else stays
+  // in disk-backed Blobs and is copied in per file when the engine opens it.
+  var partName = 'boot pack';
+  var packOpts = {
     onProgress: function (f) {
       setStatus('downloading ' + partName + ' — ' + Math.round(f * 100) + '%', f);
     },
     onFile: function (path, i, total) {
       setStatus('unpacking ' + partName + ' — ' + i + ' / ' + total, i / total);
     },
-    bootReady: bootAll ? null : function () {
-      setStatus('starting…');
-      // Re-apply the user's saved display.cfg (ui_scale etc.): MEMFS is
-      // rebuilt from packs each boot, so M2Plat::RestartApp stashes it in
-      // localStorage before reloading.
-      try {
-        var cfg = localStorage.getItem('m2_display_cfg');
-        if (cfg) FS.writeFile('/data/display.cfg', cfg);
-      } catch (e) {}
-      removeRunDependency('m2data');
-    },
-  });
-  if (bootAll) removeRunDependency('m2data');
+  };
+  if (client.boot)
+    await m2LoadPack(FS, client.boot, '/data', packOpts);
+  packOpts.onPart = function (i, n) { partName = 'pack ' + (i + 1) + '/' + n; };
+  await m2LoadPackLazy(FS, client.parts || [], '/data', packOpts);
+
+  setStatus('starting…');
+  // Re-apply the user's saved display.cfg (ui_scale etc.): MEMFS is
+  // rebuilt from packs each boot, so M2Plat::RestartApp stashes it in
+  // localStorage before reloading.
+  try {
+    var cfg = localStorage.getItem('m2_display_cfg');
+    if (cfg) FS.writeFile('/data/display.cfg', cfg);
+  } catch (e) {}
+  removeRunDependency('m2data');
 }
 
 document.addEventListener('contextmenu', function (e) { e.preventDefault(); });

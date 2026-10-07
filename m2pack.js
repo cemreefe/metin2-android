@@ -143,6 +143,36 @@ function m2mkdirP(FS, path) {
   }
 }
 
+async function m2idbDel(url) {
+  try {
+    var db = await m2idbOpen();
+    db.transaction('packs', 'readwrite').objectStore('packs').delete(url);
+  } catch (e) {}
+}
+
+// Walk the entries of one compressed archive.
+// onEntry(path, data, i, total, bootCount) is called in order.
+async function m2packEach(gz, url, onEntry) {
+  var r = m2packReader(await m2packDecrypt(await gz.arrayBuffer()));
+  var magic = await r.take(12);
+  if (!magic || String.fromCharCode(magic[0], magic[1], magic[2], magic[3]) !== 'M2PK')
+    throw new Error(url + ': bad magic');
+  var dv = new DataView(magic.buffer, 4);
+  var bootCount = dv.getUint32(0, true);
+  var total = dv.getUint32(4, true);
+  for (var i = 0; i < total; i++) {
+    var hdr = await r.take(4);
+    if (!hdr) throw new Error(url + ': truncated at entry ' + i);
+    var plen = new DataView(hdr.buffer).getUint32(0, true);
+    var path = new TextDecoder().decode(await r.take(plen));
+    var sdv = new DataView((await r.take(8)).buffer);
+    var size = sdv.getUint32(0, true) + sdv.getUint32(4, true) * 0x100000000;
+    var data = await r.take(size);
+    if (!data) throw new Error(url + ': truncated data ' + path);
+    onEntry(path, data, i, total, bootCount);
+  }
+}
+
 // Unpack archives into FS under dest (memfs path prefix).
 // spec = {url, ver} (single archive) or {boot: {url,ver}, parts: [{url,ver}]}
 // (split archives). With a boot archive, opts.bootReady fires once it's
@@ -157,26 +187,7 @@ async function m2LoadPack(FS, spec, dest, opts) {
     var sp = specs[si];
     if (opts.onPart) opts.onPart(si, specs.length, si === 0 && spec.boot);
     var gz = await m2packFetch(sp, opts.onProgress);
-    var r = m2packReader(await m2packDecrypt(await gz.arrayBuffer()));
-
-    var magic = await r.take(12);
-    if (!magic || String.fromCharCode(magic[0], magic[1], magic[2], magic[3]) !== 'M2PK')
-      throw new Error(sp.url + ': bad magic');
-    var dv = new DataView(magic.buffer, 4);
-    var bootCount = dv.getUint32(0, true);
-    var total = dv.getUint32(4, true);
-
-    for (var i = 0; i < total; i++) {
-      var hdr = await r.take(4);
-      if (!hdr) throw new Error(sp.url + ': truncated at entry ' + i);
-      var plen = new DataView(hdr.buffer).getUint32(0, true);
-      var pbytes = await r.take(plen);
-      var path = new TextDecoder().decode(pbytes);
-      var szb = await r.take(8);
-      var sdv = new DataView(szb.buffer);
-      var size = sdv.getUint32(0, true) + sdv.getUint32(4, true) * 0x100000000;
-      var data = await r.take(size);
-      if (!data) throw new Error(sp.url + ': truncated data ' + path);
+    await m2packEach(gz, sp.url, function (path, data, i, total, bootCount) {
       m2mkdirP(FS, dest + '/' + path.split('/').slice(0, -1).join('/'));
       FS.writeFile(dest + '/' + path, data);
       if (opts.onFile) opts.onFile(path, i + 1, total);
@@ -184,11 +195,61 @@ async function m2LoadPack(FS, spec, dest, opts) {
         bootFired = true;
         if (opts.bootReady) opts.bootReady();
       }
-    }
+    });
     if (!bootFired) {
       bootFired = true;
       if (opts.bootReady) opts.bootReady();
     }
   }
   if (opts.bootReady && !bootFired) opts.bootReady();
+}
+
+// Lazy archives: file data stays out of MEMFS. Each archive is unpacked
+// once into a Blob of concatenated file data plus an index, stored in
+// IndexedDB (so the Blob is disk-backed). Writes <dest>/.m2lazy, which the
+// engine's lazy FS (platform/web/WebLazyFS.cpp) reads to copy single files
+// into MEMFS on first open.
+// opts = {onPart, onProgress, onFile}
+async function m2LoadPackLazy(FS, specs, dest, opts) {
+  opts = opts || {};
+  var urls = [], lines = [];
+  for (var si = 0; si < specs.length; si++) {
+    var sp = specs[si];
+    if (opts.onPart) opts.onPart(si, specs.length);
+    var key = sp.url + '#raw';
+    var rec = await m2idbGet(key);
+    if (!rec || rec.ver !== sp.ver || !(rec.gz instanceof Blob) || !rec.index) {
+      var gz = await m2packFetch(sp, opts.onProgress);
+      var parts = [], index = [], off = 0;
+      await m2packEach(gz, sp.url, function (path, data, i, total) {
+        parts.push(data);
+        index.push([path.toLowerCase(), off, data.length]);
+        off += data.length;
+        if (opts.onFile) opts.onFile(path, i + 1, total);
+      });
+      gz = null;
+      var blob = new Blob(parts);
+      parts = null;
+      await new Promise(async function (resolve) {
+        try {
+          var db = await m2idbOpen();
+          var tx = db.transaction('packs', 'readwrite');
+          tx.objectStore('packs').put({ url: key, ver: sp.ver, gz: blob, index: index });
+          tx.oncomplete = resolve;
+          tx.onerror = resolve;
+        } catch (e) { resolve(); }
+      });
+      // Re-read so the Blob handle is the disk-backed IndexedDB copy.
+      rec = (await m2idbGet(key)) || { gz: blob, index: index };
+      blob = null;
+      m2idbDel(sp.url);
+    }
+    urls.push(URL.createObjectURL(rec.gz));
+    for (var k = 0; k < rec.index.length; k++) {
+      var e = rec.index[k];
+      lines.push(si + '\t' + e[1] + '\t' + e[2] + '\t' + e[0]);
+    }
+  }
+  FS.writeFile(dest + '/.m2lazy',
+    urls.length + '\n' + urls.join('\n') + '\n' + lines.join('\n') + '\n');
 }
