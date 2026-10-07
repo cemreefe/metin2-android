@@ -511,3 +511,32 @@ the client. Three binaries, one page, zero network after first load.
     postMessage — expandos and `Module` don't survive structured clone,
     and emcc's init message carries only memory+module. The worker
     wraps `self.Worker` to post `{m2:'sab'}` before emcc's `{cmd:1}`.
+
+## Gate, intro UI scale, and text size (builds 24+)
+
+- **Passphrase gate**: `web/m2encrypt.py` AES-GCM-encrypts every
+  `.m2pack` (PBKDF2, salt `m2gate-v1`); `m2packSetPassphrase()` decrypts
+  in-page. Static hosts can't do auth — encrypting the payload IS the
+  gate. `?m2pw=` or a sessionStorage-remembered passphrase skips the
+  prompt so in-app restarts don't re-ask.
+- **COI on static hosting**: `SharedArrayBuffer` needs
+  `Cross-Origin-Embedder-Policy: require-corp`, which hosts like
+  devinapps can't set — `web/coi-sw.js` is a service worker that
+  injects the headers on every response.
+- **display.cfg survives restarts**: MEMFS is rebuilt from packs each
+  boot, so `RestartApp` stashes `/data/display.cfg` to localStorage
+  before `location.reload()` and bootReady writes it back.
+- **Intro UI-size widget** (`uiscale.py`, attached to login/empire/
+  select/create): -/+ buttons + a click-anywhere slider row for UI
+  size and one for text size + apply. Needed because ui_scale shrinks
+  the logical canvas — boards laid out for ~600 logical px slide off
+  the physical screen at 1.5x. The login/empire/select boards are also
+  clamped to the canvas in uiscript so controls can't leave the screen.
+- **font_scale** (display.cfg, 1.0-1.6): multiplies `.fnt` atlas
+  generation size in `CGraphicText::OnLoad` — bigger rendered text,
+  not magnified pixels (which is all ui_scale does for glyphs).
+- Debug tale: plain `ui.Window` overlays and `ui.Button` hit-testing
+  are fine, but the physical-px window (~0.75x logical) makes hand-aimed
+  test clicks land ~10px off — the "dead slider" was a coordinate bug,
+  not an input bug. Verify handlers with a file-writing probe, not
+  screenshots.
