@@ -16,6 +16,8 @@
   #barfill { height: 100%; width: 0%; background: #888; transition: width .2s; }
   #srv { color: #555; font-size: 11px; margin-top: 8px; max-width: 90vw;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #detail { color: #444; font-size: 10px; margin-top: 4px; max-width: 90vw;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   #spin { width: 18px; height: 18px; margin: 0 auto 10px;
     border: 2px solid #333; border-top-color: #999; border-radius: 50%;
     animation: m2rot .8s linear infinite; }
@@ -37,7 +39,7 @@
 </head>
 <body>
 <canvas id="canvas"></canvas>
-<div id="status"><div id="spin"></div><span>starting…</span><div id="bar"><div id="barfill"></div></div><div id="srv"></div></div>
+<div id="status"><div id="spin"></div><span>starting…</span><div id="bar"><div id="barfill"></div></div><div id="srv"></div><div id="detail"></div></div>
 <div id="gate"><div><input id="pw" type="password" placeholder="passphrase" autocomplete="off"><button id="pwgo">play</button></div><div class="hint"></div></div>
 <script src="m2pack.js"></script>
 <script src="m2hud.js"></script>
@@ -76,6 +78,15 @@ var statusEl = document.getElementById('status');
 var barEl = document.getElementById('barfill');
 var barWrap = document.getElementById('bar');
 var srvEl = document.getElementById('srv');
+var detailEl = document.getElementById('detail');
+var detailT = 0;
+function setDetail(path) {
+  // throttle: show at most ~8 updates/sec
+  var now = Date.now();
+  if (now - detailT < 120) return;
+  detailT = now;
+  detailEl.textContent = path;
+}
 var lastDl = '', worldTxt = '';
 var statusTxt = statusEl.querySelector('span');
 function setStatus(txt, frac) {
@@ -141,7 +152,7 @@ function spawnSrv(tag, cfg) {
 
 var Module = {
   canvas: document.getElementById('canvas'),
-  print: function (s) { console.log(s); },
+  print: function (s) { console.log(s); setDetail(s); },
   printErr: function (s) { console.warn(s); },
   m2lbSab: m2sab,
   preRun: [

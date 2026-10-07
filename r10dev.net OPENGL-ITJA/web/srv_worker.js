@@ -87,7 +87,8 @@ async function m2stage(cfg) {
       postMessage({ m2: 'stage', s: 'downloading ' + partName + ' — ' + Math.round(f * 100) + '%' });
     },
     onFile: function (path, i, total) {
-      postMessage({ m2: 'stage', s: 'unpacking ' + partName + ' — ' + i + '/' + total });
+      var name = path.split('/').pop();
+      postMessage({ m2: 'stage', s: 'unpacking ' + name + ' (' + i + '/' + total + ')' });
     },
   };
   postMessage({ m2: 'stage', s: 'staging…' });
