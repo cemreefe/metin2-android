@@ -493,3 +493,21 @@ the client. Three binaries, one page, zero network after first load.
 - **Auto-login**: `?m2auto=1` writes a `loginInfo.py` (addr/port + id/pwd
   + autoLogin/autoSelect) — deterministic scripted login for headless
   tests, no board clicking needed.
+
+- **Verified in-world**: `test`/`test123` -> server select -> char select
+  -> spawn in Pyungmoo Area; NPCs/minimap/quest list/quickslots render,
+  click-to-move + arrow keys walk. Mobile HUD (floating joystick zone,
+  attack button, quickslot rings, soft-keyboard bridge) matches Android.
+- **wasm pitfalls found the hard way**:
+  - emscripten pthread stacks are 64 KB — `BYTE abComp[maxMemSize]`
+    (~70 KB) in `SECTREE_MANAGER::LoadAttribute` silently smashed the
+    stack and froze the channel worker mid-map-load (no exception, no
+    console error). Heap-allocate on `__EMSCRIPTEN__` — same fix shape
+    as the `_MSC_VER` path it already had.
+  - `clang -O2` wasm codegen miscompiles the table-driven DXT1/DXT3/DXT5
+    decoders (produced solid-white textures — white map window). Plain
+    byte-index loops survive.
+  - A `SharedArrayBuffer` only reaches an emscripten pthread via
+    postMessage — expandos and `Module` don't survive structured clone,
+    and emcc's init message carries only memory+module. The worker
+    wraps `self.Worker` to post `{m2:'sab'}` before emcc's `{cmd:1}`.
