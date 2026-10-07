@@ -1,91 +1,54 @@
-# Corner UI-size control for the intro screens (login / empire / character
-# select). The in-game options panel only exists in the game phase, so a bad
-# ui_scale can leave these screens unusable and unfixable from the UI; this
-# widget lets the player recover from the screens themselves. A second row
-# controls font_scale (text size) independently.
+# Corner UI-size / text-size control for the intro screens (login / empire /
+# character select / create). The in-game options panel only exists in the
+# game phase, so a bad ui_scale could leave these screens unusable; this
+# widget fixes it from the screens themselves. Apply takes effect live: the
+# engine resizes the logical canvas and regenerates font atlases, then the
+# current screen is rebuilt behind the phase curtain — no restart.
+import weakref
 import ui
 import wndMgr
 import app
 import uimobilehud
 
-_POS = lambda v, lo, hi: (v - lo) / float(hi - lo)
-_VAL = lambda p, lo, hi: lo + p * (hi - lo)
+BTN_SMALL = "d:/ymir work/ui/public/small_button_%02d.sub"
+BTN_LARGE = "d:/ymir work/ui/public/large_button_%02d.sub"
 
 
-class _JumpArea(ui.Window):
-	"""Overlay on the slider track: click or drag anywhere on the bar to set it.
-	The stock cursor knob is ~10px, easy to miss — especially at high ui_scale."""
-
-	def __init__(self, slider, onchange):
-		ui.Window.__init__(self)
-		self.slider = slider
-		self.onchange = onchange
-
-	def __Jump(self):
-		mx, my = wndMgr.GetMousePosition()
-		gx, gy = self.GetGlobalPosition()
-		pos = uimobilehud._Clamp(float(mx - gx) / float(self.GetWidth()), 0.0, 1.0)
-		self.slider.SetSliderPos(pos)
-		self.onchange()
-
-	def OnMouseLeftButtonDown(self):
-		self.__Jump()
-
-	def OnMouseDrag(self):
-		self.__Jump()
+def _MakeButton(parent, art, text, x, y, event):
+	btn = ui.Button()
+	btn.SetParent(parent)
+	btn.SetUpVisual(art % 1)
+	btn.SetOverVisual(art % 2)
+	btn.SetDownVisual(art % 3)
+	btn.SetPosition(x, y)
+	btn.SetText(text)
+	btn.SetEvent(event)
+	btn.Show()
+	return btn
 
 
 class _ScaleRow(object):
-	"""One row of the widget: '-' label '+' over a slider, driving a
-	display.cfg scale value. Text and -/+ buttons both work — the -/+ pair
-	steps the value, the slider track jumps it."""
-
 	STEP = 0.05
 
-	def __init__(self, parent, y, caption, value, lo, hi, onchange):
-		self.parent = parent
+	def __init__(self, parent, width, y, caption, value, lo, hi, onchange):
 		self.lo = lo
 		self.hi = hi
 		self.value = value
-		self.onchange = onchange
 		self.caption = caption
+		self.onchange = onchange
 
-		# ui.Button's hit area is its own size, not the text's — a bare button
-		# is 0x0 and can never be clicked, so every button gets a SetSize.
-		self.minusBtn = ui.Button()
-		self.minusBtn.SetParent(parent)
-		self.minusBtn.SetText("-")
-		self.minusBtn.SetSize(16, 14)
-		self.minusBtn.SetPosition(6, y)
-		self.minusBtn.SetEvent(ui.__mem_func__(self.OnStepDown))
-		self.minusBtn.Show()
+		self.minusBtn = _MakeButton(parent, BTN_SMALL, "-", 8, y,
+		                            ui.__mem_func__(self.OnStepDown))
+		self.plusBtn = _MakeButton(parent, BTN_SMALL, "+",
+		                           width - 8 - self.minusBtn.GetWidth(), y,
+		                           ui.__mem_func__(self.OnStepUp))
 
 		self.label = ui.TextLine()
 		self.label.SetParent(parent)
-		self.label.SetPosition(28, y + 2)
+		self.label.SetPosition(width / 2, y + self.minusBtn.GetHeight() / 2)
+		self.label.SetHorizontalAlignCenter()
+		self.label.SetVerticalAlignCenter()
 		self.label.Show()
-
-		self.plusBtn = ui.Button()
-		self.plusBtn.SetParent(parent)
-		self.plusBtn.SetText("+")
-		self.plusBtn.SetSize(16, 14)
-		self.plusBtn.SetPosition(118, y)
-		self.plusBtn.SetEvent(ui.__mem_func__(self.OnStepUp))
-		self.plusBtn.Show()
-
-		self.slider = ui.SliderBar()
-		self.slider.SetParent(parent)
-		self.slider.SetPosition(8, y + 18)
-		self.slider.SetEvent(ui.__mem_func__(self.OnSlide))
-		self.slider.SetSliderPos(_POS(self.value, lo, hi))
-		self.slider.Show()
-
-		self.jump = _JumpArea(self.slider, self.OnSlide)
-		self.jump.SetParent(parent)
-		self.jump.SetPosition(8, y + 18)
-		self.jump.SetSize(self.slider.GetWidth(), self.slider.GetHeight())
-		self.jump.Show()
-
 		self.__UpdateLabel()
 
 	def OnStepDown(self):
@@ -95,85 +58,84 @@ class _ScaleRow(object):
 		self.__Step(self.STEP)
 
 	def __Step(self, delta):
-		self.value = uimobilehud._Clamp(round((self.value + delta) * 20) / 20,
+		self.value = uimobilehud._Clamp(round((self.value + delta) * 20) / 20.0,
 		                                self.lo, self.hi)
-		self.slider.SetSliderPos(_POS(self.value, self.lo, self.hi))
-		self.__UpdateLabel()
-		self.onchange()
-
-	def OnSlide(self):
-		self.value = _VAL(self.slider.GetSliderPos(), self.lo, self.hi)
 		self.__UpdateLabel()
 		self.onchange()
 
 	def __UpdateLabel(self):
-		self.label.SetText("%s %d%%" % (self.caption,
-		                                int(round(self.value * 100))))
+		self.label.SetText("%s %d%%" % (self.caption, int(round(self.value * 100))))
 
 
 class IntroScaleWindow(ui.Window):
-	W = 236
-	H = 82
+	W = 200
+	H = 92
+	MARGIN = 8
 
-	def __init__(self):
+	def __init__(self, owner):
 		ui.Window.__init__(self)
 		self.SetWindowName("IntroScaleWindow")
-
+		self.owner = weakref.proxy(owner)
 		self.SetSize(self.W, self.H)
-		self.SetPosition(wndMgr.GetScreenWidth() - self.W - 6,
-		                 wndMgr.GetScreenHeight() - self.H - 6)
 
 		# LoadDisplayConfig already parses and clamps the scale keys to floats.
 		self.conf = uimobilehud.LoadDisplayConfig()
 
 		self.board = ui.Bar()
-		self.board.SetSize(self.W, self.H)
 		self.board.SetParent(self)
-		self.board.SetPosition(0, 0)
+		self.board.SetSize(self.W, self.H)
+		self.board.SetColor(0xC0000000)
 		self.board.Show()
 
-		self.uiRow = _ScaleRow(self, 4, "UI size",
+		self.uiRow = _ScaleRow(self, self.W, 6, "UI size",
 		                       float(self.conf["ui_scale"]),
-		                       uimobilehud.UI_SCALE_MIN,
-		                       uimobilehud.UI_SCALE_MAX,
+		                       uimobilehud.UI_SCALE_MIN, uimobilehud.UI_SCALE_MAX,
 		                       self.OnRowChanged)
-		self.textRow = _ScaleRow(self, 46, "text",
+		self.textRow = _ScaleRow(self, self.W, 34, "Text size",
 		                         float(self.conf["font_scale"]),
-		                         uimobilehud.FONT_SCALE_MIN,
-		                         uimobilehud.FONT_SCALE_MAX,
+		                         uimobilehud.FONT_SCALE_MIN, uimobilehud.FONT_SCALE_MAX,
 		                         self.OnRowChanged)
 
-		self.applyBtn = ui.Button()
-		self.applyBtn.SetParent(self)
-		self.applyBtn.SetText("apply")
-		self.applyBtn.SetSize(40, 14)
-		self.applyBtn.SetPosition(self.W - 46, 4)
-		self.applyBtn.SetEvent(ui.__mem_func__(self.OnApply))
-		self.applyBtn.Show()
+		self.applyBtn = _MakeButton(self, BTN_LARGE, "Apply", 0, 64,
+		                            ui.__mem_func__(self.OnApply))
+		self.applyBtn.SetPosition((self.W - self.applyBtn.GetWidth()) / 2, 64)
 
 	def __del__(self):
 		ui.Window.__del__(self)
+
+	def __IsDirty(self):
+		return (abs(self.uiRow.value - float(self.conf["ui_scale"])) > 0.001 or
+		        abs(self.textRow.value - float(self.conf["font_scale"])) > 0.001)
 
 	def OnRowChanged(self):
 		pass
 
 	def OnApply(self):
+		if not self.__IsDirty():
+			return
 		self.conf["ui_scale"] = self.uiRow.value
 		self.conf["font_scale"] = self.textRow.value
 		uimobilehud.SaveDisplayConfig(self.conf)
-		# The intro windows were laid out against the old logical size; the only
-		# reliable way to re-lay them out is to relaunch. On the web build this
-		# reloads the page (the passphrase survives in session storage); on
-		# Android it restarts the activity.
-		app.ApplyUIScale()
-		app.RestartApplication()
+		# Rebuild from the curtain's fade-out callback, not from inside this
+		# button's own click handler: rebuilding destroys this widget.
+		owner = self.owner
+		stream = owner.stream
+		stream.curtain.FadeOut(lambda: _Rebuild(owner, stream))
+
+
+def _Rebuild(owner, stream):
+	app.ApplyUIScale()
+	owner.Close()
+	owner.stream = stream  # CreateCharacterWindow.Close clears it
+	owner.Open()
+	stream.curtain.FadeIn()
 
 
 def Attach(window):
-	hud = IntroScaleWindow()
+	hud = IntroScaleWindow(window)
 	hud.SetParent(window)
-	hud.SetPosition(wndMgr.GetScreenWidth() - hud.W - 6,
-	                wndMgr.GetScreenHeight() - hud.H - 6)
+	hud.SetPosition(wndMgr.GetScreenWidth() - hud.W - hud.MARGIN,
+	                wndMgr.GetScreenHeight() - hud.H - hud.MARGIN)
 	hud.SetTop()
 	hud.Show()
 	return hud

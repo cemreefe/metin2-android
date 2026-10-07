@@ -1,5 +1,8 @@
 #include "StdAfx.h"
 #include "PythonApplication.h"
+#include "../EterLib/GrpText.h"
+#include "../EterLib/GrpTextInstance.h"
+#include "../EterLib/ResourceManager.h"
 #include "../EterLib/Camera.h"
 #include "../EterPythonLib/PythonWindow.h"
 
@@ -295,7 +298,13 @@ namespace
 // the windows that cached the old screen size.
 void CPythonApplication::ApplyPortUIScale()
 {
+	const float fOldFontScale = CGraphicText::GetGlobalFontScale();
 	m_pySystem.FitUIToPortSurface();
+	if (CGraphicText::GetGlobalFontScale() != fOldFontScale)
+	{
+		CResourceManager::Instance().ReloadResourcesOfType(CGraphicText::Type());
+		CGraphicTextInstance::RefreshAll();
+	}
 	const int iWidth = m_pySystem.GetWidth();
 	const int iHeight = m_pySystem.GetHeight();
 	m_dwWidth = iWidth;

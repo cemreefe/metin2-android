@@ -17,8 +17,10 @@ public:
 	virtual ~CGraphicText();
 
 	// Multiplies the generation size of every .fnt load (display.cfg "font_scale").
-	// Applied when the atlas is created, so a change needs a restart to take effect.
+	// Applied when the atlas is created; already-loaded fonts pick up a change via
+	// CResourceManager::ReloadResourcesOfType + CGraphicTextInstance::RefreshAll.
 	static void			SetGlobalFontScale(float fScale);
+	static float		GetGlobalFontScale();
 
 protected:
 	static float		ms_fFontScale;

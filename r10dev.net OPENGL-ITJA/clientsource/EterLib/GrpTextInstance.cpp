@@ -7,11 +7,32 @@
 #include "../EterBase/Utils.h"
 #include "../EterLocale/Arabic.h"
 
+#include <set>
+
 extern DWORD GetDefaultCodePage();
 
 const float c_fFontFeather = 0.5f;
 
 CDynamicPool<CGraphicTextInstance>		CGraphicTextInstance::ms_kPool;
+
+// Leaked on purpose: instances in static storage may outlive a static set.
+static std::set<CGraphicTextInstance*>& __LiveInstances()
+{
+	static std::set<CGraphicTextInstance*>* s_pkLive = new std::set<CGraphicTextInstance*>;
+	return *s_pkLive;
+}
+
+void CGraphicTextInstance::RefreshAll()
+{
+	std::set<CGraphicTextInstance*>& rkLive = __LiveInstances();
+	for (std::set<CGraphicTextInstance*>::iterator i = rkLive.begin(); i != rkLive.end(); ++i)
+	{
+		CGraphicTextInstance* pkInst = *i;
+		pkInst->m_pCharInfoVector.clear();
+		pkInst->m_isUpdate = false;
+		pkInst->Update();
+	}
+}
 
 static int gs_mx = 0;
 static int gs_my = 0;
@@ -1135,9 +1156,17 @@ void CGraphicTextInstance::Destroy()
 CGraphicTextInstance::CGraphicTextInstance()
 {
 	__Initialize();
+	__LiveInstances().insert(this);
+}
+
+CGraphicTextInstance::CGraphicTextInstance(const CGraphicTextInstance& rhs)
+{
+	*this = rhs;
+	__LiveInstances().insert(this);
 }
 
 CGraphicTextInstance::~CGraphicTextInstance()
 {
+	__LiveInstances().erase(this);
 	Destroy();
 }

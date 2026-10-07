@@ -521,3 +521,12 @@ CResourceManager::~CResourceManager()
 	Destroy();
 	//ms_loadingThread.Shutdown();
 }
+void CResourceManager::ReloadResourcesOfType(CResource::TType type)
+{
+	for (TResourcePointerMap::iterator i = m_pResMap.begin(); i != m_pResMap.end(); ++i)
+	{
+		CResource* pResource = i->second;
+		if (pResource && pResource->IsType(type) && pResource->IsData())
+			pResource->Reload();
+	}
+}

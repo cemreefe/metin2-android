@@ -321,8 +321,7 @@ void CPythonSystem::FitUIToPortSurface()
 	const float fScale = fMAX(1.0f, fMIN(1.5f, GetPortDisplayConfig("ui_scale", 1.0f)));
 	// display.cfg "font_scale" makes .fnt atlases generate bigger so text stays
 	// legible when the logical canvas is stretched — ui_scale alone only
-	// magnifies the rendered pixels. New .fnt loads pick it up; a full effect
-	// needs a restart because already-created atlases are cached.
+	// magnifies the rendered pixels. ApplyPortUIScale regenerates loaded atlases.
 	CGraphicText::SetGlobalFontScale(fMAX(1.0f, fMIN(1.6f, GetPortDisplayConfig("font_scale", 1.0f))));
 	const int iW = iSurfW;
 	const int iH = iSurfH;

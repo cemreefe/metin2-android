@@ -29,7 +29,13 @@ public:
 
 public:
 	CGraphicTextInstance();
+	CGraphicTextInstance(const CGraphicTextInstance& rhs);
 	virtual ~CGraphicTextInstance();
+
+	// Re-lays out every live text instance against its (possibly reloaded) font.
+	// Call after font atlases are regenerated: cached glyph pointers point into
+	// the old atlas.
+	static void RefreshAll();
 
 	void Destroy();
 

@@ -1,4 +1,6 @@
+#include <mutex>
 #include <set>
+#include <vector>
 #include <unistd.h>
 #include "../platform/m2platform.h"
 #include "StdAfx.h"

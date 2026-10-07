@@ -38,6 +38,11 @@ void CGraphicText::SetGlobalFontScale(float fScale)
 	ms_fFontScale = fScale;
 }
 
+float CGraphicText::GetGlobalFontScale()
+{
+	return ms_fFontScale;
+}
+
 bool CGraphicText::OnLoad(int /*iSize*/, const void* /*c_pvBuf*/)
 {
 	static char strName[32];
