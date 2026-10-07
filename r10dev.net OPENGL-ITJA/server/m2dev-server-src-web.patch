@@ -15,6 +15,76 @@ index fc2e102..957ef7d 100644
  #ifndef OS_WINDOWS
  	struct ifaddrs* ifaddrp = NULL;
  
+diff --git a/src/game/sectree_manager.cpp b/src/game/sectree_manager.cpp
+index 861b83b..362be5c 100644
+--- a/src/game/sectree_manager.cpp
++++ b/src/game/sectree_manager.cpp
+@@ -456,7 +456,6 @@ bool SECTREE_MANAGER::LoadAttribute(LPSECTREE_MAP pkMapSectree, const char * c_p
+ 		sys_err("SECTREE_MANAGER::LoadAttribute : cannot open %s", c_pszFileName);
+ 		return false;
+ 	}
+-
+ 	int32_t iWidth, iHeight;
+ 	fread(&iWidth, sizeof(int32_t), 1, fp);
+ 	fread(&iHeight, sizeof(int32_t), 1, fp);
+@@ -466,10 +465,10 @@ bool SECTREE_MANAGER::LoadAttribute(LPSECTREE_MAP pkMapSectree, const char * c_p
+ 	uint32_t uiSize;
+ 	lzo_uint uiDestSize;
+ 
+-#ifndef _MSC_VER
+-	BYTE abComp[maxMemSize];
++#if defined(_MSC_VER) || defined(__EMSCRIPTEN__)
++	BYTE* abComp = M2_NEW BYTE[maxMemSize];	/* wasm thread stack is 64KB; this buffer exceeds it */
+ #else
+-	BYTE* abComp = M2_NEW BYTE[maxMemSize];
++	BYTE abComp[maxMemSize];
+ #endif
+ 	DWORD * attr = M2_NEW DWORD[maxMemSize];
+ 
+@@ -495,7 +494,7 @@ bool SECTREE_MANAGER::LoadAttribute(LPSECTREE_MAP pkMapSectree, const char * c_p
+ 				abort();
+ 
+ 				M2_DELETE_ARRAY(attr);
+-#ifdef _MSC_VER
++#if defined(_MSC_VER) || defined(__EMSCRIPTEN__)
+ 				M2_DELETE_ARRAY(abComp);
+ #endif
+ 				return false;
+@@ -509,7 +508,7 @@ bool SECTREE_MANAGER::LoadAttribute(LPSECTREE_MAP pkMapSectree, const char * c_p
+ 				fclose(fp);
+ 
+ 				M2_DELETE_ARRAY(attr);
+-#ifdef _MSC_VER
++#if defined(_MSC_VER) || defined(__EMSCRIPTEN__)
+ 				M2_DELETE_ARRAY(abComp);
+ #endif
+ 				return false;
+@@ -529,7 +528,7 @@ bool SECTREE_MANAGER::LoadAttribute(LPSECTREE_MAP pkMapSectree, const char * c_p
+ 				fclose(fp);
+ 
+ 				M2_DELETE_ARRAY(attr);
+-#ifdef _MSC_VER
++#if defined(_MSC_VER) || defined(__EMSCRIPTEN__)
+ 				M2_DELETE_ARRAY(abComp);
+ #endif
+ 				return false;
+@@ -541,7 +540,7 @@ bool SECTREE_MANAGER::LoadAttribute(LPSECTREE_MAP pkMapSectree, const char * c_p
+ 	fclose(fp);
+ 
+ 	M2_DELETE_ARRAY(attr);
+-#ifdef _MSC_VER
++#if defined(_MSC_VER) || defined(__EMSCRIPTEN__)
+ 	M2_DELETE_ARRAY(abComp);
+ #endif
+ 	return true;
+@@ -755,7 +754,6 @@ int SECTREE_MANAGER::Build(const char * c_pszListFileName, const char* c_pszMapB
+ 			continue;
+ 
+ 		sscanf(buf, " %d %s ", &iIndex, szMapName);
+-
+ 		snprintf(szFilename, sizeof(szFilename), "%s/%s/Setting.txt", c_pszMapBasePath, szMapName);
+ 
+ 		TMapSetting setting;
 diff --git a/src/libthecore/fdwatch.cpp b/src/libthecore/fdwatch.cpp
 index 871c674..73dfcd9 100644
 --- a/src/libthecore/fdwatch.cpp

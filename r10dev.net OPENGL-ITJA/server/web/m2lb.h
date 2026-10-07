@@ -55,7 +55,7 @@ ssize_t m2lp_recvfrom(int fd, void* buf, size_t len, int flags, void* from, void
 int m2lp_close(int fd);
 int m2lp_fcntl(int fd, int cmd, int arg);
 int m2lp_select(int nfds, fd_set* r, fd_set* w, fd_set* e, struct timeval* tv);
-int m2lp_peek_readable(int fd);	/* nonzero: inbound bytes or pending accept */
+int m2lp_peek_readable(int fd);	/* nonzero: inbound bytes or pending accept */	/* debug progress marker -> SAB cell 22 */
 
 #ifdef __cplusplus
 }

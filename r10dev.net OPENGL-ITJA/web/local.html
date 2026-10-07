@@ -107,7 +107,7 @@ var Module = {
       var chanPoll = setInterval(function () {
         var i32 = new Int32Array(m2sab), auth = false, chan = false;
         for (var i = 0; i < 64; i++) {
-          var b = 32 + i * 24;
+          var b = 8 + i * 24;
           if (i32[b] === 1) {
             if (i32[b + 1] === 11000) auth = true;
             if (i32[b + 1] === 11011) chan = true;

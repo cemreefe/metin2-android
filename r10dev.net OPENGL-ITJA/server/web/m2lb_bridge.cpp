@@ -179,39 +179,6 @@ EM_JS(int, m2lb_js_poll, (int cid, int isA), {
 	return st;
 });
 
-EM_JS(void, m2lb_js_heartbeat, (), {
-	var sab = (typeof Module !== 'undefined' && Module['m2lbSab']) ||
-		(typeof wasmMemory !== 'undefined' && wasmMemory && wasmMemory.m2lbSab) ||
-		(typeof self !== 'undefined' && self.m2lbSab);
-	if (!sab) return;
-	var i32 = new Int32Array(sab);
-	var hb = (8192 + 31 * (32 + 2 * 131072)) >> 2;	// unused conn slot 31 hdr
-	var slot = (self.m2dbgSlot || 0) & 3;
-	i32[hb] = (i32[hb] + (1 << (slot * 8))) | 0;
-});
-
-EM_JS(void, m2lb_js_hb0, (int nfds), {
-	var sab = (typeof Module !== 'undefined' && Module['m2lbSab']) ||
-		(typeof wasmMemory !== 'undefined' && wasmMemory && wasmMemory.m2lbSab) ||
-		(typeof self !== 'undefined' && self.m2lbSab);
-	if (!sab) return;
-	var i32 = new Int32Array(sab);
-	var hb = (8192 + 24 * (32 + 2 * 131072)) >> 2;	// conn slot 24 hdr
-	var slot = (self.m2dbgSlot || 0) & 3;
-	i32[hb] = (i32[hb] + (1 << (slot * 8 + (nfds > 0 ? 4 : 0)))) | 0;
-});
-
-EM_JS(void, m2lb_js_pend_seen, (), {
-	var sab = (typeof Module !== 'undefined' && Module['m2lbSab']) ||
-		(typeof wasmMemory !== 'undefined' && wasmMemory && wasmMemory.m2lbSab) ||
-		(typeof self !== 'undefined' && self.m2lbSab);
-	if (!sab) return;
-	var i32 = new Int32Array(sab);
-	var hb = (8192 + 30 * (32 + 2 * 131072)) >> 2;
-	var slot = (self.m2dbgSlot || 0) & 3;
-	i32[hb] = (i32[hb] + (1 << (slot * 8))) | 0;
-});
-
 EM_JS(int, m2lb_js_listener_pending, (int lid), {
 	var s = Module._m2lb; if (!s) return -9; var i32 = s.i32;
 	var lb = s.LIST_OFF + lid * s.LIST_STRIDE;
@@ -226,36 +193,6 @@ EM_JS(void, m2lb_js_close, (int cid, int isA), {
 	if (i32[cb + 1] && i32[cb + 2]) i32[cb] = 0;
 	Atomics.store(i32, s.LOCK, 0);
 });
-
-#define M2MARK(fid, fdx) \
-	EM_ASM({ \
-		var sab = (typeof Module !== 'undefined' && Module['m2lbSab']) || \
-			(typeof wasmMemory !== 'undefined' && wasmMemory && wasmMemory.m2lbSab) || \
-			(typeof self !== 'undefined' && self.m2lbSab); \
-		if (!sab) return; \
-		var i32 = new Int32Array(sab); \
-		var base = (8192 + (16 - ((self.m2dbgSlot||0) & 3)) * (32 + 2 * 131072)) >> 2; \
-		i32[base] = 0xF0000000 | (($1 & 0xffff) << 8) | $0; \
-	}, fid, fdx)
-
-#define M2MARKC(cv) \
-	EM_ASM({ \
-		var sab = (typeof Module !== 'undefined' && Module['m2lbSab']) || \
-			(typeof wasmMemory !== 'undefined' && wasmMemory && wasmMemory.m2lbSab) || \
-			(typeof self !== 'undefined' && self.m2lbSab); \
-		if (!sab) return; \
-		var i32 = new Int32Array(sab); \
-		i32[(8192 + (9 - ((self.m2dbgSlot||0) & 3)) * (32 + 2 * 131072)) >> 2] = 0xC0000000 | ($0 & 0xffff); \
-	}, cv)
-
-#define M2MARK0() \
-	EM_ASM({ \
-		var sab = (typeof Module !== 'undefined' && Module['m2lbSab']) || \
-			(typeof wasmMemory !== 'undefined' && wasmMemory && wasmMemory.m2lbSab) || \
-			(typeof self !== 'undefined' && self.m2lbSab); \
-		if (!sab) return; \
-		new Int32Array(sab)[(8192 + (16 - ((self.m2dbgSlot||0) & 3)) * (32 + 2 * 131072)) >> 2] = 0; \
-	})
 
 /* ---- public raw API --------------------------------------------------- */
 
@@ -334,7 +271,6 @@ int m2lp_listen(int fd)
 {
 	M2lpFd* s = m2lp_get(fd);
 	if (!s || s->kind != M2LP_TCP) { errno = EINVAL; return -1; }
-	M2MARK(0x16, fd);
 	m2lb_ensure();
 	int lid = m2lb_js_listen(s->port);
 	if (lid < 0) { errno = EADDRINUSE; return -1; }
@@ -347,7 +283,6 @@ int m2lp_accept(int fd, struct sockaddr_in* peer)
 {
 	M2lpFd* s = m2lp_get(fd);
 	if (!s || s->kind != M2LP_LISTENER) { errno = EINVAL; return -1; }
-	M2MARK(0x12, fd);
 	m2lb_ensure();
 	int cid = m2lb_js_accept(s->lid);
 	if (cid < 0) { errno = EAGAIN; return -1; }
@@ -370,7 +305,6 @@ int m2lp_connect(int fd, int port)
 	/* Retry while no listener exists — startup ordering between the
 	 * db/game/client workers is not deterministic. Matches the old
 	 * blocking connect's 10s timeout. */
-	M2MARK(0x15, fd);
 	m2lb_ensure();
 	for (int tries = 0; tries < 1000; tries++) {
 		int cid = m2lb_js_conn(port);
@@ -392,18 +326,10 @@ ssize_t m2lp_recv(int fd, void* buf, size_t len)
 	if (!s) { errno = EBADF; return -1; }
 	if (s->kind == M2LP_UDP) { errno = EAGAIN; return -1; }
 	int isA = (s->kind == M2LP_CONN_A);
-	M2MARK(0x13, fd);
 	m2lb_ensure();
-	M2MARKC(s->conn);
-	int m2rc = 0;
 	for (;;) {
 		int n = m2lb_js_recv(s->conn, isA, (int)(uintptr_t)buf, (int)len);
 		if (n != -1 || !(s->flags & 1)) return n == -1 ? (errno = EAGAIN, -1) : n;
-		if (!(++m2rc & 0x3ff))
-			EM_ASM({
-				var sab = (Module['m2lbSab']) || (wasmMemory && wasmMemory.m2lbSab) || self.m2lbSab;
-				if (sab) new Int32Array(sab)[(8192 + (5 - ((self.m2dbgSlot||0) & 3)) * (32 + 2 * 131072)) >> 2] = 0xE0000000 | ($0 & 0xffffff);
-			}, m2rc);
 		usleep(200);
 	}
 }
@@ -413,9 +339,7 @@ ssize_t m2lp_send(int fd, const void* buf, size_t len)
 	M2lpFd* s = m2lp_get(fd);
 	if (!s) { errno = EBADF; return -1; }
 	if (s->kind != M2LP_CONN_A && s->kind != M2LP_CONN_B) { errno = ENOTCONN; return -1; }
-	M2MARK(0x14, fd);
 	m2lb_ensure();
-	M2MARKC(s->conn);
 	int n = m2lb_js_send(s->conn, s->kind == M2LP_CONN_A, (int)(uintptr_t)buf, (int)len);
 	if (n == 0) { errno = EAGAIN; return -1; }
 	return n;
@@ -463,10 +387,7 @@ int m2lp_fcntl(int fd, int cmd, int arg)
 
 int m2lp_select(int nfds, fd_set* r, fd_set* w, fd_set* e, struct timeval* tv)
 {
-	M2MARK(0x11, nfds);
 	m2lb_ensure();
-	m2lb_js_heartbeat();
-	m2lb_js_hb0(nfds);
 	struct timeval start, now;
 	gettimeofday(&start, NULL);
 	long budget_us = tv ? tv->tv_sec * 1000000L + tv->tv_usec : 0;
@@ -480,9 +401,7 @@ int m2lp_select(int nfds, fd_set* r, fd_set* w, fd_set* e, struct timeval* tv)
 			if (!s) continue;
 			int st = 0;
 			if (s->kind == M2LP_LISTENER) {
-				int p = m2lb_js_listener_pending(s->lid);
-				if (p > 0) m2lb_js_pend_seen();
-				st = p > 0 ? 1 : 0;
+				st = m2lb_js_listener_pending(s->lid) > 0;
 			}
 			else if (s->kind == M2LP_CONN_A || s->kind == M2LP_CONN_B)
 				st = m2lb_js_poll(s->conn, s->kind == M2LP_CONN_A);

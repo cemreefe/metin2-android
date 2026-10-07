@@ -114,5 +114,6 @@ async function m2stage(cfg) {
     for (const k in cfg.env) ENV[k] = cfg.env[k];
 
   FS.chdir(cfg.cwd);
+
   postMessage({ m2: 'ready' });
 }
