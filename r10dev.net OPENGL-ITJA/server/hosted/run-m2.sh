@@ -31,6 +31,13 @@ run() { # run <node> <argv...>
 mknode db
 run db /app/bin/db
 
+# auth/chan open a connection to the db worker at boot and do not retry on
+# failure — wait for :9000 to accept connections before spawning them.
+for i in $(seq 1 60); do
+  (exec 3<>/dev/tcp/127.0.0.1/9000 && exec 3>&- && exec 3<&-) 2>/dev/null && break
+  sleep 1
+done
+
 mknode auth
 cat > /srv/auth/CONFIG <<'EOF'
 HOSTNAME: auth

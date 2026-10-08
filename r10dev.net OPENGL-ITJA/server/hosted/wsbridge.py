@@ -62,11 +62,11 @@ def ws_recv_frame(conn):
 def ws_send_frame(conn, payload):
     ln = len(payload)
     if ln < 126:
-        hdr = struct.pack("BB", 0x82, ln)
+        hdr = struct.pack(">BB", 0x82, ln)
     elif ln < 65536:
-        hdr = struct.pack("BBH", 0x82, 126, ln)
+        hdr = struct.pack(">BBH", 0x82, 126, ln)
     else:
-        hdr = struct.pack("BBQ", 0x82, 127, ln)
+        hdr = struct.pack(">BBQ", 0x82, 127, ln)
     conn.sendall(hdr + payload)
 
 
