@@ -433,6 +433,12 @@ void CPythonApplication::OnTouchEvent(int action, int x, int y)
 		}
 		if (m_eTouchMode == TOUCH_WORLD_PENDING)
 			return;
+		// While a mouse camera drag is active, leave the move to the per-frame
+		// cursor poll (as on Win32): a second Drag() from the event would apply
+		// the delta and the poll would then zero it before the camera updates.
+		if (CCamera* pkCmrDrag = CCameraManager::Instance().GetCurrentCamera())
+			if (pkCmrDrag->IsDraging())
+				return;
 		OnMouseMove(x, y);
 		return;
 
