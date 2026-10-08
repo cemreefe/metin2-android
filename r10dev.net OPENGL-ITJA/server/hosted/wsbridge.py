@@ -16,9 +16,12 @@ import hashlib
 import http.server
 import json
 import os
+import re
 import socket
+import sqlite3
 import struct
 import threading
+import time
 import urllib.parse
 
 WS_GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
@@ -29,6 +32,62 @@ ALLOWED = set(
     ).split(",")
     if t.strip()
 )
+
+M2_SQLITE_DIR = os.environ.get("M2_SQLITE_DIR", "")
+REGISTER_DB = os.path.join(M2_SQLITE_DIR, "account.sqlite3") if M2_SQLITE_DIR else ""
+
+# crude per-IP registration throttle: at most N per window
+RATE_N = int(os.environ.get("M2_REGISTER_RATE", "5"))
+RATE_WINDOW = 600  # seconds
+_rate = {}  # ip -> [timestamps]
+LOGIN_RE = re.compile(r"^[A-Za-z0-9_]{4,16}$")
+
+
+def mysql_password(pw):
+    return "*" + hashlib.sha1(hashlib.sha1(pw.encode()).digest()).hexdigest().upper()
+
+
+def rate_ok(ip):
+    now = time.time()
+    hits = [t for t in _rate.get(ip, []) if now - t < RATE_WINDOW]
+    if len(hits) >= RATE_N:
+        _rate[ip] = hits
+        return False
+    hits.append(now)
+    _rate[ip] = hits
+    return True
+
+
+def register_account(login, password, social_id=""):
+    """Insert a row into the account db the game db process reads.
+
+    Returns (ok, error). Never logs the password.
+    """
+    if not LOGIN_RE.match(login):
+        return False, "username must be 4-16 letters, digits or _"
+    if not (6 <= len(password) <= 64):
+        return False, "password must be 6-64 characters"
+    if social_id and not re.match(r"^[0-9]{7}$", social_id):
+        return False, "deletion code must be 7 digits"
+    if not REGISTER_DB or not os.path.exists(REGISTER_DB):
+        return False, "registration unavailable"
+    try:
+        con = sqlite3.connect(REGISTER_DB, timeout=5)
+        try:
+            con.execute(
+                "INSERT INTO account (login, password, social_id, create_time, status, ip) "
+                "VALUES (?, ?, ?, ?, 'OK', '')",
+                (login, mysql_password(password), social_id,
+                 time.strftime("%Y-%m-%d %H:%M:%S")),
+            )
+            con.commit()
+        finally:
+            con.close()
+    except sqlite3.IntegrityError:
+        return False, "that username is taken"
+    except sqlite3.Error:
+        return False, "registration failed, try again later"
+    return True, ""
 
 
 def ws_accept(key):
@@ -129,6 +188,38 @@ class BridgeHandler(http.server.BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         self.wfile.write(body)
+
+    def do_OPTIONS(self):
+        self.send_response(204)
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        self.end_headers()
+
+    def do_POST(self):
+        if self.path != "/register":
+            return self.send_error(404)
+        ip = self.client_address[0]
+        if not rate_ok(ip):
+            return self._json(429, {"ok": False, "error": "too many attempts, wait a bit"})
+        try:
+            n = min(int(self.headers.get("Content-Length", "0")), 4096)
+        except ValueError:
+            n = 0
+        try:
+            body = json.loads(self.rfile.read(n) or b"{}")
+        except (ValueError, UnicodeDecodeError):
+            return self._json(400, {"ok": False, "error": "bad request"})
+        ok, err = register_account(
+            str(body.get("login", "")),
+            str(body.get("password", "")),
+            str(body.get("social_id", "")),
+        )
+        if ok:
+            print(f"[wsbridge] registered account {body.get('login')} from {ip}", flush=True)
+            return self._json(200, {"ok": True})
+        code = 409 if "taken" in err else 400
+        return self._json(code, {"ok": False, "error": err})
 
     def do_GET(self):
         if self.path == "/healthz":
