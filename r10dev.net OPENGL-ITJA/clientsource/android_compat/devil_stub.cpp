@@ -1,4 +1,4 @@
-#ifdef __ANDROID__
+#ifdef M2_PORT
 #include <IL/il.h>
 
 extern "C" {

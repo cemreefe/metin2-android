@@ -155,7 +155,18 @@
  
  		self.questButtonList = []
  		self.whisperButtonList = []
-@@ -964,6 +970,10 @@
+@@ -673,6 +679,10 @@
+ 		
+ 	def RemoveQuestDialog(self, key):
+ 		del self.wndQuestWindow[key]
++		# Some quest flows (e.g. skill group choice) close the last dialog
++		# without asking the curtain to lift, so the hidden HUD never came back.
++		if not self.wndQuestWindow and uiQuest.QuestDialog.__dict__.has_key("QuestCurtain"):
++			uiQuest.QuestDialog.QuestCurtain.CurtainMode = -1
+ 
+ 	## Exchange
+ 	def StartExchange(self):
+@@ -964,6 +974,10 @@
  			if False == self.wndInventory.IsShow():
  				self.wndInventory.Show()
  				self.wndInventory.SetTop()
@@ -166,7 +177,7 @@
  			else:
  				self.wndInventory.OverOutItem()
  				self.wndInventory.Close()
-@@ -1359,6 +1369,30 @@
+@@ -1359,6 +1373,30 @@
  			else:
  				btn.Show()
  
@@ -197,7 +208,7 @@
  	def __StartQuest(self, btn):
  		event.QuestButtonClick(btn.index)
  		self.__DestroyQuestButton(btn)
-@@ -1378,10 +1412,14 @@
+@@ -1378,10 +1416,14 @@
  	def HideAllQuestButton(self):
  		for btn in self.questButtonList:
  			btn.Hide()
@@ -428,3 +439,403 @@
  		
  	def AdjustPositionAndSize(self):
  		bx, by = self.GetBasePosition()
+--- a/intrologin.py
++++ b/intrologin.py
+@@ -221,6 +221,9 @@
+ 			
+ 		self.Show()
+ 
++		import uiscale
++		self.scaleHud = uiscale.Attach(self)
++
+ 		global SKIP_LOGIN_PHASE
+ 		if SKIP_LOGIN_PHASE:
+ 			if self.isStartError:
+--- a/introselect.py
++++ b/introselect.py
+@@ -151,6 +151,9 @@
+ 		self.SetWindowName("SelectCharacterWindow")
+ 		self.Show()
+ 
++		import uiscale
++		self.scaleHud = uiscale.Attach(self)
++
+ 		if self.slot>=0:
+ 			self.SelectSlot(self.slot)
+ 
+--- a/introempire.py
++++ b/introempire.py
+@@ -89,6 +89,9 @@
+ 		self.SetWindowName("SelectEmpireWindow")
+ 		self.Show()
+ 
++		import uiscale
++		self.scaleHud = uiscale.Attach(self)
++
+ 		if app.IsRTL():
+ 			selectPath = uiScriptLocale.LOCALE_UISCRIPT_PATH + "SelectEmpireWindow.py"
+ 		else:
+--- a/introcreate.py
++++ b/introcreate.py
+@@ -261,6 +261,9 @@
+ 		self.dlgBoard.Show()
+ 		self.Show()
+ 
++		import uiscale
++		self.scaleHud = uiscale.Attach(self)
++
+ 		if musicInfo.createMusic != "":
+ 			snd.SetMusicVolume(systemSetting.GetMusicVolume())
+ 			snd.FadeInMusic("BGM/"+musicInfo.createMusic)
+--- a/uiscript/selectcharacterwindow.py
++++ b/uiscript/selectcharacterwindow.py
+@@ -3,11 +3,16 @@
+ ROOT_PATH = "d:/ymir work/ui/public/"
+ LOCALE_PATH = uiScriptLocale.SELECT_PATH
+ 
+-BOARD_X = SCREEN_WIDTH * (65) / 800
+-BOARD_Y = SCREEN_HEIGHT * (220) / 600
+-
+ BOARD_ITEM_ADD_POSITION = -40
+ 
++# The board is 208x(363+BOARD_ITEM_ADD_POSITION). At large ui_scale values the
++# logical screen is smaller than the layout assumes, so clamp the board to stay
++# fully on screen instead of sliding off the bottom edge.
++BOARD_W = 208
++BOARD_H = 363 + BOARD_ITEM_ADD_POSITION
++BOARD_X = max(0, min(SCREEN_WIDTH * (65) / 800, SCREEN_WIDTH - BOARD_W))
++BOARD_Y = max(0, min(SCREEN_HEIGHT * (220) / 600, SCREEN_HEIGHT - BOARD_H))
++
+ # The artwork is 1024x768; scale it uniformly to cover the screen and centre it,
+ # so narrow or tall screens crop it instead of stretching it.
+ BG_SCALE = max(float(SCREEN_WIDTH) / 1024.0, float(SCREEN_HEIGHT) / 768.0)
+--- a/uiscript/loginwindow.py
++++ b/uiscript/loginwindow.py
+@@ -21,6 +21,11 @@
+ BG_X = int((SCREEN_WIDTH - 1024 * BG_SCALE) / 2)
+ BG_Y = int((SCREEN_HEIGHT - 768 * BG_SCALE) / 2)
+ 
++# The login cluster (ConnectBoard + LoginBoard) is anchored 445px from the
++# bottom. At large ui_scale values the logical screen is shorter than that, so
++# clamp it to stay on screen instead of sliding off the top/bottom edge.
++LOGIN_Y = max(0, SCREEN_HEIGHT - 445)
++
+ window = {
+ 	"name" : "LoginWindow",
+ 	"sytle" : ("movable",),
+@@ -51,7 +56,7 @@
+ 			'name' : 'VirtualKeyboard',
+ 			'type' : 'thinboard',
+ 			'x' : (SCREEN_WIDTH - 564) / 2,
+-			'y' : SCREEN_HEIGHT - 300,
++			'y' : max(0, SCREEN_HEIGHT - 300),
+ 			'width' : 564,
+ 			'height' : 254,
+ 			'children' : 
+@@ -524,7 +529,7 @@
+ 			"type" : "thinboard",
+ 
+ 			"x" : (SCREEN_WIDTH - 208) / 2,
+-			"y" : (SCREEN_HEIGHT - 410 - 35),
++			"y" : LOGIN_Y,
+ 			"width" : 208,
+ 			"height" : 30,
+ 
+@@ -564,7 +569,7 @@
+ 			"type" : "image",
+ 
+ 			"x" : (SCREEN_WIDTH - 208) / 2,
+-			"y" : (SCREEN_HEIGHT - 410),
++			"y" : LOGIN_Y + 35,
+ 
+ 			"image" : "d:/ymir work/ui/intro/login/loginwindow.sub",
+ 
+@@ -654,7 +659,7 @@
+ 			"type" : "thinboard",
+ 
+ 			"x" : 0,
+-			"y" : SCREEN_HEIGHT - SERVER_BOARD_HEIGHT - 72,
++			"y" : max(0, SCREEN_HEIGHT - SERVER_BOARD_HEIGHT - 72),
+ 			"width" : 375,
+ 			"height" : SERVER_BOARD_HEIGHT,
+ 			"horizontal_align" : "center",
+--- a/uiscript/selectempirewindow.py
++++ b/uiscript/selectempirewindow.py
+@@ -3,8 +3,10 @@
+ ROOT_PATH = "d:/ymir work/ui/public/"
+ LOCALE_PATH = uiScriptLocale.EMPIRE_PATH
+ 
+-ATALS_X = SCREEN_WIDTH * (282) / 800
+-ATALS_Y = SCREEN_HEIGHT * (170) / 600
++# The atlas block ends around ATALS_Y + 380 (select buttons sit at +340).
++# Clamp it so large ui_scale values keep it on screen.
++ATALS_X = max(0, min(SCREEN_WIDTH * (282) / 800, SCREEN_WIDTH - 384))
++ATALS_Y = max(0, min(SCREEN_HEIGHT * (170) / 600, SCREEN_HEIGHT - 385))
+ 
+ window = {
+ 	"name" : "SelectCharacterWindow",
+--- a/intrologin.py
++++ b/intrologin.py
+@@ -452,6 +452,10 @@
+ 			self.loginExitButton		= GetObject("LoginExitButton")
+ 
+ 			self.virtualKeyboard		= self.GetChild2("VirtualKeyboard")
++			# Typing uses the real or system keyboard; drop the on-screen one.
++			if self.virtualKeyboard:
++				self.virtualKeyboard.Hide()
++				self.virtualKeyboard = None
+ 
+ 			if self.virtualKeyboard:
+ 				self.VIRTUAL_KEY_ALPHABET_UPPERS = Suffle(localeInfo.VIRTUAL_KEY_ALPHABET_UPPERS)
+--- a/uiquest.py
++++ b/uiquest.py
+@@ -68,43 +68,48 @@
+ 		self.TopBar.SetColor(0xff000000)
+ 		self.BottomBar.SetColor(0xff000000)
+ 
+-		self.TopBar.SetPosition(0,-self.BarHeight)
+ 		self.TopBar.SetSize(wndMgr.GetScreenWidth(),self.BarHeight)
+-
+-		self.BottomBar.SetPosition(0,wndMgr.GetScreenHeight())
+ 		self.BottomBar.SetSize(wndMgr.GetScreenWidth(),self.BarHeight)
+ 
+ 		self.CurtainMode = 0
+-
+-		self.lastclock = time.clock()
++		# Track the slide in floats on wall time: reading positions back
++		# truncates sub-pixel steps and time.clock() is CPU time on Linux.
++		self.offset = float(-self.BarHeight - 1)
++		self.__Place()
++
++		self.lastclock = app.GetTime()
++
++	def __Place(self):
++		y = int(self.offset)
++		self.TopBar.SetPosition(0, y)
++		self.BottomBar.SetPosition(0, wndMgr.GetScreenHeight() - self.BarHeight - y)
+ 
+ 	def Close(self):
+ 		self.CurtainMode = 0
+-		self.TopBar.SetPosition(0, -self.BarHeight-1)
+-		self.BottomBar.SetPosition(0, wndMgr.GetScreenHeight()+1)
++		self.offset = float(-self.BarHeight - 1)
++		self.__Place()
+ 		for OnDoneEvent in QuestCurtain.OnDoneEventList:
+ 			apply(OnDoneEvent,(self,))
+ 		QuestCurtain.OnDoneEventList = []
+ 
+ 	def OnUpdate(self):
+-		dt = time.clock() - self.lastclock
++		now = app.GetTime()
++		dt = min(0.1, max(0.0, now - self.lastclock))
++		self.lastclock = now
++
+ 		if self.CurtainMode>0:
+-			self.TopBar.SetPosition(0, int(self.TopBar.GetGlobalPosition()[1]+dt*self.CURTAIN_SPEED))
+-			self.BottomBar.SetPosition(0, int(self.BottomBar.GetGlobalPosition()[1]-dt*self.CURTAIN_SPEED))
+-			if self.TopBar.GetGlobalPosition()[1]>0:
+-				self.TopBar.SetPosition(0,0)
+-				self.BottomBar.SetPosition(0,wndMgr.GetScreenHeight()-self.BarHeight)
++			self.offset += dt*self.CURTAIN_SPEED
++			if self.offset >= 0:
++				self.offset = 0.0
+ 				self.CurtainMode = 0
++			self.__Place()
+ 
+ 		elif self.CurtainMode<0:
+-			self.TopBar.SetPosition(0, int(self.TopBar.GetGlobalPosition()[1]-dt*self.CURTAIN_SPEED))
+-			self.BottomBar.SetPosition(0, int(self.BottomBar.GetGlobalPosition()[1]+dt*self.CURTAIN_SPEED))
+-			if self.TopBar.GetGlobalPosition()[1]<-self.BarHeight:
+-				self.TopBar.SetPosition(0,-self.BarHeight-1)
+-				self.BottomBar.SetPosition(0,wndMgr.GetScreenHeight()+1)
++			self.offset -= dt*self.CURTAIN_SPEED
++			if self.offset < -self.BarHeight:
+ 				self.Close()
+-
+-		self.lastclock = time.clock()
++				return
++			self.__Place()
+ 
+ class EventCurtain(ui.Bar):
+ 
+--- a/intrologin.py
++++ b/intrologin.py
+@@ -492,6 +492,8 @@
+ 
+ 		self.loginButton.SetEvent(ui.__mem_func__(self.__OnClickLoginButton))
+ 		self.loginExitButton.SetEvent(ui.__mem_func__(self.__OnClickExitButton))
++		# Exit sat next to Connect and quit the game on a misclick.
++		self.loginExitButton.Hide()
+ 
+ 		self.serverList.SetEvent(ui.__mem_func__(self.__OnSelectServer))
+ 		
+@@ -720,8 +722,9 @@
+ 		if addr and port:
+ 			net.SetMarkServer(addr, port)
+ 
+-			net.SetServerInfo(addr+":"+str(port))
+-			self.serverInfo.SetText("K:"+addr+":"+str(port))
++			serverName = loginInfo.get("serverName", "")
++			net.SetServerInfo(serverName or addr+":"+str(port))
++			self.serverInfo.SetText(serverName or "K:"+addr+":"+str(port))
+ 
+ 		slot=loginInfo.get("slot", 0)
+ 		isAutoLogin=loginInfo.get("auto", 0)
+@@ -745,6 +748,9 @@
+ 			app.loggined = TRUE
+ 
+ 		if isAutoLogin:
++			# No login page while the stored account logs in by itself.
++			self.connectBoard.Hide()
++			self.loginBoard.Hide()
+ 			self.Connect(id, pwd)
+ 			
+ 			print "=================================================================================="
+--- a/uiscript/loginwindow.py
++++ b/uiscript/loginwindow.py
+@@ -628,7 +628,7 @@
+ 					"name" : "LoginButton",
+ 					"type" : "button",
+ 
+-					"x" : 15,
++					"x" : (208 - 88) / 2,
+ 					"y" : 79,
+ 
+ 					"default_image" : "d:/ymir work/ui/public/large_button_01.sub",
+--- a/intrologin.py
++++ b/intrologin.py
+@@ -240,15 +240,36 @@
+ 				self.__OpenServerBoard()
+ 		else:
+ 			connectingIP = self.stream.GetConnectAddr()
+-			if connectingIP:
++			if connectingIP and not getattr(self, "hiddenAccount", None):
+ 				self.__OpenLoginBoard()
+ 			else:
+ 				self.__RefreshServerList()
+ 				self.__OpenServerBoard()
+ 
++		if getattr(self, "hiddenAccount", None):
++			self.__BackToServerBoard()
++
+ 		app.ShowCursor()
+ 
++	def __BackToServerBoard(self):
++		if self.connectingDialog:
++			self.connectingDialog.Close()
++		self.connectingDialog = None
++		self.stream.popupWindow.Close()
++		net.Disconnect()
++		self.__RefreshServerList()
++		self.__OpenServerBoard()
++
++	def __OnHiddenLoginFailed(self):
++		self.__BackToServerBoard()
++
++	def __OnHiddenConnectCancel(self):
++		if getattr(self, "hiddenCancelArmed", False):
++			self.hiddenCancelArmed = False
++			self.__BackToServerBoard()
++
+ 	def Close(self):
++		self.hiddenCancelArmed = False
+ 
+ 		if self.connectingDialog:
+ 			self.connectingDialog.Close()
+@@ -362,6 +383,7 @@
+ 		self.OnConnectFailure()
+ 
+ 	def OnConnectFailure(self):
++		self.hiddenCancelArmed = False
+ 
+ 		if self.isNowCountDown:
+ 			return
+@@ -372,7 +394,9 @@
+ 			self.connectingDialog.Close()
+ 		self.connectingDialog = None
+ 
+-		if app.loggined:
++		if getattr(self, "hiddenAccount", None):
++			self.PopupNotifyMessage(localeInfo.LOGIN_CONNECT_FAILURE, self.__OnHiddenLoginFailed)
++		elif app.loggined:
+ 			self.PopupNotifyMessage(localeInfo.LOGIN_CONNECT_FAILURE, self.__ExitGame)
+ 		elif self.timeOutMsg:
+ 			self.PopupNotifyMessage(localeInfo.LOGIN_FAILURE_TIMEOUT, self.SetPasswordEditLineFocus)
+@@ -380,15 +404,18 @@
+ 			self.PopupNotifyMessage(localeInfo.LOGIN_CONNECT_FAILURE, self.SetPasswordEditLineFocus)
+ 
+ 	def OnHandShake(self):
++		self.hiddenCancelArmed = False
+ 		if not IsLoginDelay():
+ 			snd.PlaySound("sound/ui/loginok.wav")
+ 			self.PopupDisplayMessage(localeInfo.LOGIN_CONNECT_SUCCESS)
+ 
+ 	def OnLoginStart(self):
++		self.hiddenCancelArmed = False
+ 		if not IsLoginDelay():
+ 			self.PopupDisplayMessage(localeInfo.LOGIN_PROCESSING)
+ 
+ 	def OnLoginFailure(self, error):
++		self.hiddenCancelArmed = False
+ 		if self.connectingDialog:
+ 			self.connectingDialog.Close()
+ 		self.connectingDialog = None
+@@ -402,7 +429,9 @@
+ 		#0000685: [M2EU] ID/password guessing bug fix: always set focus to password field
+ 		loginFailureFunc=self.loginFailureFuncDict.get(error, self.SetPasswordEditLineFocus)
+ 
+-		if app.loggined:
++		if getattr(self, "hiddenAccount", None):
++			self.PopupNotifyMessage(loginFailureMsg, self.__OnHiddenLoginFailed)
++		elif app.loggined:
+ 			self.PopupNotifyMessage(loginFailureMsg, self.__ExitGame)
+ 		else:
+ 			self.PopupNotifyMessage(loginFailureMsg, loginFailureFunc)
+@@ -584,7 +613,11 @@
+ 
+ 		else:
+ 			self.stream.popupWindow.Close()
+-			self.stream.popupWindow.Open(localeInfo.LOGIN_CONNETING, self.SetPasswordEditLineFocus, localeInfo.UI_CANCEL)
++			# PopupDialog fires its event on any Close, including when the next
++			# login step replaces it, so only a real Cancel goes back.
++			self.hiddenCancelArmed = True
++			cancel = self.__OnHiddenConnectCancel if getattr(self, "hiddenAccount", None) else self.SetPasswordEditLineFocus
++			self.stream.popupWindow.Open(localeInfo.LOGIN_CONNETING, cancel, localeInfo.UI_CANCEL)
+ 
+ 		self.stream.SetLoginInfo(id, pwd)
+ 		self.stream.Connect()
+@@ -730,6 +763,8 @@
+ 		isAutoLogin=loginInfo.get("auto", 0)
+ 		isAutoLogin=loginInfo.get("autoLogin", 0)
+ 		isAutoSelect=loginInfo.get("autoSelect", 0)
++		# Hidden account: the player picks server/channel, then this account logs in with no login page.
++		self.hiddenAccount = (id, pwd) if loginInfo.get("hiddenAccount", 0) and id and pwd else None
+ 
+ 		self.stream.SetCharacterSlot(slot)
+ 		self.stream.SetConnectInfo(addr, port, account_addr, account_port)
+@@ -863,7 +898,14 @@
+ 		if self.virtualKeyboard:
+ 			self.virtualKeyboard.Show()
+ 
+-		if app.loggined:
++		if getattr(self, "hiddenAccount", None):
++			self.connectBoard.Hide()
++			self.loginBoard.Hide()
++			if self.virtualKeyboard:
++				self.virtualKeyboard.Hide()
++			self.Connect(*self.hiddenAccount)
++			return
++		elif app.loggined:
+ 			self.Connect(self.id, self.pwd)
+ 			self.connectBoard.Hide()
+ 			self.loginBoard.Hide()
+--- a/networkmodule.py
++++ b/networkmodule.py
+@@ -38,6 +38,7 @@
+ 		if True == self.IsShow():
+ 			self.Close()
+ 
++		self.SetCenterPosition()
+ 		self.Lock()
+ 		self.SetTop()
+ 		self.CloseEvent = event

@@ -1,5 +1,8 @@
 #include "StdAfx.h"
 #include "MapUtil.h"
+#ifdef M2_PORT
+#include <cfloat>
+#endif
 
 void Environment_Init(SEnvironmentData& envData)
 {

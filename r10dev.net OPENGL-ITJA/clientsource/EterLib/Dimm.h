@@ -110,7 +110,7 @@ extern "C" {
 	// PARTICULAR PURPOSE.
 	//=--------------------------------------------------------------------------=
 
-#ifndef __ANDROID__
+#ifndef M2_PORT
 #pragma comment(lib,"uuid.lib")
 #endif
 

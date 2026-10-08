@@ -1,7 +1,7 @@
 #ifndef __ETER_FILE_DIR__
 #define __ETER_FILE_DIR__
 
-#ifndef __ANDROID__
+#ifndef M2_PORT
 #include <windows.h>
 #endif
 

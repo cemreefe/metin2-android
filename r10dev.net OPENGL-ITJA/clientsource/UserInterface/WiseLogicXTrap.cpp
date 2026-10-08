@@ -5,25 +5,25 @@
 #ifdef XTRAP_CLIENT_ENABLE
 
 #include "urlmon.h"
-#ifndef __ANDROID__
+#ifndef M2_PORT
 #pragma comment(lib, "urlmon")
 #endif
-#ifndef __ANDROID__
+#ifndef M2_PORT
 #pragma comment(lib, "wininet")
 #endif
 
 #include <XTrap/Xtrap_C_Interface.h>
 
-#ifndef __ANDROID__
+#ifndef M2_PORT
 #pragma comment(lib, "XTrap4Client_mt.lib")
 #endif
-#ifndef __ANDROID__
+#ifndef M2_PORT
 #pragma comment(lib, "XTrap4Client_ClientPart_mt.lib")
 #endif
-#ifndef __ANDROID__
+#ifndef M2_PORT
 #pragma comment(lib, "XTrap4Client_ServerPart_mt.lib")
 #endif
-#ifndef __ANDROID__
+#ifndef M2_PORT
 #pragma comment(lib, "XTrap_Unipher_mt.lib")
 #endif
 //#pragma comment(lib, "XTrap4Launcher_mt.lib" )

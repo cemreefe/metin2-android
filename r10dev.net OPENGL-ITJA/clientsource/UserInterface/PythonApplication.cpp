@@ -65,7 +65,7 @@ CPythonApplication::CPythonApplication() :
 	m_iPort = 0;
 	m_iFPS = 60;
 
-#ifdef ANDROID
+#ifdef M2_PORT
 	m_isActivateWnd = true;
 	m_isMinimizedWnd = false;
 #else
@@ -194,8 +194,8 @@ void CPythonApplication::RenderGame()
 			long lx, ly;
 			m_kWndMgr.GetMousePosition(lx, ly);
 			m_pyGraphic.SetCursorPosition(lx, ly);
-#ifdef __ANDROID__
-			CMSApplication::AndroidFrameDone();
+#ifdef M2_PORT
+			CMSApplication::PortFrameDone();
 #endif
 		}
 
@@ -260,8 +260,8 @@ void CPythonApplication::RenderGame()
 		long lx, ly;
 		m_kWndMgr.GetMousePosition(lx, ly);
 		m_pyGraphic.SetCursorPosition(lx, ly);
-#ifdef __ANDROID__
-		CMSApplication::AndroidFrameDone();
+#ifdef M2_PORT
+		CMSApplication::PortFrameDone();
 #endif
 	}
 
@@ -407,10 +407,8 @@ void CPythonApplication::SkipRenderBuffering(DWORD dwSleepMSec)
 	m_dwBufSleepSkipTime = ELTimer_GetMSec() + dwSleepMSec;
 }
 
-#ifdef __ANDROID__
-void AndroidSetKeyboardVisible(bool bVisible, float fFocusBottom);
-
-static void AndroidSyncKeyboardVisibility()
+#ifdef M2_PORT
+static void SyncKeyboardVisibility()
 {
 	static bool s_bVisible = false;
 	static UI::CWindow* s_pFocus = NULL;
@@ -424,14 +422,14 @@ static void AndroidSyncKeyboardVisibility()
 	float fFocusBottom = 1.0f;
 	if (bWant && rkWndMgr.GetScreenHeight() > 0)
 		fFocusBottom = float(pFocus->GetRect().bottom) / float(rkWndMgr.GetScreenHeight());
-	AndroidSetKeyboardVisible(bWant, fFocusBottom);
+	M2Plat::SetKeyboardVisible(bWant, fFocusBottom);
 }
 #endif
 
 bool CPythonApplication::Process()
 {
-#ifdef __ANDROID__
-	AndroidSyncKeyboardVisibility();
+#ifdef M2_PORT
+	SyncKeyboardVisibility();
 #endif
 #if defined(CHECK_LATEST_DATA_FILES)
 	if (CheckLatestFiles_PollEvent())
@@ -463,12 +461,6 @@ bool CPythonApplication::Process()
 		m_dwLoad = s_uiLoad;
 
 		m_dwFaceCount = s_dwFaceCount / max(1, s_dwRenderFrameCount);
-
-#ifdef __ANDROID__
-		static int s_iFPSLogTick = 0;
-		if (++s_iFPSLogTick % 10 == 0)
-			Tracenf("fps update %u render %u load %u", m_dwUpdateFPS, m_dwRenderFPS, m_dwLoad);
-#endif
 
 		s_dwCheckTime = ELTimer_GetMSec();
 
@@ -880,9 +872,9 @@ bool CPythonApplication::Process()
 					m_pyBackground.SetViewDistanceSet(0, 25600.0f);
 				}
 
-#ifdef __ANDROID__
-				CMSApplication::AndroidEndFrame();
-				OnAndroidFrame();
+#ifdef M2_PORT
+				CMSApplication::PortEndFrame();
+				OnPortFrame();
 #endif
 				++s_dwRenderFrameCount;
 			}
@@ -1020,6 +1012,36 @@ bool CPythonApplication::CreateDevice(int width, int height, int Windowed, int b
 	}
 }
 
+#if defined(__EMSCRIPTEN__)
+#include <emscripten/emscripten.h>
+
+// One cooperative slice of the blocking Loop(): drain the input queue, then run a
+// single frame. Called back by the browser's main-loop timer.
+static void EmscriptenFrameStep(void* pArg)
+{
+	CPythonApplication* pApp = (CPythonApplication*)pArg;
+	while (pApp->IsMessage())
+		if (!pApp->MessageProcess())
+		{
+			emscripten_cancel_main_loop();
+			return;
+		}
+	if (!pApp->Process())
+		emscripten_cancel_main_loop();
+}
+
+void CPythonApplication::Loop()
+{
+	// Called from Python mid-initialization. simulate_infinite_loop unwinds the
+	// wasm stack out of RunFile so the python frame logically never returns —
+	// same semantics as the native loop.
+	// This runs on a pthread (PROXY_TO_PTHREAD). A worker's rAF only ticks
+	// when the page happens to produce a frame (e.g. on tab focus), so the
+	// rAF timing mode (fps 0) stalls the game. Use timer timing instead;
+	// Process() already paces frames itself with Sleep().
+	emscripten_set_main_loop_arg(EmscriptenFrameStep, this, 1000, 1);
+}
+#else
 void CPythonApplication::Loop()
 {
 	while (1)
@@ -1038,6 +1060,7 @@ void CPythonApplication::Loop()
 		}
 	}
 }
+#endif
 
 // SUPPORT_NEW_KOREA_SERVER
 bool LoadLocaleData(const char* localePath)
@@ -1147,7 +1170,7 @@ bool CPythonApplication::Create(PyObject* poSelf, const char* c_szName, int widt
 		Windowed = CPythonSystem::Instance().IsWindowed() ? 1 : 0;
 
 	bool bAnotherWindow = false;
-#ifndef __ANDROID__
+#ifndef M2_PORT
 	if (FindWindow(NULL, c_szName))
 		bAnotherWindow = true;
 #endif
@@ -1155,7 +1178,7 @@ bool CPythonApplication::Create(PyObject* poSelf, const char* c_szName, int widt
 	m_dwWidth = width;
 	m_dwHeight = height;
 
-#ifndef __ANDROID__
+#ifndef M2_PORT
 	// Window
 	UINT WindowMode = __GetWindowMode(Windowed ? true : false);
 
@@ -1496,7 +1519,7 @@ void CPythonApplication::Destroy()
 
 	CMSApplication::Destroy();
 
-#ifndef __ANDROID__
+#ifndef M2_PORT
 	STICKYKEYS sStickKeys;
 	memset(&sStickKeys, 0, sizeof(sStickKeys));
 	sStickKeys.cbSize = sizeof(sStickKeys);

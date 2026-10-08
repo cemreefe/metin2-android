@@ -362,3 +362,181 @@ DevIL, SpeedTree, Miles.
   arrow-key movement, so walking is camera-relative exactly as on desktop. 8 directions via
   thresholds, with a deadzone. Native code shows it only in the game phase
   (`AndroidSetGameControlsVisible`), and it releases its keys on pause.
+
+## Browser port (Emscripten/wasm)
+
+Same client, second adapter. The platform seams the Android port introduced
+(`clientsource/platform/` — `M2Plat` for windowing/GL/input/env and `M2Net`
+for the byte stream) paid off: the web adapter is two files
+(`platform/web/WebMain.cpp`, `platform/web/M2WebNet.cpp`) and no game code
+changed. `M2_PORT` (`__ANDROID__ || __EMSCRIPTEN__`) selects the port paths.
+
+### Build
+
+```
+source ~/emsdk/emsdk_env.sh        # emscripten 6.0.11
+"r10dev.net OPENGL-ITJA/web/build.sh"   # -> build-web/metin2_web.{js,wasm,html}
+```
+
+- `M2_TARGET=web` in `clientsource/CMakeLists.txt`; all flags live in
+  `web/emflags.cmake`. `-std=c++14` (the tree predates C++17).
+- wasm extern libs (Python 2.7, Crypto++, LZO) in `Extern/lib/web` +
+  `Extern/include/Python2-web`, built by `tools/wasm-deps/build.sh` from
+  the same sources as the Android prebuilts.
+- `-sUSE_PTHREADS -sPROXY_TO_PTHREAD -sOFFSCREEN_FRAMEBUFFER
+  -sEMULATE_FUNCTION_POINTER_CASTS` are the load-bearing flags. zlib/png/
+  jpeg come from emscripten ports, not the Extern prebuilts — see jpeg ABI
+  below.
+
+### PROXY_TO_PTHREAD changes everything
+
+main() runs on a worker thread, and Emscripten proxies every libc call to
+the main (UI) thread synchronously. Consequences, each of which cost a
+debugging round:
+
+- **No lazy files.** The FS lives on the main thread where sync XHR is
+  banned, so `FS.createLazyFile` is out. `web/shell.html` fetches
+  `manifest.json` and downloads every data file into MEMFS under `/data`
+  before releasing `main()` (`addRunDependency`/`removeRunDependency`;
+  `?m2_boot=1` waits for all ~51k files, the default boot tier is enough
+  for the login screen and the rest streams in the background).
+- **Frame commit.** The engine drives its own loop on the worker, but GL
+  renders into an offscreen FBO that only reaches the canvas at rAF
+  boundaries — which never happen. `M2Plat::PresentFrame` must post
+  `GL.blitOffscreenFramebuffer(GL.currentContext)` via
+  `MAIN_THREAD_ASYNC_EM_ASM` or you get a black canvas while the game runs
+  at 60 fps.
+- **Input starvation.** `emscripten_set_*_callback` registrations proxy
+  to the main thread, which queues each event into the worker's mailbox —
+  and the engine's busy loop never yields, so clicks and keys pile up
+  forever. `PresentFrame` calls
+  `emscripten_current_thread_process_queued_calls()` once per frame to
+  drain it.
+- **Worker `location` is the worker script.** `location.host`/`search` in
+  worker code return the wasm worker URL, not the page. Anything that
+  needs the page origin/query (the ws bridge URL, `m2_*` query params)
+  must go through `MAIN_THREAD_EM_ASM`.
+- **`canvasX`/`canvasY` are dead.** Current emscripten never fills them on
+  `EmscriptenMouseEvent`/`EmscriptenTouchPoint` (deprecated with
+  `Module['canvas']`); use `targetX`/`targetY`.
+- **fp-cast traps.** Win32-era code calls function pointers through
+  wrong-type casts; wasm traps with "null function or function signature
+  mismatch" inside `system.py` without `-sEMULATE_FUNCTION_POINTER_CASTS`.
+- **libjpeg ABI.** The Extern headers declare a 456-byte
+  `jpeg_decompress_struct`; the emscripten port builds 488 bytes
+  (`JPEG parameter struct mismatch`). Under `__EMSCRIPTEN__` include the
+  port's `<jpeglib.h>`, not `Extern/include/libjpeg`.
+- **Python stdlib.** The embedded 2.7 has ~25 builtin modules; `system.py`
+  needs `os`/`posixpath`/`traceback`/… Copy CPython 2.7.18 `Lib/*.py` +
+  `encodings/` into the staged data `lib/` and set
+  `PYTHONPATH=/data/lib:/data` before `Py_Initialize`.
+
+### Networking: ws -> tcp bridge
+
+Browsers have no TCP. `M2WebNet` implements `M2Net` on
+`emscripten_websocket_*` (created on the main thread) and connects to
+`ws(s)://<page-origin>/ws?target=<host>:<port>`. `web/serve.py` accepts the
+upgrade, dials the target TCP and pipes bytes both ways (masked client
+frames -> raw tcp; tcp -> unmasked binary frames). `M2_WS_BRIDGE` env /
+`?m2_ws_bridge=` overrides the bridge URL; an explicit `target=` inside it
+wins over the appended one, which is how the transport was verified
+against a local dummy endpoint. For production, `web/ws_bridge.py` is the
+standalone asyncio version with an `--allow` list.
+
+### Verifying headless
+
+`/home/ubuntu/m2webtest/drive.py` (not in repo): pychrome CDP script —
+loads the page, captures screenshots/console/syserr.txt, and executes a
+timed action list (`click`/`type`/`key`/`eval` ops). Synthetic
+`MouseEvent` dispatch on the canvas works fine for the game (it sees
+`clientX`); `Input.dispatchKeyEvent type=char` produces real `keypress`
+events with `charCode` for typing into the login fields. Boot to a live
+ws connection plus a scripted server-select/OK/type/Connect run is the
+smoke test.
+
+### Serverless: db + game servers as wasm in the same page
+
+`local.html` is the fully in-browser build: no ws bridge, no backend —
+the two server binaries (`m2dev-server-src` db + game) compile to wasm
+unchanged and run as emscripten pthread workers inside the page, next to
+the client. Three binaries, one page, zero network after first load.
+
+- **Build**: `server/CMakeLists.txt` gains an `EMSCRIPTEN` block —
+  `m2db.{js,wasm}` and `m2game.{js,wasm}` with `PROXY_TO_PTHREAD`,
+  `FORCE_FILESYSTEM`, `ALLOW_MEMORY_GROWTH`; the sqlite-mysql shim already
+  solved the DB dependency for Android, and `fdwatch` falls back to
+  `select()`. Only patch to upstream source: `server/m2dev-server-src-web.patch`
+  (~110 lines) rerouting libthecore `socket_*` calls through the m2lp
+  facade and pinning `g_szPublicIP = 127.0.0.1`.
+- **Loopback transport**: `server/web/m2lb_bridge.cpp` implements
+  socket/bind/listen/accept/connect/send/recv/select on ONE 8 MB
+  `SharedArrayBuffer` — listener registry + 32 conn slots, each with two
+  128 KB byte rings. Every worker sees the same SAB (posted by the page
+  on worker start; pthreads receive it because they share the parent's
+  memory object). All synchronous — no postMessage on the data path, so
+  the transport can't starve like the input mailbox did.
+- **Staging**: `web/srv_worker.js` wraps each server worker: waits for the
+  SAB, mounts `srv-share.m2pack` (map/quest data) into MEMFS and
+  `srv-sqlite.m2pack` (seed DBs) into IDBFS so characters persist, writes
+  `CONFIG`, then loads the module script. `server/tools/make-server-pack.sh`
+  builds those packs from an m2dev-server share dir + seeded sqlite files.
+- **Client side**: `M2WebNet` picks the loopback when `Module.m2lbSab`
+  exists — same `M2Net` port, transport invisible to the game.
+- **Channel boot is slow**: the channel game worker loads map
+  `server_attr` blobs (LZO) inside its io_loop before it accepts —
+  ~2-3 min before :11011 answers. `local.html` gates engine start on a
+  `m2chan` run-dependency that polls the SAB listener table until both
+  :11000 (auth) and :11011 (channel) are bound, so the client never
+  connects into a server that can't accept yet.
+- **Accounts**: seed accounts live in the sqlite `account` DB —
+  `test`/`test123` works out of the box.
+- **Auto-login**: `?m2auto=1` writes a `loginInfo.py` (addr/port + id/pwd
+  + autoLogin/autoSelect) — deterministic scripted login for headless
+  tests, no board clicking needed.
+
+- **Verified in-world**: `test`/`test123` -> server select -> char select
+  -> spawn in Pyungmoo Area; NPCs/minimap/quest list/quickslots render,
+  click-to-move + arrow keys walk. Mobile HUD (floating joystick zone,
+  attack button, quickslot rings, soft-keyboard bridge) matches Android.
+- **wasm pitfalls found the hard way**:
+  - emscripten pthread stacks are 64 KB — `BYTE abComp[maxMemSize]`
+    (~70 KB) in `SECTREE_MANAGER::LoadAttribute` silently smashed the
+    stack and froze the channel worker mid-map-load (no exception, no
+    console error). Heap-allocate on `__EMSCRIPTEN__` — same fix shape
+    as the `_MSC_VER` path it already had.
+  - `clang -O2` wasm codegen miscompiles the table-driven DXT1/DXT3/DXT5
+    decoders (produced solid-white textures — white map window). Plain
+    byte-index loops survive.
+  - A `SharedArrayBuffer` only reaches an emscripten pthread via
+    postMessage — expandos and `Module` don't survive structured clone,
+    and emcc's init message carries only memory+module. The worker
+    wraps `self.Worker` to post `{m2:'sab'}` before emcc's `{cmd:1}`.
+
+## Gate, intro UI scale, and text size (builds 24+)
+
+- **Passphrase gate**: `web/m2encrypt.py` AES-GCM-encrypts every
+  `.m2pack` (PBKDF2, salt `m2gate-v1`); `m2packSetPassphrase()` decrypts
+  in-page. Static hosts can't do auth — encrypting the payload IS the
+  gate. `?m2pw=` or a sessionStorage-remembered passphrase skips the
+  prompt so in-app restarts don't re-ask.
+- **COI on static hosting**: `SharedArrayBuffer` needs
+  `Cross-Origin-Embedder-Policy: require-corp`, which hosts like
+  devinapps can't set — `web/coi-sw.js` is a service worker that
+  injects the headers on every response.
+- **display.cfg survives restarts**: MEMFS is rebuilt from packs each
+  boot, so `RestartApp` stashes `/data/display.cfg` to localStorage
+  before `location.reload()` and bootReady writes it back.
+- **Intro UI-size widget** (`uiscale.py`, attached to login/empire/
+  select/create): -/+ buttons + a click-anywhere slider row for UI
+  size and one for text size + apply. Needed because ui_scale shrinks
+  the logical canvas — boards laid out for ~600 logical px slide off
+  the physical screen at 1.5x. The login/empire/select boards are also
+  clamped to the canvas in uiscript so controls can't leave the screen.
+- **font_scale** (display.cfg, 1.0-1.6): multiplies `.fnt` atlas
+  generation size in `CGraphicText::OnLoad` — bigger rendered text,
+  not magnified pixels (which is all ui_scale does for glyphs).
+- Debug tale: plain `ui.Window` overlays and `ui.Button` hit-testing
+  are fine, but the physical-px window (~0.75x logical) makes hand-aimed
+  test clicks land ~10px off — the "dead slider" was a coordinate bug,
+  not an input bug. Verify handlers with a file-writing probe, not
+  screenshots.

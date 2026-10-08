@@ -2,7 +2,7 @@
 #define __MSS_H__
 
 // Android implementation of the Miles Sound System API subset the client uses
-#ifdef __ANDROID__
+#ifdef M2_PORT
 typedef unsigned int U32;
 typedef int S32;
 typedef unsigned short U16;
@@ -38,7 +38,7 @@ S32 AIL_decompress_ADPCM(const struct _AILSOUNDINFO* info, void** out, U32* outS
 S32 AIL_decompress_ASI(const void* data, U32 size, const char* filename, void** out, U32* outSize, void* callback);
 void AIL_mem_free_lock(void* p);
 const char* AIL_last_error();
-void AIL_android_set_paused(int paused);
+void AIL_set_paused(int paused);
 
 HDIGDRIVER AIL_open_digital_driver(U32 rate, S32 bits, S32 channels, U32 flags);
 void AIL_close_digital_driver(HDIGDRIVER driver);

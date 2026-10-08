@@ -25,55 +25,55 @@ extern "C" {
 	volatile int _AVOID_FLOATING_POINT_LIBRARY_BUG = _fltused;
 };
 
-#ifndef __ANDROID__
+#ifndef M2_PORT
 #pragma comment(linker, "/NODEFAULTLIB:libci.lib")
 #endif
 
-#ifndef __ANDROID__
+#ifndef M2_PORT
 #pragma comment( lib, "version.lib" )
 #endif
 
-#ifndef __ANDROID__
+#ifndef M2_PORT
 #pragma comment( lib, "imagehlp.lib" )
 #endif
-#ifndef __ANDROID__
+#ifndef M2_PORT
 #pragma comment( lib, "devil.lib" )
 #endif
 
-#ifndef __ANDROID__
+#ifndef M2_PORT
 #pragma comment( lib, "granny2.11.8.0.lib" )
 #endif
-#ifndef __ANDROID__
+#ifndef M2_PORT
 #pragma comment( lib, "mss32.lib" )
 #endif
-#ifndef __ANDROID__
+#ifndef M2_PORT
 #pragma comment( lib, "winmm.lib" )
 #endif
-#ifndef __ANDROID__
+#ifndef M2_PORT
 #pragma comment( lib, "imm32.lib" )
 #endif
-#ifndef __ANDROID__
+#ifndef M2_PORT
 #pragma comment( lib, "oldnames.lib" )
 #endif
-#ifndef __ANDROID__
+#ifndef M2_PORT
 #pragma comment( lib, "SpeedTreeRT.lib" )
 #endif
-#ifndef __ANDROID__
+#ifndef M2_PORT
 #pragma comment( lib, "dinput8.lib" )
 #endif
-#ifndef __ANDROID__
+#ifndef M2_PORT
 #pragma comment( lib, "dxguid.lib" )
 #endif
-#ifndef __ANDROID__
+#ifndef M2_PORT
 #pragma comment( lib, "ws2_32.lib" )
 #endif
-#ifndef __ANDROID__
+#ifndef M2_PORT
 #pragma comment( lib, "strmiids.lib" )
 #endif
-#ifndef __ANDROID__
+#ifndef M2_PORT
 #pragma comment( lib, "ddraw.lib" )
 #endif
-#ifndef __ANDROID__
+#ifndef M2_PORT
 #pragma comment( lib, "dmoguids.lib" )
 #endif
 //#pragma comment( lib, "wsock32.lib" )
@@ -523,6 +523,7 @@ int Setup(LPSTR lpCmdLine); // Internal function forward
 
 bool PackInitialize(const char* c_pszFolder)
 {
+	fprintf(stderr, "[web] PackInitialize: enter\n");
 //@turkmmo44
 	if (_access(c_pszFolder, 0) != 0)
 		return true;
@@ -744,6 +745,7 @@ bool Main(HINSTANCE hInstance, LPSTR lpCmdLine)
 #endif
 	if (!Setup(lpCmdLine))
 		return false;
+	fprintf(stderr, "[web] Main: after Setup\n");
 
 #ifdef _DEBUG
 	OpenConsoleWindow();
@@ -751,9 +753,12 @@ bool Main(HINSTANCE hInstance, LPSTR lpCmdLine)
 #else
 	OpenLogFile(false); // false == uses syserr.txt only
 #endif
+	fprintf(stderr, "[web] Main: log opened\n");
 
 	static CLZO				lzo;
+	fprintf(stderr, "[web] Main: lzo ctor done\n");
 	static CEterPackManager	EterPackManager;
+	fprintf(stderr, "[web] Main: packmgr ctor done\n");
 
 	if (!PackInitialize("pack"))
 	{
@@ -764,7 +769,7 @@ bool Main(HINSTANCE hInstance, LPSTR lpCmdLine)
 	if (LocaleService_LoadGlobal(hInstance))
 		SetDefaultCodePage(LocaleService_GetCodePage());
 
-#if defined(ENABLE_PYLIB_CHECK) && !defined(__ANDROID__)
+#if defined(ENABLE_PYLIB_CHECK) && !defined(M2_PORT)
 	if (!__CheckPyLibFiles())
 		return false;
 #endif
@@ -873,13 +878,13 @@ bool __IsOpenIDTestOption(LPSTR lpCmdLine) //Ŭ���̾�Ʈ���� ��
 }
 #endif /* USE_OPENID */
 
-#ifndef __ANDROID__
+#ifndef M2_PORT
 int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 #else
-int AndroidMain(int argc, char** argv)
+int M2PortMain(int argc, char** argv)
 #endif
 {
-#ifdef __ANDROID__
+#ifdef M2_PORT
 	void* hInstance = NULL;
 	static char szCmdLine[1024] = "";
 	if (argc > 1) {
@@ -1038,7 +1043,7 @@ int AndroidMain(int argc, char** argv)
 
 	WebBrowser_Startup(hInstance);
 
-#if !defined(ENABLE_PYLIB_CHECK) && !defined(__ANDROID__)
+#if !defined(ENABLE_PYLIB_CHECK) && !defined(M2_PORT)
 	if (!CheckPythonLibraryFilenames())
 	{
 		__ErrorPythonLibraryIsNotExist();

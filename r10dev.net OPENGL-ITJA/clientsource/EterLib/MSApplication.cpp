@@ -21,7 +21,7 @@ void CMSApplication::MessageLoop()
 	while (MessageProcess());
 }
 
-#ifdef __ANDROID__
+#ifdef M2_PORT
 #include <mutex>
 #include <deque>
 #include "../EterBase/Timer.h"
@@ -38,7 +38,7 @@ static DWORD s_dwWaitStart = 0;
 
 static bool s_bFrameCounted = false;
 
-void CMSApplication::AndroidFrameDone()
+void CMSApplication::PortFrameDone()
 {
 	s_bFrameCounted = true;
 	if (s_iWaitFrames > 0 && --s_iWaitFrames == 0)
@@ -47,10 +47,10 @@ void CMSApplication::AndroidFrameDone()
 
 // Phases without a 3D game frame (login, character select) never reach the pick pass,
 // so the end of any rendered frame counts instead.
-void CMSApplication::AndroidEndFrame()
+void CMSApplication::PortEndFrame()
 {
 	if (!s_bFrameCounted)
-		AndroidFrameDone();
+		PortFrameDone();
 	s_bFrameCounted = false;
 }
 
@@ -99,7 +99,7 @@ bool CMSApplication::MessageProcess()
 		}
 	}
 	if (ev.key)
-		OnAndroidKeyEvent(ev.action, ev.x, ev.y);
+		OnPortKeyEvent(ev.action, ev.x, ev.y);
 	else
 		OnTouchEvent(ev.action, ev.x, ev.y);
 	return true;

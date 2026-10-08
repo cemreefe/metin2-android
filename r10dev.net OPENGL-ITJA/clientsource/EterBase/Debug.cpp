@@ -2,8 +2,8 @@
 
 #include <time.h>
 #include <stdio.h>
-#ifdef __ANDROID__
-#include <android/log.h>
+#ifdef M2_PORT
+#include "../platform/m2platform.h"
 #endif
 #include "Debug.h"
 #include "Singleton.h"
@@ -90,10 +90,10 @@ void Logf(UINT uLevel, const char* c_szFormat, ...)
 	_vsnprintf(szBuf, sizeof(szBuf), c_szFormat, args);
 	va_end(args);
 #ifdef _DEBUG
-#ifndef __ANDROID__
+#ifndef M2_PORT
 	OutputDebugString(szBuf);
 #else
-	__android_log_print(ANDROID_LOG_DEBUG, "metin2", "%s", szBuf);
+	M2Plat::Log(M2Plat::LOG_DEBUG, "metin2", "%s", szBuf);
 #endif
 	fputs(szBuf, stdout);
 #endif
@@ -141,8 +141,8 @@ void Trace(const char* c_szMsg)
 
 void Tracen(const char* c_szMsg)
 {
-#ifdef __ANDROID__
-	__android_log_print(ANDROID_LOG_INFO, "metin2", "%s", c_szMsg);
+#ifdef M2_PORT
+	M2Plat::Log(M2Plat::LOG_INFO, "metin2", "%s", c_szMsg);
 #endif
 #ifdef _DEBUG
 	char szBuf[DEBUG_STRING_MAX_LEN + 1];
@@ -178,8 +178,8 @@ void Tracenf(const char* c_szFormat, ...)
 		szBuf[len + 1] = '\0';
 	}
 	va_end(args);
-#ifdef __ANDROID__
-	__android_log_print(ANDROID_LOG_INFO, "metin2", "%s", szBuf);
+#ifdef M2_PORT
+	M2Plat::Log(M2Plat::LOG_INFO, "metin2", "%s", szBuf);
 #endif
 #ifdef _DEBUG
 	OutputDebugString(szBuf);

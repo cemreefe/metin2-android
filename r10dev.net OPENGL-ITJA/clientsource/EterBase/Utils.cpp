@@ -2,7 +2,7 @@
 
 #include <stdlib.h>
 #include <time.h>
-#ifndef __ANDROID__
+#ifndef M2_PORT
 #include <direct.h>
 #include <io.h>
 #endif
@@ -15,7 +15,7 @@ char korean_tolower(const char c);
 
 const char* CreateTempFileName(const char* c_pszPrefix)
 {
-#ifndef __ANDROID__
+#ifndef M2_PORT
 	char szTempPath[MAX_PATH + 1];
 	static char szTempName[MAX_PATH + 1];
 

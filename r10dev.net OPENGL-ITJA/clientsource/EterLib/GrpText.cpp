@@ -31,6 +31,30 @@ CGraphicText::TType CGraphicText::Type()
 	return s_type;
 }
 
+float CGraphicText::ms_fFontScale = 1.0f;
+
+void CGraphicText::SetGlobalFontScale(float fScale)
+{
+	ms_fFontScale = fScale;
+}
+
+float CGraphicText::GetGlobalFontScale()
+{
+	return ms_fFontScale;
+}
+
+float CGraphicText::ms_fRasterScale = 1.0f;
+
+void CGraphicText::SetRasterScale(float fScale)
+{
+	ms_fRasterScale = fScale > 1.0f ? fScale : 1.0f;
+}
+
+float CGraphicText::GetRasterScale()
+{
+	return ms_fRasterScale;
+}
+
 bool CGraphicText::OnLoad(int /*iSize*/, const void* /*c_pvBuf*/)
 {
 	static char strName[32];
@@ -76,7 +100,15 @@ bool CGraphicText::OnLoad(int /*iSize*/, const void* /*c_pvBuf*/)
 		size = 12;
 	}
 
-	if (!m_fontTexture.Create(strName, size, bItalic))
+	size = int(size * ms_fFontScale + 0.5f);
+	if (size < 1)
+		size = 1;
+
+	int iRasterSize = int(size * ms_fRasterScale + 0.5f);
+	if (iRasterSize < size)
+		iRasterSize = size;
+
+	if (!m_fontTexture.Create(strName, iRasterSize, bItalic, float(iRasterSize) / float(size)))
 		return false;
 
 	return true;

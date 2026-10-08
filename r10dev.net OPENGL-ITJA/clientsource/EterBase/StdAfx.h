@@ -13,7 +13,7 @@
 #pragma warning(disable:4244)	// type conversion possible lose of data
 #include "../UserInterface/Locale_inc.h"
 
-#ifdef __ANDROID__
+#ifdef M2_PORT
     // Resolves to clientsource/android_compat/windows.h via the include path.
     #include <windows.h>
     #include <io.h>

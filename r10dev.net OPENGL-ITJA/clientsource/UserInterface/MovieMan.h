@@ -1,6 +1,6 @@
 #pragma once
 
-#ifdef __ANDROID__
+#ifdef M2_PORT
 
 class CMovieMan : public CSingleton<CMovieMan>
 {
@@ -90,4 +90,4 @@ private:
 	//#endif
 };
 
-#endif /* __ANDROID__ */
+#endif /* M2_PORT */

@@ -22,6 +22,8 @@ public:
 		float right;
 		float bottom;
 		float advance;
+		float fWidth;	// drawn size in UI units (atlas may be rasterized larger)
+		float fHeight;
 	} TCharacterInfomation;
 
 	typedef std::vector<TCharacterInfomation*>		TPCharacterInfomationVector;
@@ -31,7 +33,7 @@ public:
 	virtual ~CGraphicFontTexture();
 
 	void Destroy();
-	bool Create(const char* c_szFontName, int fontSize, bool bItalic);
+	bool Create(const char* c_szFontName, int fontSize, bool bItalic, float fRasterScale = 1.0f);
 
 	bool CreateDeviceObjects();
 	void DestroyDeviceObjects();
@@ -78,4 +80,5 @@ protected:
 	TCHAR	m_fontName[LF_FACESIZE];
 	LONG	m_fontSize;
 	bool	m_bItalic;
+	float	m_fRasterScale;	// atlas pixels per UI unit
 };

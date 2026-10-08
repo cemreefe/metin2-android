@@ -1,4 +1,4 @@
-#ifndef __ANDROID__
+#ifndef M2_PORT
 #include "StdAfx.h"
 
 #include <tlhelp32.h>

@@ -365,6 +365,20 @@ void CGraphicBase::SetViewport(DWORD dwX, DWORD dwY, DWORD dwWidth, DWORD dwHeig
 	ms_Viewport.MaxZ = fMaxZ;
 }
 
+// The window surface was resized: the full-screen viewport follows it.
+void CGraphicBase::FitViewportToSurface(int iWidth, int iHeight)
+{
+	if (!ms_lpd3dDevice || iWidth <= 0 || iHeight <= 0)
+		return;
+	D3DVIEWPORT8 vp = ms_Viewport;
+	vp.X = 0;
+	vp.Y = 0;
+	vp.Width = iWidth;
+	vp.Height = iHeight;
+	ms_lpd3dDevice->SetViewport(&vp);
+	ms_Viewport = vp;
+}
+
 void CGraphicBase::GetTargetPosition(float* px, float* py, float* pz)
 {
 	*px = CCameraManager::Instance().GetCurrentCamera()->GetTarget().x;

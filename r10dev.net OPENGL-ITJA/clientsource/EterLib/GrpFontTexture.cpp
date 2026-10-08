@@ -21,6 +21,7 @@ void CGraphicFontTexture::Initialize()
 	m_hFont = NULL;
 	m_isDirty = false;
 	m_bItalic = false;
+	m_fRasterScale = 1.0f;
 }
 
 bool CGraphicFontTexture::IsEmpty() const
@@ -66,7 +67,7 @@ void CGraphicFontTexture::DestroyDeviceObjects()
 {
 }
 
-bool CGraphicFontTexture::Create(const char* c_szFontName, int fontSize, bool bItalic)
+bool CGraphicFontTexture::Create(const char* c_szFontName, int fontSize, bool bItalic, float fRasterScale)
 {
 	Destroy();
 
@@ -77,6 +78,7 @@ bool CGraphicFontTexture::Create(const char* c_szFontName, int fontSize, bool bI
 #endif
 	m_fontSize = fontSize;
 	m_bItalic = bItalic;
+	m_fRasterScale = fRasterScale > 1.0f ? fRasterScale : 1.0f;
 
 	m_x = 0;
 	m_y = 0;
@@ -87,6 +89,10 @@ bool CGraphicFontTexture::Create(const char* c_szFontName, int fontSize, bool bI
 		width = 512;
 	if (GetMaxTextureHeight() > 512)
 		height = 512;
+#ifdef M2_PORT
+	if (m_fRasterScale > 1.0f && GetMaxTextureWidth() >= 1024 && GetMaxTextureHeight() >= 1024)
+		width = height = 1024;
+#endif
 
 	if (!m_dib.Create(ms_hDC, width, height))
 		return false;
@@ -153,7 +159,12 @@ bool CGraphicFontTexture::AppendTexture()
 {
 	CGraphicImageTexture* pNewTexture = new CGraphicImageTexture;
 
-	if (!pNewTexture->Create(m_dib.GetWidth(), m_dib.GetHeight(), D3DFMT_A4R4G4B4))
+	if (!pNewTexture->Create(m_dib.GetWidth(), m_dib.GetHeight(),
+#ifdef M2_PORT
+		D3DFMT_A8R8G8B8))	// keep the rasterizer's antialiasing
+#else
+		D3DFMT_A4R4G4B4))
+#endif)
 	{
 		delete pNewTexture;
 		return false;
@@ -175,13 +186,17 @@ bool CGraphicFontTexture::UpdateTexture()
 	if (!pFontTexture)
 		return false;
 
+#ifdef M2_PORT
+	DWORD* pwDst;
+#else
 	WORD* pwDst;
+#endif
 	int pitch;
 
 	if (!pFontTexture->Lock(&pitch, (void**)&pwDst))
 		return false;
 
-	pitch /= 2;
+	pitch /= sizeof(*pwDst);
 
 	int width = m_dib.GetWidth();
 	int height = m_dib.GetHeight();
@@ -260,6 +275,11 @@ CGraphicFontTexture::TCharacterInfomation* CGraphicFontTexture::UpdateCharacterI
 		}
 	}
 
+#ifdef M2_PORT
+	// glyphs are drawn additively; clear the cell left over from the previous atlas page
+	for (int y = 0; y < size.cy && m_y + y < height; ++y)
+		memset((DWORD*)m_dib.GetPointer() + width * (m_y + y) + m_x, 0, sizeof(DWORD) * min((int)size.cx, width - m_x));
+#endif
 	TextOutW(hDC, m_x, m_y, &keyValue, 1);
 
 	int nChrX;
@@ -277,7 +297,11 @@ CGraphicFontTexture::TCharacterInfomation* CGraphicFontTexture::UpdateCharacterI
 	{
 		for (nChrX = 0; nChrX < nChrWidth; ++nChrX)
 		{
+#ifdef M2_PORT
+			pdwDIBRow[nChrX] = ((pdwDIBRow[nChrX] & 0xff) << 24) | 0x00ffffff;
+#else
 			pdwDIBRow[nChrX] = (pdwDIBRow[nChrX] & 0xff) ? 0xffff : 0;
+#endif
 		}
 	}
 
@@ -287,13 +311,15 @@ CGraphicFontTexture::TCharacterInfomation* CGraphicFontTexture::UpdateCharacterI
 	TCharacterInfomation& rNewCharInfo = m_charInfoMap[code];
 
 	rNewCharInfo.index = (short)m_pFontTextureVector.size() - 1;
-	rNewCharInfo.width = size.cx;
-	rNewCharInfo.height = size.cy;
+	rNewCharInfo.fWidth = float(size.cx) / m_fRasterScale;
+	rNewCharInfo.fHeight = float(size.cy) / m_fRasterScale;
+	rNewCharInfo.width = (short)ceilf(rNewCharInfo.fWidth);
+	rNewCharInfo.height = (short)(rNewCharInfo.fHeight + 0.5f);
 	rNewCharInfo.left = float(m_x) * rhwidth;
 	rNewCharInfo.top = float(m_y) * rhheight;
 	rNewCharInfo.right = float(m_x + size.cx) * rhwidth;
 	rNewCharInfo.bottom = float(m_y + size.cy) * rhheight;
-	rNewCharInfo.advance = (float)lAdvance;
+	rNewCharInfo.advance = (float)lAdvance / m_fRasterScale;
 
 	m_x += size.cx;
 

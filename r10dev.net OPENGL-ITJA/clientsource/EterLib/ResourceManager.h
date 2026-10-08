@@ -38,6 +38,9 @@ public:
 	void		Update();
 	void		ReserveDeletingResource(CResource* pResource);
 
+	// Reloads every loaded resource of this type in place (pointers stay valid).
+	void		ReloadResourcesOfType(CResource::TType type);
+
 public:
 	void		ProcessBackgroundLoading();
 	void		PushBackgroundLoadingSet(std::set<std::string>& LoadingSet);

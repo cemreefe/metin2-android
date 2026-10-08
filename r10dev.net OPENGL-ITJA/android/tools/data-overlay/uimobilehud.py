@@ -31,7 +31,7 @@ def IsMobileMode():
 		finally:
 			f.close()
 	except IOError:
-		return True
+		return app.IsTouchPrimary() != 0
 
 
 def SetMobileMode(mobile):
@@ -252,8 +252,10 @@ class HudOption:
 
 
 DISPLAY_CONFIG = "display.cfg"
-UI_SCALE_MIN = 1.0
+UI_SCALE_MIN = 0.5
 UI_SCALE_MAX = 1.5
+FONT_SCALE_MIN = 1.0
+FONT_SCALE_MAX = 1.6
 CAMERA_MIN = 0.25
 CAMERA_MAX = 2.0
 VALUE_TEXT_WIDTH = 34
@@ -265,7 +267,7 @@ def _Clamp(value, low, high):
 
 def LoadDisplayConfig():
 	"""display.cfg holds 'key value' lines; the engine reads ui_scale and camera_sensitivity."""
-	conf = {"ui_scale": "1.0", "orientation": "landscape", "camera_sensitivity": "1.0"}
+	conf = {"ui_scale": "1.0", "font_scale": "1.0", "orientation": "landscape", "camera_sensitivity": "1.0", "font": "default"}
 	try:
 		f = open(DISPLAY_CONFIG, "r")
 		try:
@@ -277,7 +279,7 @@ def LoadDisplayConfig():
 			f.close()
 	except IOError:
 		pass
-	for key, low, high in (("ui_scale", UI_SCALE_MIN, UI_SCALE_MAX), ("camera_sensitivity", CAMERA_MIN, CAMERA_MAX)):
+	for key, low, high in (("ui_scale", UI_SCALE_MIN, UI_SCALE_MAX), ("font_scale", FONT_SCALE_MIN, FONT_SCALE_MAX), ("camera_sensitivity", CAMERA_MIN, CAMERA_MAX)):
 		try:
 			conf[key] = _Clamp(float(conf[key]), low, high)
 		except ValueError:
@@ -290,10 +292,12 @@ def SaveDisplayConfig(conf):
 	try:
 		f = open(DISPLAY_CONFIG, "w")
 		try:
-			f.write("ui_scale %.2f\norientation %s\ncamera_sensitivity %.2f\n" % (
+			f.write("ui_scale %.2f\nfont_scale %.2f\norientation %s\ncamera_sensitivity %.2f\nfont %s\n" % (
 				_Clamp(conf["ui_scale"], UI_SCALE_MIN, UI_SCALE_MAX),
+				_Clamp(conf.get("font_scale", 1.0), FONT_SCALE_MIN, FONT_SCALE_MAX),
 				"portrait" if conf["portrait"] else "landscape",
-				_Clamp(conf["camera_sensitivity"], CAMERA_MIN, CAMERA_MAX)))
+				_Clamp(conf["camera_sensitivity"], CAMERA_MIN, CAMERA_MAX),
+				conf.get("font", "default")))
 		finally:
 			f.close()
 	except IOError:
@@ -379,6 +383,15 @@ def _RebuildGameUI(game, reopenOptions):
 		interface.ToggleSystemDialog()
 		interface.dlgSystem._SystemDialog__ClickGameOptionButton()
 	game.SetFocus()
+
+
+def OnSurfaceResized():
+	"""Called by the engine after the window/surface size settles."""
+	if ApplyUIScaleLive():
+		return
+	import uiscale
+	if not uiscale.Relayout():
+		app.ApplyUIScale()
 
 
 def ApplyUIScaleLive():

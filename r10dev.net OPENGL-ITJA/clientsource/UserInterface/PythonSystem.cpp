@@ -37,7 +37,7 @@ void CPythonSystem::GetDisplaySettings()
 	m_ResolutionCount = 0;
 
 	LPDIRECT3D8 lpD3D = NULL;
-#ifndef __ANDROID__
+#ifndef M2_PORT
 	lpD3D = CPythonGraphic::Instance().GetD3D();
 #else
     m_ResolutionList[0].width = m_Config.width;
@@ -289,8 +289,8 @@ void CPythonSystem::SetConfig(TConfig* pNewConfig)
 	m_Config = *pNewConfig;
 }
 
-#ifdef __ANDROID__
-float CPythonSystem::GetAndroidDisplayConfig(const char* c_szKey, float fDefault)
+#ifdef M2_PORT
+float CPythonSystem::GetPortDisplayConfig(const char* c_szKey, float fDefault)
 {
 	float fValue = fDefault;
 	if (FILE* fp = fopen("display.cfg", "r"))
@@ -307,20 +307,24 @@ float CPythonSystem::GetAndroidDisplayConfig(const char* c_szKey, float fDefault
 
 // The UI is laid out at a logical resolution and stretched to the surface, keeping the
 // surface aspect ratio so glyphs are not stretched. display.cfg (written by the in-game
-// display options) holds "ui_scale <1.0-1.5>"; a larger scale shrinks the logical canvas,
+// display options) holds "ui_scale <0.5-1.5>"; a larger scale shrinks the logical canvas,
 // so widgets get bigger. Landscape scales the 600 px logical height and needs at least
 // 800 logical px of width; portrait scales a 720 px logical width instead, because an
 // 800 px floor there would leave the UI smaller than in landscape and ignore the scale.
-void CPythonSystem::FitUIToAndroidSurface()
+void CPythonSystem::FitUIToPortSurface()
 {
-	extern int g_iAndroidSurfaceWidth;
-	extern int g_iAndroidSurfaceHeight;
-	if (g_iAndroidSurfaceWidth <= 0 || g_iAndroidSurfaceHeight <= 0)
+	const int iSurfW = M2Plat::SurfaceWidth();
+	const int iSurfH = M2Plat::SurfaceHeight();
+	if (iSurfW <= 0 || iSurfH <= 0)
 		return;
 
-	const float fScale = fMAX(1.0f, fMIN(1.5f, GetAndroidDisplayConfig("ui_scale", 1.0f)));
-	const int iW = g_iAndroidSurfaceWidth;
-	const int iH = g_iAndroidSurfaceHeight;
+	const float fScale = fMAX(0.5f, fMIN(1.5f, GetPortDisplayConfig("ui_scale", 1.0f)));
+	// display.cfg "font_scale" makes .fnt atlases generate bigger so text stays
+	// legible when the logical canvas is stretched — ui_scale alone only
+	// magnifies the rendered pixels. ApplyPortUIScale regenerates loaded atlases.
+	CGraphicText::SetGlobalFontScale(fMAX(1.0f, fMIN(1.6f, GetPortDisplayConfig("font_scale", 1.0f))));
+	const int iW = iSurfW;
+	const int iH = iSurfH;
 	int iUIWidth;
 	int iUIHeight;
 	if (iH > iW)
@@ -340,6 +344,7 @@ void CPythonSystem::FitUIToAndroidSurface()
 	}
 	m_Config.width = iUIWidth;
 	m_Config.height = iUIHeight;
+	CGraphicText::SetRasterScale(float(iSurfH) / float(iUIHeight));
 }
 #endif
 
@@ -563,7 +568,7 @@ bool CPythonSystem::LoadConfig()
 
 	if (m_Config.bWindowed)
 	{
-#ifndef __ANDROID__
+#ifndef M2_PORT
 		unsigned screen_width = GetSystemMetrics(SM_CXFULLSCREEN);
 		unsigned screen_height = GetSystemMetrics(SM_CYFULLSCREEN);
 #else
@@ -781,8 +786,8 @@ CPythonSystem::CPythonSystem()
 
 	LoadConfig();
 
-#ifdef __ANDROID__
-	FitUIToAndroidSurface();
+#ifdef M2_PORT
+	FitUIToPortSurface();
 #endif
 
 	ChangeSystem();

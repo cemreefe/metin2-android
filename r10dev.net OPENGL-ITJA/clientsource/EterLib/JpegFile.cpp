@@ -4,8 +4,14 @@
 #include <stdlib.h>
 #include <memory.h>
 
+// emscripten links its own libjpeg port: the Extern headers describe an
+// older ABI (different struct sizes) — use the port's headers instead.
+#if defined(__EMSCRIPTEN__)
+#include <jpeglib.h>
+#else
 #include <libjpeg/jpeglib.h>
 #include <libjpeg/jpegLibLink.h>
+#endif
 
 #define OUTBUFFER_SIZE 0x8000
 

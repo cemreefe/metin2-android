@@ -26,9 +26,9 @@
 
 #include "ProcessCRC.h"
 
-#ifdef __ANDROID__
-#include <android/log.h>
-#define M2_COMBAT_LOG(...) __android_log_print(ANDROID_LOG_INFO, "M2Combat", __VA_ARGS__)
+#ifdef M2_PORT
+#include "../platform/m2platform.h"
+#define M2_COMBAT_LOG(...) M2Plat::Log(M2Plat::LOG_INFO, "M2Combat", __VA_ARGS__)
 #else
 #define M2_COMBAT_LOG(...)
 #endif

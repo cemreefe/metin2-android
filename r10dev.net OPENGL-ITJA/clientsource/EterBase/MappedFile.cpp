@@ -6,11 +6,12 @@ struct AAsset;
 #endif
 #include "Debug.h"
 
-#ifdef __ANDROID__
+#ifdef M2_PORT
 #include <sys/mman.h>
 #include <unistd.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <stdlib.h>
 #endif
 
 CMappedFile::CMappedFile() :
@@ -170,6 +171,7 @@ int CMappedFile::Map(const void** dest, int offset, int size)
 	if (m_dataOffset + m_mapSize > m_dwSize)
 		return NULL;
 
+#ifdef M2_PORT
 #ifdef __ANDROID__
 	if (m_pAsset != NULL) {
 		m_lpMapData = (void*)AAsset_getBuffer((AAsset*)m_pAsset);
@@ -188,12 +190,32 @@ int CMappedFile::Map(const void** dest, int offset, int size)
 		Link(m_mapSize, m_lpData);
 		return m_mapSize;
 	}
+#endif
 
     long dwSysGran = sysconf(_SC_PAGE_SIZE);
     off_t dwFileMapStart = (m_dataOffset / dwSysGran) * dwSysGran;
     size_t dwMapViewSize = (m_dataOffset % dwSysGran) + m_mapSize;
     int iViewDelta = m_dataOffset - dwFileMapStart;
 
+#if defined(__EMSCRIPTEN__)
+    // wasm has no file mmap; pull the view into memory through the fd path.
+    // The lazy FS serves these reads from HTTP range requests.
+    m_lpMapData = malloc(dwMapViewSize);
+    if (!m_lpMapData)
+    {
+        TraceError("CMappedFile::Map malloc failed");
+        return 0;
+    }
+    if (lseek((int)(intptr_t)m_hFile, dwFileMapStart, SEEK_SET) < 0 ||
+        read((int)(intptr_t)m_hFile, m_lpMapData, dwMapViewSize) != (ssize_t)dwMapViewSize)
+    {
+        TraceError("CMappedFile::Map read failed");
+        free(m_lpMapData);
+        m_lpMapData = NULL;
+        return 0;
+    }
+    m_hFM = (HANDLE)3; // Fake handle for the malloc'd view
+#else
     m_lpMapData = mmap(NULL, dwMapViewSize, PROT_READ, MAP_PRIVATE, (int)(intptr_t)m_hFile, dwFileMapStart);
 
     if (m_lpMapData == MAP_FAILED)
@@ -204,6 +226,7 @@ int CMappedFile::Map(const void** dest, int offset, int size)
     }
     
     m_hFM = (HANDLE)1; // Dummy handle
+#endif
 #else
 	SYSTEM_INFO SysInfo;
 	GetSystemInfo(&SysInfo);
@@ -290,7 +313,13 @@ DWORD CMappedFile::GetSeekPosition(void)
 
 void CMappedFile::Unmap(LPCVOID data)
 {
-#ifdef __ANDROID__
+#ifdef M2_PORT
+	if (m_hFM == (HANDLE)3) { // Fake handle for the malloc'd view
+		free(m_lpMapData);
+		m_lpData = NULL;
+		m_lpMapData = NULL;
+		return;
+	}
 	if (m_hFM == (HANDLE)2) { // Fake handle for AAsset
 		m_lpData = NULL;
 		m_lpMapData = NULL;

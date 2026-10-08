@@ -5,17 +5,19 @@
 #include "windows.h"
 #include "io.h"
 #include <pthread.h>
-#include <android/log.h>
 #include <mutex>
 #include <fnmatch.h>
+#include <ctype.h>
+#include <set>
+#include "../platform/m2platform.h"
 #include <dirent.h>
 #include <vector>
 #include <string>
 #include <unordered_map>
 
 #define LOG_TAG "Metin2WinStub"
-#define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
-#define LOGW(...) __android_log_print(ANDROID_LOG_WARN, LOG_TAG, __VA_ARGS__)
+#define LOGI(...) M2Plat::Log(M2Plat::LOG_INFO, LOG_TAG, __VA_ARGS__)
+#define LOGW(...) M2Plat::Log(M2Plat::LOG_WARN, LOG_TAG, __VA_ARGS__)
 
 extern "C" {
 
@@ -70,10 +72,27 @@ DWORD GetFullPathNameA(LPCSTR lpFileName, DWORD nBufferLength, LPSTR lpBuffer, L
 /* ---- FindFirstFile/FindNextFile over glob ---- */
 struct FindHandle {
     std::vector<std::string> paths;
+    std::vector<bool> lazyDir;
     size_t pos;
 };
 
-static void FillFindData(const char* path, LPWIN32_FIND_DATAA fd) {
+struct LazyFindCtx {
+    FindHandle* h;
+    const char* dir;
+    const char* mask;
+    std::set<std::string> seen;
+};
+
+static void AddLazyEntry(const char* name, bool isDir, void* user) {
+    LazyFindCtx* c = (LazyFindCtx*)user;
+    std::string lower = name;
+    for (char& ch : lower) ch = (char)tolower((unsigned char)ch);
+    if (fnmatch(c->mask, name, FNM_CASEFOLD) != 0 || !c->seen.insert(lower).second) return;
+    c->h->paths.push_back(std::string(c->dir) + "/" + name);
+    c->h->lazyDir.push_back(isDir);
+}
+
+static void FillFindData(const char* path, LPWIN32_FIND_DATAA fd, bool lazyDir = false) {
     memset(fd, 0, sizeof(*fd));
     const char* base = strrchr(path, '/');
     base = base ? base + 1 : path;
@@ -86,6 +105,8 @@ static void FillFindData(const char* path, LPWIN32_FIND_DATAA fd) {
             fd->dwFileAttributes |= FILE_ATTRIBUTE_DIRECTORY;
         if (!(st.st_mode & S_IWUSR))
             fd->dwFileAttributes |= FILE_ATTRIBUTE_READONLY;
+    } else if (lazyDir) {
+        fd->dwFileAttributes |= FILE_ATTRIBUTE_DIRECTORY;
     }
 }
 
@@ -136,6 +157,7 @@ HANDLE FindFirstFileA(LPCSTR lpFileName, LPWIN32_FIND_DATAA lpFindFileData) {
     if (strcmp(mask, "*.*") == 0) mask = "*";
     std::string resolvedDir = ResolveDirCaseInsensitive(dir);
     dir = resolvedDir.c_str();
+    LazyFindCtx lazy{h, dir, mask, {}};
     DIR* dp = opendir(dir);
     if (dp) {
         struct dirent* ent;
@@ -144,19 +166,29 @@ HANDLE FindFirstFileA(LPCSTR lpFileName, LPWIN32_FIND_DATAA lpFindFileData) {
                 char full[1100];
                 snprintf(full, sizeof(full), "%s/%s", dir, ent->d_name);
                 h->paths.push_back(full);
+                h->lazyDir.push_back(false);
+                std::string lower = ent->d_name;
+                for (char& ch : lower) ch = (char)tolower((unsigned char)ch);
+                lazy.seen.insert(lower);
             }
         }
         closedir(dp);
-    } else if (strchr(mask, '*') == NULL && strchr(mask, '?') == NULL) {
+    }
+    if (strchr(mask, '*') || strchr(mask, '?')) {
+        M2Plat::ListLazyDir(dir, AddLazyEntry, &lazy);
+    } else if (!dp && h->paths.empty()) {
         struct stat st;
-        if (stat(pattern, &st) == 0) h->paths.push_back(pattern);
+        if (stat(pattern, &st) == 0 || M2Plat::FileAccess(pattern, F_OK) == 0) {
+            h->paths.push_back(pattern);
+            h->lazyDir.push_back(false);
+        }
     }
     if (h->paths.empty()) {
         delete h;
         return INVALID_HANDLE_VALUE;
     }
     h->pos = 0;
-    FillFindData(h->paths[0].c_str(), lpFindFileData);
+    FillFindData(h->paths[0].c_str(), lpFindFileData, h->lazyDir[0]);
     h->pos = 1;
     return (HANDLE)h;
 }
@@ -165,7 +197,8 @@ BOOL FindNextFileA(HANDLE hFindFile, LPWIN32_FIND_DATAA lpFindFileData) {
     FindHandle* h = (FindHandle*)hFindFile;
     if (!h || h == (FindHandle*)INVALID_HANDLE_VALUE) return FALSE;
     if (h->pos >= h->paths.size()) return FALSE;
-    FillFindData(h->paths[h->pos++].c_str(), lpFindFileData);
+    FillFindData(h->paths[h->pos].c_str(), lpFindFileData, h->lazyDir[h->pos]);
+    ++h->pos;
     return TRUE;
 }
 
@@ -491,7 +524,15 @@ BOOL    SetTimer(HWND, UINT_PTR, UINT, void*) { return TRUE; }
 BOOL    KillTimer(HWND, UINT_PTR) { return TRUE; }
 HCURSOR LoadCursorA(HINSTANCE, LPCSTR) { return NULL; }
 HCURSOR SetCursor(HCURSOR hCursor) { return hCursor; }
-int     ShowCursor(BOOL bShow) { static int s_iDisplayCount = 0; return bShow ? ++s_iDisplayCount : --s_iDisplayCount; }
+int     ShowCursor(BOOL bShow)
+{
+    static int s_iDisplayCount = 0;
+    const bool bWas = s_iDisplayCount >= 0;
+    s_iDisplayCount += bShow ? 1 : -1;
+    if ((s_iDisplayCount >= 0) != bWas)
+        M2Plat::SetPointerVisible(s_iDisplayCount >= 0);
+    return s_iDisplayCount;
+}
 HICON   LoadIconA(HINSTANCE, LPCSTR) { return NULL; }
 BOOL    DestroyIcon(HICON) { return TRUE; }
 BOOL    DestroyCursor(HCURSOR) { return TRUE; }
@@ -749,9 +790,9 @@ char* _ecvt(double value, int count, int* dec, int* sign) {
 }
 
 BOOL SystemParametersInfoA(unsigned, unsigned, void*, unsigned) { return TRUE; }
-volatile int g_iAndroidCursorX = 0;
-volatile int g_iAndroidCursorY = 0;
-BOOL GetCursorPos(POINT* p) { if (p) { p->x = g_iAndroidCursorX; p->y = g_iAndroidCursorY; } return TRUE; }
+volatile int g_iPortCursorX = 0;
+volatile int g_iPortCursorY = 0;
+BOOL GetCursorPos(POINT* p) { if (p) { p->x = g_iPortCursorX; p->y = g_iPortCursorY; } return TRUE; }
 void* CreateSemaphoreA(void*, long, long, const char*) { return (void*)1; }
 unsigned timeGetDevCaps(TIMECAPS* p, unsigned) {
     if (p) { p->wPeriodMin = 1; p->wPeriodMax = 1000; }
@@ -763,10 +804,21 @@ int EnumFontFamiliesExA(void*, const void*, FONTENUMPROCA, long, unsigned long) 
 
 BOOL SetThreadPriority(void*, int) { return TRUE; }
 
-BOOL SHGetSpecialFolderPathA(void*, char* p, int, BOOL) { if (p) { strcpy(p, "/sdcard"); } return p != NULL; }
+BOOL SHGetSpecialFolderPathA(void*, char* p, int, BOOL) { if (p) { strcpy(p, M2Plat::DataDir()); } return p != NULL; }
 LPTOP_LEVEL_EXCEPTION_FILTER SetUnhandledExceptionFilter(LPTOP_LEVEL_EXCEPTION_FILTER) { return NULL; }
 
-BOOL SetCursorPos(int, int) { return TRUE; }
+// Win32 warps the real cursor; ports have none, so record the warp as an
+// offset the input layer adds to later pointer positions (camera drag).
+volatile int g_iPortCursorWarpX = 0;
+volatile int g_iPortCursorWarpY = 0;
+BOOL SetCursorPos(int x, int y)
+{
+    g_iPortCursorWarpX += x - g_iPortCursorX;
+    g_iPortCursorWarpY += y - g_iPortCursorY;
+    g_iPortCursorX = x;
+    g_iPortCursorY = y;
+    return TRUE;
+}
 BOOL SetFileAttributesA(LPCSTR, DWORD) { return TRUE; }
 int  SetBkMode(HDC, int m) { return m; }
 unsigned SetBkColor(HDC, unsigned c) { return c; }
@@ -801,25 +853,4 @@ void WebBrowser_Move(const void* rc) {}
 int WebBrowser_IsVisible() { return 0; }
 }
 
-extern "C" void android_normalize_path(const char* c_szPath, char* szOut, size_t uOutSize)
-{
-    if (!uOutSize)
-        return;
-    if (c_szPath[0] && c_szPath[1] == ':')
-        c_szPath += 2;
-    while (*c_szPath == '/' || *c_szPath == '\\')
-        ++c_szPath;
-    size_t i = 0;
-    for (; c_szPath[i] && i < uOutSize - 1; ++i)
-        szOut[i] = c_szPath[i] == '\\' ? '/' : (char)tolower((unsigned char)c_szPath[i]);
-    szOut[i] = '\0';
-}
 
-extern "C" int android_access(const char* c_szPath, int iMode)
-{
-    if (access(c_szPath, iMode) == 0)
-        return 0;
-    char szNormalized[MAX_PATH];
-    android_normalize_path(c_szPath, szNormalized, sizeof(szNormalized));
-    return access(szNormalized, iMode);
-}

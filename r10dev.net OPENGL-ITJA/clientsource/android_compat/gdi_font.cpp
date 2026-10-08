@@ -1,4 +1,4 @@
-#ifdef __ANDROID__
+#ifdef M2_PORT
 #include "windows.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -21,36 +21,55 @@ namespace
 	stbtt_fontinfo s_fontInfo;
 	bool s_fontLoaded = false;
 
+	char s_szFontFile[512] = "";
+
+	bool ReadFontFile(const char* c_szPath, std::vector<unsigned char>& rData)
+	{
+		char szNorm[512];
+		FILE* fp = fopen(c_szPath, "rb");
+		if (!fp)
+		{
+			M2Plat::NormalizePath(c_szPath, szNorm, sizeof(szNorm));
+			fp = fopen(szNorm, "rb");
+			if (!fp && M2Plat::MaterializeFile(c_szPath))
+				fp = fopen(szNorm, "rb");
+		}
+		if (!fp)
+			return false;
+
+		fseek(fp, 0, SEEK_END);
+		long size = ftell(fp);
+		fseek(fp, 0, SEEK_SET);
+		rData.resize(size > 0 ? size : 0);
+		bool bOk = size > 0 && fread(rData.data(), 1, size, fp) == (size_t)size;
+		fclose(fp);
+		return bOk;
+	}
+
+	bool LoadFontData(const char* c_szPath)
+	{
+		std::vector<unsigned char> data;
+		if (!c_szPath || !ReadFontFile(c_szPath, data))
+			return false;
+
+		stbtt_fontinfo info;
+		if (!stbtt_InitFont(&info, data.data(), stbtt_GetFontOffsetForIndex(data.data(), 0)))
+			return false;
+
+		// swap keeps the buffer that info points into
+		s_fontData.swap(data);
+		s_fontInfo = info;
+		s_fontLoaded = true;
+		return true;
+	}
+
 	bool LoadSystemFont()
 	{
 		if (s_fontLoaded)
 			return true;
-
-		static const char* sc_aszFontPaths[] = {
-			"/system/fonts/Roboto-Regular.ttf",
-			"/system/fonts/DroidSans.ttf",
-		};
-
-		for (const char* c_szPath : sc_aszFontPaths)
-		{
-			FILE* fp = fopen(c_szPath, "rb");
-			if (!fp)
-				continue;
-
-			fseek(fp, 0, SEEK_END);
-			long size = ftell(fp);
-			fseek(fp, 0, SEEK_SET);
-			s_fontData.resize(size);
-			size_t read = fread(s_fontData.data(), 1, size, fp);
-			fclose(fp);
-
-			if (read == (size_t)size && stbtt_InitFont(&s_fontInfo, s_fontData.data(), stbtt_GetFontOffsetForIndex(s_fontData.data(), 0)))
-			{
-				s_fontLoaded = true;
-				return true;
-			}
-		}
-		return false;
+		if (s_szFontFile[0] && LoadFontData(s_szFontFile))
+			return true;
+		return LoadFontData(M2Plat::FontFilePath());
 	}
 
 	SGdiDC* AsDC(HDC h)
@@ -142,6 +161,20 @@ HBITMAP CreateDIBSection(HDC, const BITMAPINFO* pbmi, UINT, void** ppvBits, void
 	if (ppvBits)
 		*ppvBits = bmp->bits;
 	return bmp;
+}
+
+BOOL GdiSetFontFile(const char* c_szPath)
+{
+	if (!c_szPath || !*c_szPath)
+	{
+		s_szFontFile[0] = 0;
+		s_fontLoaded = false;
+		return LoadSystemFont();
+	}
+	if (!LoadFontData(c_szPath))
+		return FALSE;
+	snprintf(s_szFontFile, sizeof(s_szFontFile), "%s", c_szPath);
+	return TRUE;
 }
 
 HFONT CreateFontIndirectA(const LOGFONTA* plf)

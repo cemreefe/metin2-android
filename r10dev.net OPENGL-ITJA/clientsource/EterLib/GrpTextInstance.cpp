@@ -7,11 +7,32 @@
 #include "../EterBase/Utils.h"
 #include "../EterLocale/Arabic.h"
 
+#include <set>
+
 extern DWORD GetDefaultCodePage();
 
 const float c_fFontFeather = 0.5f;
 
 CDynamicPool<CGraphicTextInstance>		CGraphicTextInstance::ms_kPool;
+
+// Leaked on purpose: instances in static storage may outlive a static set.
+static std::set<CGraphicTextInstance*>& __LiveInstances()
+{
+	static std::set<CGraphicTextInstance*>* s_pkLive = new std::set<CGraphicTextInstance*>;
+	return *s_pkLive;
+}
+
+void CGraphicTextInstance::RefreshAll()
+{
+	std::set<CGraphicTextInstance*>& rkLive = __LiveInstances();
+	for (std::set<CGraphicTextInstance*>::iterator i = rkLive.begin(); i != rkLive.end(); ++i)
+	{
+		CGraphicTextInstance* pkInst = *i;
+		pkInst->m_pCharInfoVector.clear();
+		pkInst->m_isUpdate = false;
+		pkInst->Update();
+	}
+}
 
 static int gs_mx = 0;
 static int gs_my = 0;
@@ -578,8 +599,8 @@ void CGraphicTextInstance::Render(RECT* pClipRect)
 			{
 				pCurCharInfo = *i;
 
-				fFontWidth = float(pCurCharInfo->width);
-				fFontHeight = float(pCurCharInfo->height);
+				fFontWidth = pCurCharInfo->fWidth;
+				fFontHeight = pCurCharInfo->fHeight;
 				fFontAdvance = float(pCurCharInfo->advance);
 
 				// NOTE : ��Ʈ ��¿� Width ������ �Ӵϴ�. - [levites]
@@ -605,8 +626,14 @@ void CGraphicTextInstance::Render(RECT* pClipRect)
 					}
 				}
 
+#ifdef M2_PORT
+				// snap glyphs to whole atlas pixels so the hi-res atlas maps 1:1
+				fFontSx = floorf((fCurX - 0.5f) * CGraphicText::GetRasterScale() + 0.5f) / CGraphicText::GetRasterScale();
+				fFontSy = floorf((fCurY - 0.5f) * CGraphicText::GetRasterScale() + 0.5f) / CGraphicText::GetRasterScale();
+#else
 				fFontSx = fCurX - 0.5f;
 				fFontSy = fCurY - 0.5f;
+#endif
 				fFontEx = fFontSx + fFontWidth;
 				fFontEy = fFontSy + fFontHeight;
 
@@ -687,8 +714,8 @@ void CGraphicTextInstance::Render(RECT* pClipRect)
 		{
 			pCurCharInfo = m_pCharInfoVector[i];
 
-			fFontWidth = float(pCurCharInfo->width);
-			fFontHeight = float(pCurCharInfo->height);
+			fFontWidth = pCurCharInfo->fWidth;
+			fFontHeight = pCurCharInfo->fHeight;
 			fFontMaxHeight = max(fFontHeight, pCurCharInfo->height);
 			fFontAdvance = float(pCurCharInfo->advance);
 
@@ -715,8 +742,14 @@ void CGraphicTextInstance::Render(RECT* pClipRect)
 				}
 			}
 
+#ifdef M2_PORT
+			// snap glyphs to whole atlas pixels so the hi-res atlas maps 1:1
+			fFontSx = floorf((fCurX - 0.5f) * CGraphicText::GetRasterScale() + 0.5f) / CGraphicText::GetRasterScale();
+			fFontSy = floorf((fCurY - 0.5f) * CGraphicText::GetRasterScale() + 0.5f) / CGraphicText::GetRasterScale();
+#else
 			fFontSx = fCurX - 0.5f;
 			fFontSy = fCurY - 0.5f;
+#endif
 			fFontEx = fFontSx + fFontWidth;
 			fFontEy = fFontSy + fFontHeight;
 
@@ -1052,7 +1085,7 @@ WORD CGraphicTextInstance::GetTextLineCount()
 	{
 		pCurCharInfo = *itor;
 
-		float fFontWidth = float(pCurCharInfo->width);
+		float fFontWidth = pCurCharInfo->fWidth;
 		float fFontAdvance = float(pCurCharInfo->advance);
 		//float fFontHeight=float(pCurCharInfo->height);
 
@@ -1135,9 +1168,17 @@ void CGraphicTextInstance::Destroy()
 CGraphicTextInstance::CGraphicTextInstance()
 {
 	__Initialize();
+	__LiveInstances().insert(this);
+}
+
+CGraphicTextInstance::CGraphicTextInstance(const CGraphicTextInstance& rhs)
+{
+	*this = rhs;
+	__LiveInstances().insert(this);
 }
 
 CGraphicTextInstance::~CGraphicTextInstance()
 {
+	__LiveInstances().erase(this);
 	Destroy();
 }

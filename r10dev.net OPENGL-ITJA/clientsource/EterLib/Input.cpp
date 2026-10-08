@@ -1,7 +1,7 @@
 #include "StdAfx.h"
 #include "Input.h"
 
-#ifdef __ANDROID__
+#ifdef M2_PORT
 
 void*					CInputDevice::ms_lpDI = NULL;
 void*					CInputKeyboard::ms_lpKeyboard = NULL;
@@ -193,4 +193,4 @@ bool CInputKeyboard::IsPressed(int iIndex)
 	return ms_bPressedKey[iIndex];
 }
 
-#endif /* __ANDROID__ */
+#endif /* M2_PORT */

@@ -1,7 +1,7 @@
 #ifndef __INC_ETERBASE_FILEBASE_H__
 #define __INC_ETERBASE_FILEBASE_H__
 
-#ifndef __ANDROID__
+#ifndef M2_PORT
 #include <windows.h>
 #endif
 
@@ -37,7 +37,7 @@ protected:
 	char			m_filename[MAX_PATH + 1];
 	HANDLE			m_hFile;
 	DWORD			m_dwSize;
-#ifdef __ANDROID__
+#ifdef M2_PORT
 	void*			m_pAsset;
 #endif
 };

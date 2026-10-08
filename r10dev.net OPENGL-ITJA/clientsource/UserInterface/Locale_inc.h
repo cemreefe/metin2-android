@@ -110,7 +110,7 @@
 #define ENABLE_OPENGL
 #endif
 
-#ifdef __ANDROID__
+#ifdef M2_PORT
 	#ifndef GrannyTypeSizeCheck
 		#define GrannyTypeSizeCheck(expr) 
 	#endif

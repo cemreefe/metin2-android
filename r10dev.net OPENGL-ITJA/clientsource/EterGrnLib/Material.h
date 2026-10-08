@@ -1,7 +1,7 @@
 #pragma once
 
 #include <granny.h>
-#ifndef __ANDROID__
+#ifndef M2_PORT
 #include <windows.h>
 #endif
 #ifndef ENABLE_OPENGL

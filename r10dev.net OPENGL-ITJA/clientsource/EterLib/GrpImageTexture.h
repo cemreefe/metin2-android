@@ -18,7 +18,7 @@ public:
 	bool		CreateFromDiskFile(const char* c_szFileName, D3DFORMAT d3dFmt, DWORD dwFilter = D3DX_FILTER_LINEAR);
 	bool		CreateFromMemoryFile(UINT bufSize, const void* c_pvBuf, D3DFORMAT d3dFmt, DWORD dwFilter = D3DX_FILTER_LINEAR);
 	bool		CreateDDSTexture(CDXTCImage& image, const BYTE* c_pbBuf);
-#ifdef __ANDROID__
+#ifdef M2_PORT
 	bool		CreateFromJpegMemory(UINT bufSize, const BYTE* c_pbBuf);
 	bool		CreateFromUncompressedDDSMemory(UINT bufSize, const BYTE* c_pbBuf);
 #endif

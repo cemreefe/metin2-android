@@ -1,0 +1,197 @@
+diff --git a/src/game/config.cpp b/src/game/config.cpp
+index fc2e102..957ef7d 100644
+--- a/src/game/config.cpp
++++ b/src/game/config.cpp
+@@ -206,6 +206,12 @@ static void FN_log_adminpage()
+ 
+ bool GetIPInfo()
+ {
++#ifdef __EMSCRIPTEN__
++	// No interfaces in wasm; everything is the in-page loopback anyway.
++	strlcpy(g_szPublicIP, "127.0.0.1", sizeof(g_szPublicIP));
++	strlcpy(g_szInternalIP, "127.0.0.1", sizeof(g_szInternalIP));
++	return true;
++#endif
+ #ifndef OS_WINDOWS
+ 	struct ifaddrs* ifaddrp = NULL;
+ 
+diff --git a/src/game/sectree_manager.cpp b/src/game/sectree_manager.cpp
+index 861b83b..362be5c 100644
+--- a/src/game/sectree_manager.cpp
++++ b/src/game/sectree_manager.cpp
+@@ -456,7 +456,6 @@ bool SECTREE_MANAGER::LoadAttribute(LPSECTREE_MAP pkMapSectree, const char * c_p
+ 		sys_err("SECTREE_MANAGER::LoadAttribute : cannot open %s", c_pszFileName);
+ 		return false;
+ 	}
+-
+ 	int32_t iWidth, iHeight;
+ 	fread(&iWidth, sizeof(int32_t), 1, fp);
+ 	fread(&iHeight, sizeof(int32_t), 1, fp);
+@@ -466,10 +465,10 @@ bool SECTREE_MANAGER::LoadAttribute(LPSECTREE_MAP pkMapSectree, const char * c_p
+ 	uint32_t uiSize;
+ 	lzo_uint uiDestSize;
+ 
+-#ifndef _MSC_VER
+-	BYTE abComp[maxMemSize];
++#if defined(_MSC_VER) || defined(__EMSCRIPTEN__)
++	BYTE* abComp = M2_NEW BYTE[maxMemSize];	/* wasm thread stack is 64KB; this buffer exceeds it */
+ #else
+-	BYTE* abComp = M2_NEW BYTE[maxMemSize];
++	BYTE abComp[maxMemSize];
+ #endif
+ 	DWORD * attr = M2_NEW DWORD[maxMemSize];
+ 
+@@ -495,7 +494,7 @@ bool SECTREE_MANAGER::LoadAttribute(LPSECTREE_MAP pkMapSectree, const char * c_p
+ 				abort();
+ 
+ 				M2_DELETE_ARRAY(attr);
+-#ifdef _MSC_VER
++#if defined(_MSC_VER) || defined(__EMSCRIPTEN__)
+ 				M2_DELETE_ARRAY(abComp);
+ #endif
+ 				return false;
+@@ -509,7 +508,7 @@ bool SECTREE_MANAGER::LoadAttribute(LPSECTREE_MAP pkMapSectree, const char * c_p
+ 				fclose(fp);
+ 
+ 				M2_DELETE_ARRAY(attr);
+-#ifdef _MSC_VER
++#if defined(_MSC_VER) || defined(__EMSCRIPTEN__)
+ 				M2_DELETE_ARRAY(abComp);
+ #endif
+ 				return false;
+@@ -529,7 +528,7 @@ bool SECTREE_MANAGER::LoadAttribute(LPSECTREE_MAP pkMapSectree, const char * c_p
+ 				fclose(fp);
+ 
+ 				M2_DELETE_ARRAY(attr);
+-#ifdef _MSC_VER
++#if defined(_MSC_VER) || defined(__EMSCRIPTEN__)
+ 				M2_DELETE_ARRAY(abComp);
+ #endif
+ 				return false;
+@@ -541,7 +540,7 @@ bool SECTREE_MANAGER::LoadAttribute(LPSECTREE_MAP pkMapSectree, const char * c_p
+ 	fclose(fp);
+ 
+ 	M2_DELETE_ARRAY(attr);
+-#ifdef _MSC_VER
++#if defined(_MSC_VER) || defined(__EMSCRIPTEN__)
+ 	M2_DELETE_ARRAY(abComp);
+ #endif
+ 	return true;
+@@ -755,7 +754,6 @@ int SECTREE_MANAGER::Build(const char * c_pszListFileName, const char* c_pszMapB
+ 			continue;
+ 
+ 		sscanf(buf, " %d %s ", &iIndex, szMapName);
+-
+ 		snprintf(szFilename, sizeof(szFilename), "%s/%s/Setting.txt", c_pszMapBasePath, szMapName);
+ 
+ 		TMapSetting setting;
+diff --git a/src/libthecore/fdwatch.cpp b/src/libthecore/fdwatch.cpp
+index 871c674..73dfcd9 100644
+--- a/src/libthecore/fdwatch.cpp
++++ b/src/libthecore/fdwatch.cpp
+@@ -1,5 +1,10 @@
+ ﻿#include "stdafx.h"
+ 
++#ifdef __EMSCRIPTEN__
++#include "m2lb.h"
++#define select(nfds,r,w,e,t) m2lp_select(nfds,r,w,e,t)
++#endif
++
+ #ifndef __USE_SELECT__
+ 
+ LPFDWATCH fdwatch_new(int nfiles)
+@@ -368,13 +373,12 @@ int fdwatch(LPFDWATCH fdw, struct timeval *timeout)
+     {
+ 	tv.tv_sec = 0;
+ 	tv.tv_usec = 0;
+-	r = select(max_fd + 1, &fdw->working_rfd_set, &fdw->working_wfd_set, (fd_set*) 0, &tv);
+     }
+     else
+     {
+ 	tv = *timeout;
+-	r = select(max_fd + 1, &fdw->working_rfd_set, &fdw->working_wfd_set, (fd_set*) 0, &tv);
+     }
++    r = select(max_fd + 1, &fdw->working_rfd_set, &fdw->working_wfd_set, (fd_set*) 0, &tv);
+ 
+     if (r == -1)
+ 	return -1;
+diff --git a/src/libthecore/socket.cpp b/src/libthecore/socket.cpp
+index 1a440fb..9a782ec 100644
+--- a/src/libthecore/socket.cpp
++++ b/src/libthecore/socket.cpp
+@@ -3,6 +3,38 @@
+ #include <netinet/tcp.h>
+ #endif
+ 
++#ifdef __EMSCRIPTEN__
++/* All TCP goes through the in-page SharedArrayBuffer loopback (m2lb).
++ * Redirect the raw syscalls this file makes; callers outside this file
++ * only ever see the socket_* wrappers. */
++#include "m2lb.h"
++#include <arpa/inet.h>
++
++static ssize_t m2lp_recv4(socket_t d, void* b, size_t l, int f)   { (void)f; return m2lp_recv(d, b, l); }
++static ssize_t m2lp_send4(socket_t d, const void* b, size_t l, int f) { (void)f; return m2lp_send(d, b, l); }
++static ssize_t m2lp_recvfrom6(socket_t d, void* b, size_t l, int f, void* s, void* sl) { return m2lp_recvfrom(d, b, l, f, s, sl); }
++static int m2lp_socket3(int af, int type, int proto) { (void)af; (void)proto; return m2lp_socket(type); }
++static int m2lp_bind3(socket_t d, const void* sa, socklen_t l) { (void)l; return m2lp_bind(d, ntohs(((const struct sockaddr_in*)sa)->sin_port)); }
++static int m2lp_listen2(socket_t d, int b) { (void)b; return m2lp_listen(d); }
++static int m2lp_accept3(socket_t d, void* sa, socklen_t* l) { (void)l; return m2lp_accept(d, (struct sockaddr_in*)sa); }
++static int m2lp_connect3(socket_t d, const void* sa, socklen_t l) { (void)l; return m2lp_connect(d, ntohs(((const struct sockaddr_in*)sa)->sin_port)); }
++static int m2lp_setsockopt5(socket_t d, int lvl, int opt, const void* v, socklen_t l) { (void)d; (void)lvl; (void)opt; (void)v; (void)l; return 0; }
++static int m2lp_getsockopt5(socket_t d, int lvl, int opt, void* v, socklen_t* l) { (void)d; (void)lvl; (void)opt; (void)v; (void)l; return 0; }
++
++#define recv(a,b,c,d)    m2lp_recv4(a,b,c,d)
++#define send(a,b,c,d)    m2lp_send4(a,b,c,d)
++#define recvfrom(a,b,c,d,e,f) m2lp_recvfrom6(a,b,c,d,e,f)
++#define socket(a,b,c)    m2lp_socket3(a,b,c)
++#define bind(a,b,c)      m2lp_bind3(a,b,c)
++#define listen(a,b)      m2lp_listen2(a,b)
++#define accept(a,b,c)    m2lp_accept3(a,b,c)
++#define connect(a,b,c)   m2lp_connect3(a,b,c)
++#define setsockopt(a,b,c,d,e) m2lp_setsockopt5(a,b,c,d,e)
++#define getsockopt(a,b,c,d,e) m2lp_getsockopt5(a,b,c,d,e)
++#define fcntl(a,b,c)     m2lp_fcntl(a,b,c)
++#define close(a)         m2lp_close(a)
++#endif /* __EMSCRIPTEN__ */
++
+ /* Forwards */
+ void socket_lingeron(socket_t s);
+ void socket_lingeroff(socket_t s);
+@@ -247,6 +279,10 @@ socket_t socket_connect(const char* host, WORD port)
+     /* 소켓주소 구조체 초기화 */
+     memset(&server_addr, 0, sizeof(server_addr));
+ 
++#ifdef __EMSCRIPTEN__
++	/* Loopback routing is by port only; the host string is irrelevant. */
++	server_addr.sin_addr.s_addr = htonl(0x7f000001);
++#else
+     if (isdigit(*host))
+ 	server_addr.sin_addr.s_addr = inet_addr(host);
+     else
+@@ -261,6 +297,7 @@ socket_t socket_connect(const char* host, WORD port)
+ 
+ 	thecore_memcpy((char* ) &server_addr.sin_addr, hp->h_addr, sizeof(server_addr.sin_addr));
+     }
++#endif
+ 
+     server_addr.sin_family = AF_INET;
+     server_addr.sin_port = htons(port);
+diff --git a/src/libthecore/utils.cpp b/src/libthecore/utils.cpp
+index 3914655..05f5fd7 100644
+--- a/src/libthecore/utils.cpp
++++ b/src/libthecore/utils.cpp
+@@ -9,6 +9,13 @@
+ #include <random>
+ #include "XoshiroCpp.hpp"
+ 
++#ifdef __EMSCRIPTEN__
++/* Loopback sockets live outside real fds; the only use here is
++ * thecore_sleep's select(0,...), which m2lp_select handles as a timer. */
++#include "m2lb.h"
++#define select(nfds,r,w,e,t) m2lp_select(nfds,r,w,e,t)
++#endif
++
+ static struct timeval null_time = { 0, 0 };
+ 
+ #define ishprint(x)     ((((x) & 0xE0) > 0x90) || isprint(x))

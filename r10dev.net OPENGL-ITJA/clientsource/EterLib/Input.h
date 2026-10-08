@@ -13,7 +13,7 @@ public:
 	HRESULT CreateDevice(HWND hWnd);
 
 protected:
-#ifdef __ANDROID__
+#ifdef M2_PORT
 	static void* ms_lpDI;
 #else
 	static LPDIRECTINPUT8 ms_lpDI;
@@ -39,7 +39,7 @@ protected:
 	virtual void	OnKeyUp(int iIndex) = 0;
 
 protected:
-#ifdef __ANDROID__
+#ifdef M2_PORT
 	static void*					ms_lpKeyboard;
 #else
 	static LPDIRECTINPUTDEVICE8	ms_lpKeyboard;

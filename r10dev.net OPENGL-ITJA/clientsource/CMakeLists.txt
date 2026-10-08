@@ -1,16 +1,31 @@
 cmake_minimum_required(VERSION 3.10.2)
 project("Metin2Mobile")
 
-add_definitions(-D__ANDROID__)
-add_definitions(-DENABLE_OPENGL)
-add_definitions(-DENABLE_MOBILE_CONTROLS)
-add_definitions(-DLOCALE_SERVICE_EUROPE)
-add_definitions(-DNDEBUG) # match the Windows release build: asserts are compiled out
+# Target port: android (Gradle/NDK) or web (Emscripten). Gradle always sets ANDROID.
+if(NOT DEFINED M2_TARGET)
+    if(ANDROID)
+        set(M2_TARGET android)
+    elseif(EMSCRIPTEN)
+        set(M2_TARGET web)
+    else()
+        set(M2_TARGET android)
+    endif()
+endif()
 
-if(ANDROID)
+if(M2_TARGET STREQUAL "web")
+    include(${CMAKE_CURRENT_SOURCE_DIR}/../web/emflags.cmake)
+endif()
+
+if(M2_TARGET STREQUAL "android")
+    add_definitions(-D__ANDROID__)
+    add_definitions(-DENABLE_MOBILE_CONTROLS)
     # Some older Granny versions use these for 64-bit
     add_definitions(-DGRANNY_ONLY_TYPES)
 endif()
+
+add_definitions(-DENABLE_OPENGL)
+add_definitions(-DLOCALE_SERVICE_EUROPE)
+add_definitions(-DNDEBUG) # match the Windows release build: asserts are compiled out
 
 include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}
@@ -38,6 +53,7 @@ include_directories(
 
 set(ETER_BASE_SOURCES
     android_compat/win_stub.cpp
+    platform/m2platform.cpp
     EterBase/Poly/Poly.cpp
     EterBase/Poly/SymTable.cpp
     android_compat/devil_stub.cpp
@@ -214,7 +230,6 @@ set(USER_INTERFACE_SOURCES
     UserInterface/GuildMarkDownloader.cpp
     UserInterface/GuildMarkUploader.cpp
     UserInterface/InsultChecker.cpp
-    UserInterface/AndroidMain.cpp
     UserInterface/PythonApplication.cpp
     UserInterface/PythonApplicationModule.cpp
     UserInterface/PythonPlayerModule.cpp
@@ -380,8 +395,25 @@ set(SPHERE_LIB_SOURCES
     SphereLib/StdAfx.cpp
 )
 
+# Per-adapter port implementations
+if(M2_TARGET STREQUAL "android")
+    set(PLATFORM_SOURCES
+        platform/posix/M2PosixNet.cpp
+        UserInterface/AndroidMain.cpp
+    )
+elseif(M2_TARGET STREQUAL "web")
+    set(PLATFORM_SOURCES
+        platform/web/WebMain.cpp
+        platform/web/M2WebNet.cpp
+        platform/web/WebLazyFS.cpp
+        platform/web/WebAudio.cpp
+        # SAB loopback transport (shared with the wasm server modules)
+        ${CMAKE_CURRENT_SOURCE_DIR}/../server/web/m2lb_bridge.cpp
+    )
+endif()
+
 set(MILES_LIB_SOURCES
-    MilesLib/mss_android.cpp
+    MilesLib/mss_port.cpp
     MilesLib/SoundBase.cpp
     MilesLib/SoundData.cpp
     MilesLib/SoundInstance2D.cpp
@@ -419,13 +451,14 @@ set(ETER_LOCALE_SOURCES
     EterLocale/StdAfx.cpp
 )
 
-if(NOT ANDROID)
+if(M2_TARGET STREQUAL "android" OR M2_TARGET STREQUAL "web")
+    # the in-game IE browser shell stays a Windows-only feature on the ports
+    set(C_WEB_BROWSER_SOURCES "")
+else()
     set(C_WEB_BROWSER_SOURCES
         CWebBrowser/CWebBrowser.c
     )
-    add_definitions(-DENABLE_WEB_BROWSER) # Optional flag if the code needs it
-else()
-    set(C_WEB_BROWSER_SOURCES "")
+    add_definitions(-DENABLE_WEB_BROWSER)
 endif()
 
 set(OPENGR2NDMA_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../third_party/OpenGr2ndma CACHE PATH "OpenGr2ndma checkout")
@@ -433,8 +466,7 @@ set(OPENGR2NDMA_BUILD_TOOLS OFF CACHE BOOL "" FORCE)
 set(OPENGR2NDMA_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 add_subdirectory(${OPENGR2NDMA_DIR} ${CMAKE_CURRENT_BINARY_DIR}/opengr2ndma)
 
-link_directories(${CMAKE_CURRENT_SOURCE_DIR}/../Extern/lib/android/${ANDROID_ABI})
-add_library(metin2_mobile SHARED
+set(M2_CORE_SOURCES
     ${USER_INTERFACE_SOURCES}
     ${ETER_BASE_SOURCES}
     ${ETER_LIB_SOURCES}
@@ -451,36 +483,66 @@ add_library(metin2_mobile SHARED
     ${PR_TERRAIN_LIB_SOURCES}
     ${ETER_LOCALE_SOURCES}
     ${C_WEB_BROWSER_SOURCES}
+    ${PLATFORM_SOURCES}
 )
 
-# Extern Library linking
-set(EXTERN_LIB_PATH ${CMAKE_CURRENT_SOURCE_DIR}/../Extern/lib/android/${ANDROID_ABI})
-link_directories(${EXTERN_LIB_PATH})
+if(M2_TARGET STREQUAL "android")
+    link_directories(${CMAKE_CURRENT_SOURCE_DIR}/../Extern/lib/android/${ANDROID_ABI})
+    add_library(metin2_mobile SHARED ${M2_CORE_SOURCES})
+elseif(M2_TARGET STREQUAL "web")
+    link_directories(${CMAKE_CURRENT_SOURCE_DIR}/../Extern/lib/web)
+    add_executable(metin2_web ${M2_CORE_SOURCES})
+    # .html output makes emscripten emit metin2_web.html (from
+    # web/shell.html) plus metin2_web.js/.wasm
+    set_target_properties(metin2_web PROPERTIES SUFFIX .html)
+endif()
 
-find_library(log-lib log)
-find_library(android-lib android)
-find_library(gles3-lib GLESv3)
-
-# Common Metin2 Libraries (Static)
+# Common Metin2 Libraries (Static). jpeg/png are excluded on web — the
+# emscripten ports (-sUSE_LIBPNG/-sUSE_LIBJPEG) supply them there.
 set(METIN2_EXTERN_LIBS
     python2.7
     cryptopp
     lzo2
-    jpeg
-    png
 )
-
-if(ANDROID)
-    target_compile_options(metin2_mobile PRIVATE -include windows.h)
+if(M2_TARGET STREQUAL "android")
+    list(APPEND METIN2_EXTERN_LIBS jpeg png)
 endif()
 
-target_link_libraries(metin2_mobile
-    OpenGr2ndma::opengr2ndma
-    ${log-lib}
-    ${android-lib}
-    ${gles3-lib}
-    EGL
-    ${METIN2_EXTERN_LIBS}
-    z
-    m
-)
+if(M2_TARGET STREQUAL "android")
+    set(EXTERN_LIB_PATH ${CMAKE_CURRENT_SOURCE_DIR}/../Extern/lib/android/${ANDROID_ABI})
+    link_directories(${EXTERN_LIB_PATH})
+
+    find_library(log-lib log)
+    find_library(android-lib android)
+    find_library(gles3-lib GLESv3)
+
+    target_compile_options(metin2_mobile PRIVATE -include windows.h)
+
+    target_link_libraries(metin2_mobile
+        OpenGr2ndma::opengr2ndma
+        ${log-lib}
+        ${android-lib}
+        ${gles3-lib}
+        EGL
+        ${METIN2_EXTERN_LIBS}
+        z
+        m
+    )
+elseif(M2_TARGET STREQUAL "web")
+    set(EXTERN_LIB_PATH ${CMAKE_CURRENT_SOURCE_DIR}/../Extern/lib/web)
+    link_directories(${EXTERN_LIB_PATH})
+
+    target_compile_options(metin2_web PRIVATE -include windows.h)
+    # BEFORE: pyconfig.h (ILP32, no fork/dlopen) must shadow the posix one in
+    # Extern/include/Python2 — Python.h includes it with angle brackets.
+    target_include_directories(metin2_web BEFORE PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/../Extern/include/Python2-web)
+
+    # emscripten flags were applied by web/emflags.cmake (see web/README.md)
+    target_link_libraries(metin2_web
+        OpenGr2ndma::opengr2ndma
+        ${METIN2_EXTERN_LIBS}
+        z
+        m
+    )
+endif()

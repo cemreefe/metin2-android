@@ -1,4 +1,5 @@
 #include "StdAfx.h"
+#include "../platform/m2platform.h"
 #include "Resource.h"
 #include "PythonApplication.h"
 #include "../EterLib/Camera.h"
@@ -31,7 +32,7 @@ PyObject* appShowWebPage(PyObject* poSelf, PyObject* poArgs)
 	rcWebPage.right = PyInt_AsLong(PyTuple_GetItem(poRect, 2));
 	rcWebPage.bottom = PyInt_AsLong(PyTuple_GetItem(poRect, 3));
 
-#ifndef __ANDROID__
+#ifndef M2_PORT
 	CPythonApplication::Instance().ShowWebPage(
 		szWebPage,
 		rcWebPage
@@ -52,7 +53,7 @@ PyObject* appMoveWebPage(PyObject* poSelf, PyObject* poArgs)
 	rcWebPage.right = PyInt_AsLong(PyTuple_GetItem(poRect, 2));
 	rcWebPage.bottom = PyInt_AsLong(PyTuple_GetItem(poRect, 3));
 
-#ifndef __ANDROID__
+#ifndef M2_PORT
 	CPythonApplication::Instance().MoveWebPage(rcWebPage);
 #endif
 	return Py_BuildNone();
@@ -60,15 +61,24 @@ PyObject* appMoveWebPage(PyObject* poSelf, PyObject* poArgs)
 
 PyObject* appHideWebPage(PyObject* poSelf, PyObject* poArgs)
 {
-#ifndef __ANDROID__
+#ifndef M2_PORT
 	CPythonApplication::Instance().HideWebPage();
 #endif
 	return Py_BuildNone();
 }
 
+PyObject* appIsTouchPrimary(PyObject* poSelf, PyObject* poArgs)
+{
+#ifdef M2_PORT
+	return Py_BuildValue("i", M2Plat::IsTouchPrimary() ? 1 : 0);
+#else
+	return Py_BuildValue("i", 0);
+#endif
+}
+
 PyObject* appIsWebPageMode(PyObject* poSelf, PyObject* poArgs)
 {
-#ifdef __ANDROID__
+#ifdef M2_PORT
 	return Py_BuildValue("i", 0);
 #else
 	return Py_BuildValue("i", CPythonApplication::Instance().IsWebPageMode());
@@ -325,24 +335,36 @@ PyObject* appGetLocalePath(PyObject* poSelf, PyObject* poArgs)
 }
 // END_OF_LOCALE
 
-#ifdef __ANDROID__
-void AndroidRestartApp();
-#endif
-
 PyObject* appRestartApplication(PyObject* poSelf, PyObject* poArgs)
 {
-#ifdef __ANDROID__
-	AndroidRestartApp();
+#ifdef M2_PORT
+	M2Plat::RestartApp();
 #endif
 	return Py_BuildNone();
 }
 
 PyObject* appApplyUIScale(PyObject* poSelf, PyObject* poArgs)
 {
-#ifdef __ANDROID__
-	CPythonApplication::Instance().ApplyAndroidUIScale();
+#ifdef M2_PORT
+	CPythonApplication::Instance().ApplyPortUIScale();
 #endif
 	return Py_BuildNone();
+}
+
+PyObject* appSetPortFont(PyObject* poSelf, PyObject* poArgs)
+{
+	char* szPath;
+	int iReload;
+	if (!PyTuple_GetString(poArgs, 0, &szPath) || !PyTuple_GetInteger(poArgs, 1, &iReload))
+		return Py_BuildException();
+
+	int iOk = 0;
+#ifdef M2_PORT
+	iOk = GdiSetFontFile(szPath) ? 1 : 0;
+	if (iOk && iReload)
+		CPythonApplication::Instance().ReloadPortFonts();
+#endif
+	return Py_BuildValue("i", iOk);
 }
 
 PyObject* appGetDefaultCodePage(PyObject* poSelf, PyObject* poArgs)
@@ -1294,6 +1316,7 @@ void initapp()
 		{ "GetRandom",					appGetRandom,					METH_VARARGS },
 		{ "RunPythonFile",				appRunPythonFile,				METH_VARARGS },
 		{ "IsWebPageMode",				appIsWebPageMode,				METH_VARARGS },
+		{ "IsTouchPrimary",				appIsTouchPrimary,				METH_VARARGS },
 		{ "ShowWebPage",				appShowWebPage,					METH_VARARGS },
 		{ "MoveWebPage",				appMoveWebPage,					METH_VARARGS },
 		{ "HideWebPage",				appHideWebPage,					METH_VARARGS },
@@ -1338,6 +1361,7 @@ void initapp()
 		{ "GetLocalePath",				appGetLocalePath,				METH_VARARGS },
 		{ "RestartApplication",			appRestartApplication,			METH_VARARGS },
 		{ "ApplyUIScale",				appApplyUIScale,				METH_VARARGS },
+		{ "SetPortFont",				appSetPortFont,					METH_VARARGS },
 		{ "ForceSetLocale",				appForceSetLocale,				METH_VARARGS },
 		// END_OF_LOCALE
 

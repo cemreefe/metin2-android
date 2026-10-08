@@ -1,5 +1,8 @@
 #include "StdAfx.h"
 #include "PythonApplication.h"
+#include "../EterLib/GrpText.h"
+#include "../EterLib/GrpTextInstance.h"
+#include "../EterLib/ResourceManager.h"
 #include "../EterLib/Camera.h"
 #include "../EterPythonLib/PythonWindow.h"
 
@@ -236,64 +239,10 @@ void CPythonApplication::OnMouseRender()
 
 	PyCallClassMemberFunc(m_poMouseHandler, "Render", Py_BuildValue("()"));
 }
-#ifdef __ANDROID__
-static int AndroidKeyCodeToDIK(int keyCode)
+#ifdef M2_PORT
+void CPythonApplication::OnPortKeyEvent(int action, int keyCode, int unicodeChar)
 {
-	static const unsigned char c_aLetterDIK[26] = {
-		DIK_A, DIK_B, DIK_C, DIK_D, DIK_E, DIK_F, DIK_G, DIK_H, DIK_I, DIK_J, DIK_K, DIK_L, DIK_M,
-		DIK_N, DIK_O, DIK_P, DIK_Q, DIK_R, DIK_S, DIK_T, DIK_U, DIK_V, DIK_W, DIK_X, DIK_Y, DIK_Z };
-	static const unsigned char c_aDigitDIK[10] = {
-		DIK_0, DIK_1, DIK_2, DIK_3, DIK_4, DIK_5, DIK_6, DIK_7, DIK_8, DIK_9 };
-
-	if (keyCode >= 29 && keyCode <= 54)
-		return c_aLetterDIK[keyCode - 29];
-	if (keyCode >= 7 && keyCode <= 16)
-		return c_aDigitDIK[keyCode - 7];
-	if (keyCode >= 131 && keyCode <= 140)
-		return DIK_F1 + (keyCode - 131);
-
-	switch (keyCode)
-	{
-	case 4: case 111: return DIK_ESCAPE;
-	case 19: return DIK_UP;
-	case 20: return DIK_DOWN;
-	case 21: return DIK_LEFT;
-	case 22: return DIK_RIGHT;
-	case 61: return DIK_TAB;
-	case 62: return DIK_SPACE;
-	case 66: case 160: return DIK_RETURN;
-	case 67: return DIK_BACK;
-	case 112: return DIK_DELETE;
-	case 59: return DIK_LSHIFT;
-	case 60: return DIK_RSHIFT;
-	case 113: return DIK_LCONTROL;
-	case 114: return DIK_RCONTROL;
-	case 57: return DIK_LMENU;
-	case 122: return DIK_HOME;
-	case 123: return DIK_END;
-	}
-	return 0;
-}
-
-static int AndroidKeyCodeToVK(int keyCode)
-{
-	switch (keyCode)
-	{
-	case 19: return VK_UP;
-	case 20: return VK_DOWN;
-	case 21: return VK_LEFT;
-	case 22: return VK_RIGHT;
-	case 112: return VK_DELETE;
-	case 122: return VK_HOME;
-	case 123: return VK_END;
-	}
-	return 0;
-}
-
-void CPythonApplication::OnAndroidKeyEvent(int action, int keyCode, int unicodeChar)
-{
-	int iDIK = AndroidKeyCodeToDIK(keyCode);
-
+	int iDIK = M2Plat::KeyToDIK(keyCode);
 	if (action == 1)
 	{
 		if (iDIK)
@@ -301,20 +250,17 @@ void CPythonApplication::OnAndroidKeyEvent(int action, int keyCode, int unicodeC
 		return;
 	}
 
-	int iChar = unicodeChar;
-	if (keyCode == 66 || keyCode == 160)
-		iChar = VK_RETURN;
-	else if (keyCode == 67)
-		iChar = VK_BACK;
-	else if (keyCode == 61)
-		iChar = VK_TAB;
-	else if (keyCode == 4 || keyCode == 111)
-		iChar = VK_ESCAPE;
+	// Control keys come through as VK_* so WMChar and the IME see the same
+	// values Windows would send; printable keys arrive in unicodeChar.
+	int iVK = M2Plat::KeyToVK(keyCode);
+	int iChar = iVK ? iVK : unicodeChar;
+
+	if (unicodeChar && !iVK)
+		FeedDevSequence(unicodeChar);
 
 	if (iChar)
 		CPythonIME::Instance().WMChar(NULL, WM_CHAR, iChar, 0);
 
-	int iVK = AndroidKeyCodeToVK(keyCode);
 	if (iVK)
 		OnIMEKeyDown(iVK);
 
@@ -322,14 +268,11 @@ void CPythonApplication::OnAndroidKeyEvent(int action, int keyCode, int unicodeC
 		KeyDown(iDIK);
 }
 
-void AndroidSetGameControlsVisible(bool bVisible);
-void AndroidSetTouchBlockers(const std::vector<RECT>& rects, int iWidth, int iHeight);
-
 namespace
 {
 	const DWORD c_dwTouchHoldMs = 350;
 
-	void CollectTouchBlockers(UI::CWindow* pWindow, std::vector<RECT>& rects)
+	void CollectTouchBlockers(UI::CWindow* pWindow, std::vector<M2Plat::SRect>& rects)
 	{
 		for (UI::CWindow* pChild : pWindow->GetChildren())
 		{
@@ -338,7 +281,10 @@ namespace
 			if (pChild->IsFlag(UI::CWindow::FLAG_NOT_PICK) || pChild->IsFlag(UI::CWindow::FLAG_IGNORE_SIZE))
 				CollectTouchBlockers(pChild, rects);
 			else
-				rects.push_back(pChild->GetRect());
+			{
+				const RECT& r = pChild->GetRect();
+				rects.push_back({ r.left, r.top, r.right, r.bottom });
+			}
 		}
 	}
 
@@ -351,16 +297,45 @@ namespace
 	}
 }
 
+void CPythonApplication::ReloadPortFonts()
+{
+	CResourceManager::Instance().ReloadResourcesOfType(CGraphicText::Type());
+	CGraphicTextInstance::RefreshAll();
+}
+
+// Typing "devops$" anywhere toggles the hidden developer options window.
+void CPythonApplication::FeedDevSequence(int iChar)
+{
+	static const char c_szSequence[] = "devops$";
+	static size_t s_nMatched = 0;
+	if (iChar == c_szSequence[s_nMatched])
+		++s_nMatched;
+	else
+		s_nMatched = (iChar == c_szSequence[0]) ? 1 : 0;
+	if (c_szSequence[s_nMatched])
+		return;
+	s_nMatched = 0;
+	PyRun_SimpleString("import uidevoptions\nuidevoptions.Toggle()\n");
+}
+
 // Re-reads display.cfg and resizes the logical UI canvas in place; Python then rebuilds
 // the windows that cached the old screen size.
-void CPythonApplication::ApplyAndroidUIScale()
+void CPythonApplication::ApplyPortUIScale()
 {
-	m_pySystem.FitUIToAndroidSurface();
+	const float fOldFontScale = CGraphicText::GetGlobalFontScale();
+	const float fOldRasterScale = CGraphicText::GetRasterScale();
+	m_pySystem.FitUIToPortSurface();
+	if (CGraphicText::GetGlobalFontScale() != fOldFontScale || CGraphicText::GetRasterScale() != fOldRasterScale)
+	{
+		CResourceManager::Instance().ReloadResourcesOfType(CGraphicText::Type());
+		CGraphicTextInstance::RefreshAll();
+	}
 	const int iWidth = m_pySystem.GetWidth();
 	const int iHeight = m_pySystem.GetHeight();
 	m_dwWidth = iWidth;
 	m_dwHeight = iHeight;
 	AdjustSize(iWidth, iHeight);
+	m_grpDevice.FitViewportToSurface(M2Plat::SurfaceWidth(), M2Plat::SurfaceHeight());
 	CGraphicBase::SetLogicalScreenSize(iWidth, iHeight);
 	UI::CWindowManager& rkWndMgr = UI::CWindowManager::Instance();
 	rkWndMgr.SetResolution(iWidth, iHeight);
@@ -372,22 +347,29 @@ void CPythonApplication::ApplyAndroidUIScale()
 // the right mouse button does on desktop.
 void CPythonApplication::OnTouchEvent(int action, int x, int y)
 {
-	extern int g_iAndroidSurfaceWidth;
-	extern int g_iAndroidSurfaceHeight;
+	const int iSurfW = M2Plat::SurfaceWidth();
+	const int iSurfH = M2Plat::SurfaceHeight();
 	if (action == TOUCH_WHEEL)
 	{
 		OnMouseWheel(x);
 		return;
 	}
-	if (g_iAndroidSurfaceWidth > 0 && g_iAndroidSurfaceHeight > 0 && m_dwWidth && m_dwHeight)
+	if (iSurfW > 0 && iSurfH > 0 && m_dwWidth && m_dwHeight)
 	{
-		x = x * (int)m_dwWidth / g_iAndroidSurfaceWidth;
-		y = y * (int)m_dwHeight / g_iAndroidSurfaceHeight;
+		x = x * (int)m_dwWidth / iSurfW;
+		y = y * (int)m_dwHeight / iSurfH;
 	}
-	extern volatile int g_iAndroidCursorX;
-	extern volatile int g_iAndroidCursorY;
-	g_iAndroidCursorX = x;
-	g_iAndroidCursorY = y;
+	extern volatile int g_iPortCursorX;
+	extern volatile int g_iPortCursorY;
+	extern volatile int g_iPortCursorWarpX;
+	extern volatile int g_iPortCursorWarpY;
+	if (action != TOUCH_RIGHT_DOWN)
+	{
+		x += g_iPortCursorWarpX;
+		y += g_iPortCursorWarpY;
+	}
+	g_iPortCursorX = x;
+	g_iPortCursorY = y;
 
 	if (action == TOUCH_SYNTHETIC_DOWN)
 	{
@@ -399,6 +381,22 @@ void CPythonApplication::OnTouchEvent(int action, int x, int y)
 	{
 		OnMouseMove(x, y);
 		OnMouseLeftButtonUp(x, y);
+		return;
+	}
+	// Right-button events exist so desktop-web mice keep the camera-drag button.
+	if (action == TOUCH_RIGHT_DOWN)
+	{
+		OnMouseMove(x, y);
+		OnMouseRightButtonDown(x, y);
+		return;
+	}
+	if (action == TOUCH_RIGHT_UP)
+	{
+		OnMouseMove(x, y);
+		OnMouseRightButtonUp(x, y);
+		g_iPortCursorX -= g_iPortCursorWarpX;
+		g_iPortCursorY -= g_iPortCursorWarpY;
+		g_iPortCursorWarpX = g_iPortCursorWarpY = 0;
 		return;
 	}
 
@@ -423,19 +421,24 @@ void CPythonApplication::OnTouchEvent(int action, int x, int y)
 		if (m_eTouchMode == TOUCH_WORLD_PENDING && (abs(x - m_iTouchStartX) > iSlop || abs(y - m_iTouchStartY) > iSlop))
 		{
 			m_eTouchMode = TOUCH_CAMERA;
-			m_fTouchCameraSensitivity = fMAX(0.25f, fMIN(2.0f, CPythonSystem::GetAndroidDisplayConfig("camera_sensitivity", 1.0f)));
+			m_fTouchCameraSensitivity = fMAX(0.25f, fMIN(2.0f, CPythonSystem::GetPortDisplayConfig("camera_sensitivity", 1.0f)));
 		}
 		if (m_eTouchMode == TOUCH_CAMERA)
 		{
-			CCamera* pkCmrCur = CCameraManager::Instance().GetCurrentCamera();
-			if (pkCmrCur)
-				pkCmrCur->DragBy((x - m_iTouchLastX) * m_fTouchCameraSensitivity, (y - m_iTouchLastY) * m_fTouchCameraSensitivity);
+			m_fTouchCameraDX += (x - m_iTouchLastX) * m_fTouchCameraSensitivity;
+			m_fTouchCameraDY += (y - m_iTouchLastY) * m_fTouchCameraSensitivity;
 			m_iTouchLastX = x;
 			m_iTouchLastY = y;
 			return;
 		}
 		if (m_eTouchMode == TOUCH_WORLD_PENDING)
 			return;
+		// While a mouse camera drag is active, leave the move to the per-frame
+		// cursor poll (as on Win32): a second Drag() from the event would apply
+		// the delta and the poll would then zero it before the camera updates.
+		if (CCamera* pkCmrDrag = CCameraManager::Instance().GetCurrentCamera())
+			if (pkCmrDrag->IsDraging())
+				return;
 		OnMouseMove(x, y);
 		return;
 
@@ -444,10 +447,11 @@ void CPythonApplication::OnTouchEvent(int action, int x, int y)
 	{
 		ETouchMode eMode = m_eTouchMode;
 		m_eTouchMode = TOUCH_NONE;
+		m_fTouchCameraDX = m_fTouchCameraDY = 0.0f;
 		if (eMode == TOUCH_WORLD_PENDING && action == 1)
 		{
-			PushTouchEvent(TOUCH_SYNTHETIC_DOWN, m_iTouchStartX * g_iAndroidSurfaceWidth / (int)m_dwWidth, m_iTouchStartY * g_iAndroidSurfaceHeight / (int)m_dwHeight);
-			PushTouchEvent(TOUCH_SYNTHETIC_UP, m_iTouchStartX * g_iAndroidSurfaceWidth / (int)m_dwWidth, m_iTouchStartY * g_iAndroidSurfaceHeight / (int)m_dwHeight);
+			PushTouchEvent(TOUCH_SYNTHETIC_DOWN, m_iTouchStartX * iSurfW / (int)m_dwWidth, m_iTouchStartY * iSurfH / (int)m_dwHeight);
+			PushTouchEvent(TOUCH_SYNTHETIC_UP, m_iTouchStartX * iSurfW / (int)m_dwWidth, m_iTouchStartY * iSurfH / (int)m_dwHeight);
 			return;
 		}
 		if (eMode == TOUCH_CAMERA || eMode == TOUCH_WORLD_PENDING)
@@ -459,8 +463,37 @@ void CPythonApplication::OnTouchEvent(int action, int x, int y)
 	}
 }
 
-void CPythonApplication::OnAndroidFrame()
+void CPythonApplication::OnPortFrame()
 {
+	// The surface follows the window (browser resize, fullscreen on/off). Once it has
+	// settled, re-fit the UI canvas and let Python rebuild the screen-sized windows.
+	static int s_iLastSurfW = 0, s_iLastSurfH = 0;
+	static DWORD s_dwSurfChangedAt = 0;
+	const int iSurfW = M2Plat::SurfaceWidth();
+	const int iSurfH = M2Plat::SurfaceHeight();
+	if (iSurfW != s_iLastSurfW || iSurfH != s_iLastSurfH)
+	{
+		if (s_iLastSurfW && s_iLastSurfH)
+			s_dwSurfChangedAt = ELTimer_GetMSec() | 1;
+		s_iLastSurfW = iSurfW;
+		s_iLastSurfH = iSurfH;
+		m_grpDevice.FitViewportToSurface(iSurfW, iSurfH);
+	}
+	else if (s_dwSurfChangedAt && ELTimer_GetMSec() - s_dwSurfChangedAt >= 250)
+	{
+		s_dwSurfChangedAt = 0;
+		PyRun_SimpleString("import uimobilehud\nuimobilehud.OnSurfaceResized()\n");
+	}
+
+	// Like the original per-frame cursor drag: the camera turns by exactly this
+	// frame's pointer movement, so it stops the frame the pointer stops.
+	if (m_eTouchMode == TOUCH_CAMERA)
+	{
+		if (CCamera* pkCmrCur = CCameraManager::Instance().GetCurrentCamera())
+			pkCmrCur->DragBy(m_fTouchCameraDX, m_fTouchCameraDY);
+		m_fTouchCameraDX = m_fTouchCameraDY = 0.0f;
+	}
+
 	if (m_eTouchMode == TOUCH_WORLD_PENDING && ELTimer_GetMSec() - m_dwTouchStartTime >= c_dwTouchHoldMs)
 	{
 		m_eTouchMode = TOUCH_WORLD_HOLD;
@@ -472,17 +505,17 @@ void CPythonApplication::OnAndroidFrame()
 	if (bVisible != m_bGameControlsVisible)
 	{
 		m_bGameControlsVisible = bVisible;
-		AndroidSetGameControlsVisible(bVisible);
+		M2Plat::SetGameControlsVisible(bVisible);
 	}
 
-	std::vector<RECT> blockers;
+	std::vector<M2Plat::SRect> blockers;
 	UI::CWindowManager& rkWndMgr = UI::CWindowManager::Instance();
 	if (rkWndMgr.GetLockWindow())
 		blockers.push_back({ 0, 0, (LONG)m_dwWidth, (LONG)m_dwHeight });
 	else
 		for (UI::CWindow* pLayer : rkWndMgr.GetLayers())
 			CollectTouchBlockers(pLayer, blockers);
-	AndroidSetTouchBlockers(blockers, (int)m_dwWidth, (int)m_dwHeight);
+	M2Plat::SetTouchBlockers(blockers.empty() ? NULL : &blockers[0], (int)blockers.size(), (int)m_dwWidth, (int)m_dwHeight);
 }
 #endif
 

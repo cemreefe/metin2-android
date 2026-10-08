@@ -3,9 +3,13 @@
 #include "../eterPack/EterPackManager.h"
 #include "GrpImageTexture.h"
 #include "../EterImageLib/TGAImage.h"
-#ifdef __ANDROID__
+#ifdef M2_PORT
 #include <vector>
+#if defined(__EMSCRIPTEN__)
+#include <jpeglib.h>
+#else
 #include <libjpeg/jpeglib.h>
+#endif
 #endif
 
 bool CGraphicImageTexture::Lock(int* pRetPitch, void** ppRetPixels, int level)
@@ -213,7 +217,7 @@ bool CGraphicImageTexture::CreateDDSTexture(CDXTCImage& image, const BYTE* /*c_p
 	return true;
 }
 
-#ifdef __ANDROID__
+#ifdef M2_PORT
 bool CGraphicImageTexture::CreateFromJpegMemory(UINT bufSize, const BYTE* c_pbBuf)
 {
 	jpeg_decompress_struct cinfo;
@@ -262,7 +266,7 @@ bool CGraphicImageTexture::CreateFromJpegMemory(UINT bufSize, const BYTE* c_pbBu
 }
 #endif
 
-#ifdef __ANDROID__
+#ifdef M2_PORT
 static DWORD ExpandMaskedChannel(DWORD dwPixel, DWORD dwMask, DWORD dwDefault)
 {
 	if (!dwMask)
@@ -336,7 +340,7 @@ bool CGraphicImageTexture::CreateFromMemoryFile(UINT bufSize, const void* c_pvBu
 	assert(ms_lpd3dDevice != NULL);
 	assert(m_lpd3dTexture == NULL);
 
-#ifdef __ANDROID__
+#ifdef M2_PORT
 	static CDXTCImage image;
 	if (image.LoadHeaderFromMemory((const BYTE*)c_pvBuf))
 	{
@@ -353,6 +357,10 @@ bool CGraphicImageTexture::CreateFromMemoryFile(UINT bufSize, const void* c_pvBu
 			{
 				image.Decompress(0, (DWORD*)lockedRect.pBits);
 				m_lpd3dTexture->UnlockRect(0);
+				const DWORD* px = (const DWORD*)lockedRect.pBits;
+				unsigned long long sum = 0; int zeroA = 0;
+				for (size_t i = 0; i < (size_t)m_width * m_height; ++i) { sum += px[i]; if ((px[i] >> 24) == 0) ++zeroA; }
+				const BYTE* cv = image.m_bCompVector[0].empty() ? NULL : &image.m_bCompVector[0][0];
 			}
 			m_bEmpty = false;
 			return true;

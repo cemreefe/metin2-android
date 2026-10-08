@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>metin2</title>
+<style>
+  html, body { margin: 0; padding: 0; height: 100%; background: #000; overflow: hidden; }
+  #canvas { width: 100vw; height: 100vh; display: block; }
+  #status {
+    position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%);
+    color: #888; font: 14px monospace; pointer-events: none; white-space: pre;
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+<canvas id="canvas"></canvas>
+<div id="status">loading…</div>
+<script src="m2pack.js"></script>
+<script src="m2hud.js"></script>
+<script>
+// main() runs on a pthread worker (PROXY_TO_PTHREAD). In a pthreads build
+// every file syscall is proxied to the main JS thread, so the real filesystem
+// lives HERE — on the main thread — which also means lazy files can't work
+// (their reads are synchronous XHRs, banned outside workers). Instead the
+// client data is downloaded as ONE compressed .m2pack into MEMFS at boot
+// (m2pack.js): boot-tier files unpack first and hold main() via a run
+// dependency; the rest stream in while the engine is already up. The pack
+// itself is IndexedDB-cached — repeat loads need zero network.
+//
+//   URL query params become process env vars (see WebMain.cpp ApplyQueryEnv):
+//     ?m2_game_host=10.0.0.5&m2_ws_bridge=ws://host:8080/ws
+//   Set ?m2_boot=1 to wait for EVERY file before starting (debug).
+//
+// serve.py provides COOP/COEP (required for pthreads) and plain GETs.
+var statusEl = document.getElementById('status');
+
+var Module = {
+  canvas: document.getElementById('canvas'),
+  print: function (s) { console.log(s); },
+  printErr: function (s) { console.warn(s); },
+  preRun: [
+    function () {
+      FS.mkdir('/data');
+      addRunDependency('m2data');
+      m2DownloadFiles().catch(function (e) {
+        statusEl.textContent = 'data load failed: ' + (e && e.message || e);
+      });
+    },
+  ],
+  postRun: [
+    function () {
+      statusEl.style.display = 'none';
+    },
+  ],
+};
+
+// Mobile HUD (floating joystick + soft keyboard), same extras as the
+// Android build; the engine shows/hides it by game phase.
+m2HudInit(Module);
+
+// Report every ENOENT under /data so missing boot-tier files are obvious in
+// the console while iterating on the list.
+(function () {
+  var origOpen;
+  Module.onRuntimeInitialized = function () {
+    origOpen = FS.open;
+    FS.open = function (path, flags, mode) {
+      try {
+        return origOpen(path, flags, mode);
+      } catch (e) {
+        if (e && e.errno === 44 /*ENOENT*/ && path.indexOf('/data/') === 0)
+          console.warn('[m2] missing file: ' + path.slice(6));
+        throw e;
+      }
+    };
+  };
+})();
+
+// ---- data downloader (pack version) ----
+
+async function m2DownloadFiles() {
+  var bootAll = new URLSearchParams(location.search).get('m2_boot') === '1';
+  var packs;
+  try {
+    packs = await (await fetch('packs.json')).json();
+  } catch (e) {
+    statusEl.textContent = 'packs.json: ' + e;
+    throw e;
+  }
+  var client = packs['client'];
+  await m2LoadPack(FS, { url: client.url, ver: client.ver }, '/data', {
+    onProgress: function (f) {
+      statusEl.textContent = 'downloading ' + Math.round(f * 100) + '%';
+    },
+    onFile: function (path, i, total) {
+      statusEl.textContent = 'unpacking ' + i + ' / ' + total;
+    },
+    bootReady: bootAll ? null : function () { removeRunDependency('m2data'); },
+  });
+  if (bootAll) removeRunDependency('m2data');
+}
+
+document.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+</script>
+{{{ SCRIPT }}}
+</body>
+</html>

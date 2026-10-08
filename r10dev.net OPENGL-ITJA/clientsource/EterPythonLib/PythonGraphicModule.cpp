@@ -2,7 +2,7 @@
 #include "../EterLib/Camera.h"
 #include "../EterLib/TextBar.h"
 
-#ifndef __ANDROID__
+#ifndef M2_PORT
 #include <shlobj.h>
 #endif
 
@@ -907,12 +907,10 @@ PyObject* grpSetViewport(PyObject* poSelf, PyObject* poArgs)
 
 	UINT uWidth;
 	UINT uHeight;
-#ifdef __ANDROID__
+#ifdef M2_PORT
 	// Viewports are in GL surface pixels; the D3D back buffer is only the logical UI size.
-	extern int g_iAndroidSurfaceWidth;
-	extern int g_iAndroidSurfaceHeight;
-	uWidth = g_iAndroidSurfaceWidth;
-	uHeight = g_iAndroidSurfaceHeight;
+	uWidth = M2Plat::SurfaceWidth();
+	uHeight = M2Plat::SurfaceHeight();
 #else
 	CPythonGraphic::Instance().GetBackBufferSize(&uWidth, &uHeight);
 #endif

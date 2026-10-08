@@ -323,7 +323,141 @@ Notes:
 - While a session is running, the app shows a "Game running. Tap to return." notification.
   That foreground service is what stops Android from killing the game in the background.
 
-## 5. Reaching the server from a phone
+## 5. The browser client (wasm)
+
+The same client also builds for the browser via Emscripten. `CLIENT` is the
+C++ source; the web glue lives in `CLIENT/platform/web/` and `$ANDROID/../web/`.
+
+### 5.1 Toolchain
+
+```bash
+git clone https://github.com/emscripten-core/emsdk ~/emsdk
+~/emsdk/emsdk install latest && ~/emsdk/emsdk activate latest
+source ~/emsdk/emsdk_env.sh          # emcc 6.0.11 was used
+```
+
+wasm builds of the Extern libs (Python 2.7, Crypto++, LZO) must exist in
+`Extern/lib/web` + `Extern/include/Python2-web`; build them once with
+`tools/wasm-deps/build.sh`.
+
+### 5.2 Build and serve
+
+```bash
+# build -> build-web/metin2_web.{js,wasm,html}
+"r10dev.net OPENGL-ITJA/web/build.sh"
+
+# stage client data (same dir the Android flow uses, see section 3), then:
+python3 "r10dev.net OPENGL-ITJA/web/manifest.py" --data-dir ~/m2data-web \
+    --out ~/m2data-web/manifest.json
+
+# static server + ws->tcp bridge + COOP/COEP headers in one:
+python3 "r10dev.net OPENGL-ITJA/web/serve.py" --root ~/m2data-web --port 8081
+# copy build-web/metin2_web.{js,wasm,html} into ~/m2data-web first, or point
+# --root at a dir that has both the build output and the data
+```
+
+Open `http://<host>:8081/index.html`. First load downloads the boot tier
+(~50 MB); `?m2_boot=1` waits for all ~51k manifest files before starting
+(use when the login screen must be complete from frame 1).
+
+Notes:
+
+- The page needs COOP/COEP headers (pthreads/SharedArrayBuffer) — `serve.py`
+  sets them; if you use another static server, set them yourself.
+- Browsers can't open TCP, so the client wraps every connection in a
+  WebSocket to `ws(s)://<page-origin>/ws?target=<host>:<port>`; `serve.py`
+  bridges that to the real game server. To expose only the bridge,
+  `web/ws_bridge.py` is the standalone version (`--allow` limits targets).
+- `?m2_ws_bridge=ws://...` points the client at a different bridge;
+  `?m2_game_host=...` overrides the connect host. Any `m2_*` query param
+  becomes a process env var, and `debug.m2.*` maps to `GetDebugProperty`.
+- `web/drive_headless.py <url> <secs> <shotdir> [actions.json]` drives
+  headless Chrome over CDP — screenshots, console capture and a timed
+  action list for scripted login tests.
+
+
+### 5.3 Serverless single player (no server, no bridge)
+
+`local.html` runs everything in the page: the client plus the
+`m2dev-server-src` db and game binaries compiled to wasm, talking over an
+in-page SharedArrayBuffer loopback. Static hosting only.
+
+```bash
+# client wasm (as in 5.2)
+"r10dev.net OPENGL-ITJA/web/build.sh"
+
+# server wasm -> bin/m2{db,game}.{js,wasm}
+source ~/emsdk/emsdk_env.sh
+mkdir -p /tmp/m2srv-wasm && cd /tmp/m2srv-wasm
+emcmake cmake -GNinja \
+    -DM2_SERVER_SRC=/path/to/m2dev-server-src \
+    "/path/to/repo/r10dev.net OPENGL-ITJA/server"
+ninja
+
+# server data pack (share/ tree + seeded sqlite dbs)
+"r10dev.net OPENGL-ITJA/server/tools/make-server-pack.sh" \
+    /path/to/m2dev-server/share /path/to/sqlite-seed-dir /tmp/srvpack
+
+# assemble the webroot (packs, html, js, wasm)
+"r10dev.net OPENGL-ITJA/web/make-webroot.sh" ~/m2data-web /tmp/srvpack ~/m2webroot
+
+python3 "r10dev.net OPENGL-ITJA/web/serve.py" --root ~/m2webroot --port 8081
+```
+
+Open `http://<host>:8081/local.html`. First load streams ~1 GB of
+`.m2pack` archives (gzip, unpacked to MEMFS while the progress bar shows
+per-part state); everything is IndexedDB-cached so repeat loads are
+offline. The sqlite databases additionally mount IDBFS, so characters
+survive reloads.
+
+- Login: `test` / `test123` (seeded account).
+- The channel server needs ~2-3 min on first boot (map `server_attr`
+  LZO decode inside its loop) — the page holds the client engine until
+  auth (:11000) and channel (:11011) listeners are bound, so login can't
+  fire early.
+- `?m2auto=1` auto-logs-in via a generated `loginInfo.py` (scripted
+  testing); `?m2_boot=1` waits for every pack before the engine starts.
+
+### 5.4 Gated deploy (passphrase)
+
+The serverless build can be deployed to any static host, but the URL must
+not be wide open. `web/m2encrypt.py` AES-GCM-encrypts every `.m2pack`
+(PBKDF2 over a passphrase); `m2packSetPassphrase()` decrypts in-page —
+the wasm and packs are ciphertext without the key. `local.html` shows a
+passphrase gate before boot.
+
+- Passphrase entry: `?m2pw=<pass>` param, else a `sessionStorage`-saved
+  value, else the gate prompt.
+- COOP/COEP: `SharedArrayBuffer` needs cross-origin isolation, which
+  static hosts can't set. `web/coi-sw.js` is a service worker that
+  injects `require-corp`/`same-origin` headers on every response —
+  register it before first load (the page does this automatically).
+- Encrypt packs before deploy: `python3 web/m2encrypt.py '<pass>' <plain-pack-dir> <deploy-dir>`,
+  and suffix the corresponding `ver` fields in `deploy-dir/packs.json`
+  so IndexedDB caches bust (e.g. `<sha>-dost1`).
+
+### 5.5 display.cfg persistence + intro UI/text scale
+
+The client's MEMFS is rebuilt from packs every boot, so `display.cfg`
+(ui_scale / font_scale / camera) is normally lost on restart.
+`M2Plat::RestartApp()` stashes it to `localStorage['m2_display_cfg']`
+before `location.reload()`, and `local.html`'s bootReady writes it back
+into `/data/display.cfg` before the engine reads it.
+
+`uiscale.py` (in `android/tools/data-overlay/`, staged into the data
+tree) attaches a bottom-right widget to all four intro screens (login,
+empire, character select/create): -/+ buttons and a click-anywhere
+slider for UI size and text size, plus an apply button that saves the
+config and restarts. This rescues screens whose boards have grown past
+the viewport at high ui_scale — and the login/empire/select boards are
+additionally clamped to the visible area in their uiscript coordinates.
+
+`font_scale` (display.cfg, 1.0-1.6) multiplies `.fnt` atlas generation
+size via `CGraphicText::SetGlobalFontScale`, so text renders at a bigger
+size instead of being magnified from small pixels like ui_scale does.
+
+## 6. Reaching the server from a phone
+
 
 - **Same Wi-Fi:** set `m2.serverHost` to the server's LAN IP and make sure the
   cores advertise that IP (section 2.5). No offset is needed.
@@ -336,12 +470,12 @@ Notes:
   offset. Free relays are slow and their ports get reused, so use one only for
   testing.
 
-## 6. What must never be committed
+## 7. What must never be committed
 
 Client data, data zips, APKs, `local.properties`, `.cxx/`, `build/`,
 emulator images, database dumps with real accounts, and any credentials.
 
-## 7. Troubleshooting
+## 8. Troubleshooting
 
 | Symptom | Cause |
 |---|---|
