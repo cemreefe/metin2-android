@@ -829,3 +829,13 @@
  			self.Connect(self.id, self.pwd)
  			self.connectBoard.Hide()
  			self.loginBoard.Hide()
+--- a/networkmodule.py
++++ b/networkmodule.py
+@@ -38,6 +38,7 @@
+ 		if True == self.IsShow():
+ 			self.Close()
+ 
++		self.SetCenterPosition()
+ 		self.Lock()
+ 		self.SetTop()
+ 		self.CloseEvent = event
