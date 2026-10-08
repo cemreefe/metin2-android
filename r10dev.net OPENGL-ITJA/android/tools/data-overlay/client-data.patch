@@ -702,3 +702,130 @@
  					"y" : 79,
  
  					"default_image" : "d:/ymir work/ui/public/large_button_01.sub",
+--- a/intrologin.py
++++ b/intrologin.py
+@@ -240,15 +240,36 @@
+ 				self.__OpenServerBoard()
+ 		else:
+ 			connectingIP = self.stream.GetConnectAddr()
+-			if connectingIP:
++			if connectingIP and not getattr(self, "hiddenAccount", None):
+ 				self.__OpenLoginBoard()
+ 			else:
+ 				self.__RefreshServerList()
+ 				self.__OpenServerBoard()
+ 
++		if getattr(self, "hiddenAccount", None):
++			self.__BackToServerBoard()
++
+ 		app.ShowCursor()
+ 
++	def __BackToServerBoard(self):
++		if self.connectingDialog:
++			self.connectingDialog.Close()
++		self.connectingDialog = None
++		self.stream.popupWindow.Close()
++		net.Disconnect()
++		self.__RefreshServerList()
++		self.__OpenServerBoard()
++
++	def __OnHiddenLoginFailed(self):
++		self.__BackToServerBoard()
++
++	def __OnHiddenConnectCancel(self):
++		if getattr(self, "hiddenCancelArmed", False):
++			self.hiddenCancelArmed = False
++			self.__BackToServerBoard()
++
+ 	def Close(self):
++		self.hiddenCancelArmed = False
+ 
+ 		if self.connectingDialog:
+ 			self.connectingDialog.Close()
+@@ -362,6 +383,7 @@
+ 		self.OnConnectFailure()
+ 
+ 	def OnConnectFailure(self):
++		self.hiddenCancelArmed = False
+ 
+ 		if self.isNowCountDown:
+ 			return
+@@ -372,7 +394,9 @@
+ 			self.connectingDialog.Close()
+ 		self.connectingDialog = None
+ 
+-		if app.loggined:
++		if getattr(self, "hiddenAccount", None):
++			self.PopupNotifyMessage(localeInfo.LOGIN_CONNECT_FAILURE, self.__OnHiddenLoginFailed)
++		elif app.loggined:
+ 			self.PopupNotifyMessage(localeInfo.LOGIN_CONNECT_FAILURE, self.__ExitGame)
+ 		elif self.timeOutMsg:
+ 			self.PopupNotifyMessage(localeInfo.LOGIN_FAILURE_TIMEOUT, self.SetPasswordEditLineFocus)
+@@ -380,15 +404,18 @@
+ 			self.PopupNotifyMessage(localeInfo.LOGIN_CONNECT_FAILURE, self.SetPasswordEditLineFocus)
+ 
+ 	def OnHandShake(self):
++		self.hiddenCancelArmed = False
+ 		if not IsLoginDelay():
+ 			snd.PlaySound("sound/ui/loginok.wav")
+ 			self.PopupDisplayMessage(localeInfo.LOGIN_CONNECT_SUCCESS)
+ 
+ 	def OnLoginStart(self):
++		self.hiddenCancelArmed = False
+ 		if not IsLoginDelay():
+ 			self.PopupDisplayMessage(localeInfo.LOGIN_PROCESSING)
+ 
+ 	def OnLoginFailure(self, error):
++		self.hiddenCancelArmed = False
+ 		if self.connectingDialog:
+ 			self.connectingDialog.Close()
+ 		self.connectingDialog = None
+@@ -402,7 +429,9 @@
+ 		#0000685: [M2EU] ID/password guessing bug fix: always set focus to password field
+ 		loginFailureFunc=self.loginFailureFuncDict.get(error, self.SetPasswordEditLineFocus)
+ 
+-		if app.loggined:
++		if getattr(self, "hiddenAccount", None):
++			self.PopupNotifyMessage(loginFailureMsg, self.__OnHiddenLoginFailed)
++		elif app.loggined:
+ 			self.PopupNotifyMessage(loginFailureMsg, self.__ExitGame)
+ 		else:
+ 			self.PopupNotifyMessage(loginFailureMsg, loginFailureFunc)
+@@ -584,7 +613,11 @@
+ 
+ 		else:
+ 			self.stream.popupWindow.Close()
+-			self.stream.popupWindow.Open(localeInfo.LOGIN_CONNETING, self.SetPasswordEditLineFocus, localeInfo.UI_CANCEL)
++			# PopupDialog fires its event on any Close, including when the next
++			# login step replaces it, so only a real Cancel goes back.
++			self.hiddenCancelArmed = True
++			cancel = self.__OnHiddenConnectCancel if getattr(self, "hiddenAccount", None) else self.SetPasswordEditLineFocus
++			self.stream.popupWindow.Open(localeInfo.LOGIN_CONNETING, cancel, localeInfo.UI_CANCEL)
+ 
+ 		self.stream.SetLoginInfo(id, pwd)
+ 		self.stream.Connect()
+@@ -730,6 +763,8 @@
+ 		isAutoLogin=loginInfo.get("auto", 0)
+ 		isAutoLogin=loginInfo.get("autoLogin", 0)
+ 		isAutoSelect=loginInfo.get("autoSelect", 0)
++		# Hidden account: the player picks server/channel, then this account logs in with no login page.
++		self.hiddenAccount = (id, pwd) if loginInfo.get("hiddenAccount", 0) and id and pwd else None
+ 
+ 		self.stream.SetCharacterSlot(slot)
+ 		self.stream.SetConnectInfo(addr, port, account_addr, account_port)
+@@ -863,7 +898,14 @@
+ 		if self.virtualKeyboard:
+ 			self.virtualKeyboard.Show()
+ 
+-		if app.loggined:
++		if getattr(self, "hiddenAccount", None):
++			self.connectBoard.Hide()
++			self.loginBoard.Hide()
++			if self.virtualKeyboard:
++				self.virtualKeyboard.Hide()
++			self.Connect(*self.hiddenAccount)
++			return
++		elif app.loggined:
+ 			self.Connect(self.id, self.pwd)
+ 			self.connectBoard.Hide()
+ 			self.loginBoard.Hide()
