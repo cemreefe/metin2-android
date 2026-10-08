@@ -14,6 +14,7 @@ import base64
 import functools
 import hashlib
 import http.server
+import json
 import os
 import socket
 import struct
@@ -120,12 +121,37 @@ class BridgeHandler(http.server.BaseHTTPRequestHandler):
     def log_message(self, fmt, *args):
         print("[wsbridge] " + fmt % args, flush=True)
 
+    def _json(self, code, obj):
+        body = json.dumps(obj).encode()
+        self.send_response(code)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
     def do_GET(self):
         if self.path == "/healthz":
             self.send_response(200)
             self.send_header("Content-Type", "text/plain")
+            self.send_header("Access-Control-Allow-Origin", "*")
             self.end_headers()
             self.wfile.write(b"ok")
+            return
+        if self.path == "/status":
+            def alive(host_port):
+                h, p = host_port.rsplit(":", 1)
+                try:
+                    s = socket.create_connection((h, int(p)), timeout=1)
+                    s.close()
+                    return True
+                except OSError:
+                    return False
+            self._json(200, {
+                "realm": "Dutluk",
+                "auth": alive("127.0.0.1:11000"),
+                "chan1": alive("127.0.0.1:11011"),
+            })
             return
         if not (self.path.startswith("/ws?") or self.path == "/ws"):
             return self.send_error(404)
