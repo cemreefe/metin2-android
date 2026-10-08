@@ -7,6 +7,16 @@
 "use strict";
 
 (function () {
+  // Emscripten proxies DOM event callbacks to the engine pthread, and a
+  // proxied listener's return value never reaches Event.preventDefault(),
+  // so the engine's own touch handlers cannot suppress them. On a tap,
+  // Chrome would then emit real touch events AND compatibility mouse
+  // events, making the engine see every tap as two clicks. Cancelling
+  // touchstart here kills the whole synthesized mouse sequence.
+  const canvas = document.getElementById("canvas");
+  if (canvas)
+    canvas.addEventListener("touchstart", (e) => { e.preventDefault(); }, { passive: false });
+
   const KEYS = { up: 38, down: 40, left: 37, right: 39 };
 
   function press(keyCode, down) {
