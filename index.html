@@ -41,8 +41,8 @@
 <canvas id="canvas"></canvas>
 <div id="status"><div id="spin"></div><span>starting…</span><div id="bar"><div id="barfill"></div></div><div id="srv"></div><div id="detail"></div></div>
 <div id="gate"><div><input id="pw" type="password" placeholder="passphrase" autocomplete="off"><button id="pwgo">play</button></div><div class="hint"></div></div>
-<script src="m2pack.js?v=5e1e0a11ba"></script>
-<script src="m2hud.js?v=5e1e0a11ba"></script>
+<script src="m2pack.js?v=e5984ecad2"></script>
+<script src="m2hud.js?v=e5984ecad2"></script>
 <script>
 // SharedArrayBuffer needs cross-origin isolation. On hosts that don't send
 // COOP/COEP (plain static hosting), a service worker injects the headers —
@@ -119,7 +119,7 @@ function setStatus(txt, frac) {
 // Latest line from each server worker, so the boot never looks dead.
 // Build stamp on every URL: Pages caches files for 10 min, and a new
 // page must never run with an old engine.
-var M2V = '5e1e0a11ba';
+var M2V = 'e5984ecad2';
 var srvLines = {};
 function setSrv(tag, s) {
   srvLines[tag] = s;
@@ -198,15 +198,16 @@ var Module = {
       FS.writeFile('/data/m2profile.py',
         'SERVER_IP = "127.0.0.1"\nPORT_AUTH = 11000\nPORT_1 = 11011\n' +
         'SERVERS = [("Single Player", "127.0.0.1", 11000, 11011)]\n');
-      // Single player has no login page: always log into the local account.
-      // ?m2auto=1 uses the seeded test account and enters the world directly.
+      // Single player has no login page: the player picks Single Player / CH1,
+      // then the hidden local account logs in. ?m2auto=1 uses the seeded test
+      // account and enters the world directly.
       var m2auto = new URLSearchParams(location.search).get('m2auto') === '1';
       FS.writeFile('/data/loginInfo.py',
         'addr = "127.0.0.1"\nport = 11011\n' +
         'account_addr = "127.0.0.1"\naccount_port = 11000\n' +
-        (m2auto ? 'id = "test"\npwd = "test123"\nautoSelect = 1\n'
-                : 'id = "local"\npwd = "1234"\nautoSelect = 0\n') +
-        'serverName = "Single Player"\nautoLogin = 1\nslot = 0\n');
+        (m2auto ? 'id = "test"\npwd = "test123"\nautoSelect = 1\nautoLogin = 1\n'
+                : 'id = "local"\npwd = "1234"\nautoSelect = 0\nhiddenAccount = 1\n') +
+        'serverName = "Single Player"\nslot = 0\n');
       addRunDependency('m2data');
       // Don't let the engine reach main() until the in-page channel is
       // listening: the login flow connects straight to :11011 and a too-early
@@ -310,7 +311,7 @@ async function m2boot() {
 
   // Server workers stage + boot in parallel with the client download.
   // Each worker has a private FS -> every node gets its own seeded sqlite
-  // dir; only db's is IDBFS-persistent (player/account writes all go
+  // dir; only db's is saved to IndexedDB (player/account writes all go
   // through db over the loopback).
   setStatus('starting server…');
   spawnSrv('m2db.js', {
@@ -369,6 +370,6 @@ async function m2boot() {
 
 document.addEventListener('contextmenu', function (e) { e.preventDefault(); });
 </script>
-<script async src="metin2_web.js?v=5e1e0a11ba"></script>
+<script async src="metin2_web.js?v=e5984ecad2"></script>
 </body>
 </html>

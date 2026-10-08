@@ -44,6 +44,56 @@ if (self.name && self.name.startsWith('em-pthread')) {
   };
 }
 
+// Save game: a point-in-time copy of the sqlite files, taken in one JS turn
+// on the thread that owns the FS, so the server pthread can't write between
+// files. IDBFS syncfs copied file by file across async steps while the server
+// kept writing, which tore player.sqlite3 against its WAL. The -shm index is
+// never saved: sqlite rebuilds it from the WAL on open.
+const M2_SAVE_DB = 'm2save-v2';
+function m2SaveOpen() {
+  return new Promise(function (res, rej) {
+    const q = indexedDB.open(M2_SAVE_DB, 1);
+    q.onupgradeneeded = function () { q.result.createObjectStore('save'); };
+    q.onsuccess = function () { res(q.result); };
+    q.onerror = function () { rej(q.error); };
+  });
+}
+async function m2SaveLoad() {
+  try { indexedDB.deleteDatabase('/srv/db/sqlite'); } catch (e) {}
+  try {
+    const db = await m2SaveOpen();
+    return await new Promise(function (res) {
+      const q = db.transaction('save').objectStore('save').get('files');
+      q.onsuccess = function () { res(q.result || null); };
+      q.onerror = function () { res(null); };
+    });
+  } catch (e) {
+    postMessage({ m2: 'err', s: 'save storage unavailable, progress is session-only: ' + e });
+    return null;
+  }
+}
+let m2SaveLastSig = '';
+let m2SaveBusy = false;
+function m2SaveSnapshot(dir) {
+  if (m2SaveBusy) return;
+  const files = {};
+  let sig = '';
+  for (const n of FS.readdir(dir)) {
+    if (!/\.sqlite3(-wal)?$/.test(n)) continue;
+    const st = FS.stat(dir + '/' + n);
+    sig += n + ':' + st.size + ':' + (+st.mtime) + ';';
+    files[n] = FS.readFile(dir + '/' + n);
+  }
+  if (sig === m2SaveLastSig) return;
+  m2SaveBusy = true;
+  m2SaveOpen().then(function (db) {
+    const tx = db.transaction('save', 'readwrite');
+    tx.objectStore('save').put(files, 'files');
+    tx.oncomplete = function () { m2SaveLastSig = sig; m2SaveBusy = false; };
+    tx.onerror = tx.onabort = function () { m2SaveBusy = false; };
+  }, function () { m2SaveBusy = false; });
+}
+
 async function m2srvInit(cfg) {
   self.m2lbSab = cfg.sab;
 
@@ -105,28 +155,15 @@ async function m2stage(cfg) {
 
   if (cfg.sqliteDir) {
     m2mkdirP(FS, cfg.sqliteDir);
-    if (cfg.sqliteIdb) {
-      // Only the db module owns persistent sqlite (every worker has a
-      // private FS; account/player writes go through db over the loopback).
-      try {
-        FS.mount(IDBFS, {}, cfg.sqliteDir);
-        await new Promise(function (res, rej) {
-          FS.syncfs(true, function (e) { e ? rej(e) : res(); });
-        });
-      } catch (e) {
-        postMessage({ m2: 'err', s: 'idbfs mount failed, saves are session-only: ' + e });
-      }
-    }
-    // Seeds only fill in what the saved game doesn't have yet. Saves from
-    // before this marker existed were seed copies anyway, so reseed those.
-    const savedMark = cfg.sqliteDir + '/.m2saved';
-    const keep = !!cfg.sqliteIdb && FS.analyzePath(savedMark).exists;
+    // Only the db module keeps a save (every worker has a private FS;
+    // account/player writes go through db over the loopback).
+    const saved = cfg.sqliteIdb ? await m2SaveLoad() : null;
     for (const p of cfg.sqlitePacks || [])
-      await m2LoadPack(FS, p, cfg.sqliteDir, Object.assign({}, cb, { keepExisting: keep }));
+      await m2LoadPack(FS, p, cfg.sqliteDir, cb);
+    if (saved)
+      for (const n in saved) FS.writeFile(cfg.sqliteDir + '/' + n, saved[n]);
     if (cfg.sqliteIdb)
-      FS.writeFile(savedMark, '1');
-    if (cfg.sqliteIdb)
-      setInterval(function () { try { FS.syncfs(false, function () {}); } catch (e) {} }, 5000);
+      setInterval(function () { m2SaveSnapshot(cfg.sqliteDir); }, 5000);
   }
 
   if (cfg.config)
