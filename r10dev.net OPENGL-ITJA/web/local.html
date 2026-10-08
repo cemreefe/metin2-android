@@ -40,7 +40,7 @@
 <body>
 <canvas id="canvas"></canvas>
 <div id="status"><div id="spin"></div><span>starting…</span><div id="bar"><div id="barfill"></div></div><div id="srv"></div><div id="detail"></div></div>
-<div id="gate"><div><input id="pw" type="password" placeholder="passphrase" autocomplete="off"><button id="pwgo">play</button></div><div class="hint"></div></div>
+<div id="gate"><div><input id="pw" type="password" placeholder="passphrase" autocomplete="off"><button id="pwgo">play</button></div><div class="hint"></div><div class="hint"><a id="realmlink" href="#" style="color:#777"></a></div></div>
 <script src="m2pack.js?v={{{ M2V }}}"></script>
 <script src="m2hud.js?v={{{ M2V }}}"></script>
 <script>
@@ -159,6 +159,38 @@ statusTxt.textContent = 'loading engine…';
 
 var MAP_ALLOW = "1 41";
 
+// ?realm=<name>[&realmhost=<host>] connects to a hosted server through its
+// ws->tcp bridge instead of booting the in-page single-player server. The
+// bridge resolves the connect targets (127.0.0.1:11000 auth, :11011 ch1)
+// on the server machine. Default bridge host: srv.<this hostname>.
+var m2realm = null;
+(function () {
+  var q = new URLSearchParams(location.search);
+  var r = q.get('realm');
+  if (!r) return;
+  var host = q.get('realmhost') || ('srv.' + location.hostname);
+  m2realm = {
+    name: r.replace(/["'\\]/g, ''),
+    bridge: (location.protocol === 'https:' ? 'wss://' : 'ws://') + host + '/ws',
+  };
+  // The engine uppercases m2_* query params into env vars at main(): the
+  // net layer reads M2_WS_BRIDGE for every TCP connect, and m2_local=0
+  // stops 127.0.0.1 targets being swallowed by the in-page loopback.
+  var u = new URL(location.href);
+  u.searchParams.set('m2_local', '0');
+  u.searchParams.set('m2_ws_bridge', m2realm.bridge);
+  history.replaceState(null, '', u);
+})();
+
+// Gate link: single-player mode offers the online realm; realm mode hides it.
+var m2realmLink = document.getElementById('realmlink');
+if (m2realmLink && !m2realm) {
+  var ru = new URL(location.href);
+  ru.searchParams.set('realm', 'Dutluk');
+  m2realmLink.textContent = 'online: Dutluk';
+  m2realmLink.href = ru.toString();
+}
+
 function spawnSrv(tag, cfg) {
   var w = new Worker('srv_worker.js?v=' + M2V + '#' + tag);
   cfg.m2 = 'init';
@@ -194,10 +226,13 @@ var Module = {
   preRun: [
     function () {
       FS.mkdir('/data');
-      // local server list: auth :11000, channel :11011 on the loopback
+      // local server list: auth :11000, channel :11011 on the loopback.
+      // In realm mode the same targets resolve on the hosted server through
+      // the ws bridge, and no credentials are seeded so the login page shows.
       FS.writeFile('/data/m2profile.py',
         'SERVER_IP = "127.0.0.1"\nPORT_AUTH = 11000\nPORT_1 = 11011\n' +
-        'SERVERS = [("Single Player", "127.0.0.1", 11000, 11011)]\n');
+        'SERVERS = [("' + (m2realm ? m2realm.name : 'Single Player') +
+        '", "127.0.0.1", 11000, 11011)]\n');
       // Single player has no login page: the player picks Single Player / CH1,
       // then the hidden local account logs in. ?m2auto=1 uses the seeded test
       // account and enters the world directly.
@@ -205,10 +240,12 @@ var Module = {
       FS.writeFile('/data/loginInfo.py',
         'addr = "127.0.0.1"\nport = 11011\n' +
         'account_addr = "127.0.0.1"\naccount_port = 11000\n' +
-        (m2auto ? 'id = "test"\npwd = "test123"\nautoSelect = 1\nautoLogin = 1\n'
+        (m2realm ? ''
+                : m2auto ? 'id = "test"\npwd = "test123"\nautoSelect = 1\nautoLogin = 1\n'
                 : 'id = "local"\npwd = "1234"\nautoSelect = 0\nhiddenAccount = 1\n') +
-        'serverName = "Single Player"\nslot = 0\n');
+        'serverName = "' + (m2realm ? m2realm.name : 'Single Player') + '"\nslot = 0\n');
       addRunDependency('m2data');
+      if (!m2realm) {
       // Don't let the engine reach main() until the in-page channel is
       // listening: the login flow connects straight to :11011 and a too-early
       // attempt just wedges on "connecting". Watch the shared listener table.
@@ -231,6 +268,7 @@ var Module = {
           removeRunDependency('m2chan');
         }
       }, 1000);
+      }
       m2boot().catch(function (e) {
         statusEl.textContent = 'boot failed: ' + (e && e.message || e);
       });
@@ -306,13 +344,14 @@ async function m2boot() {
   var client = packs['client'];
   var firstSpec = client.boot || (client.parts && client.parts[0]) || client;
   var pw = await m2gateLoop(firstSpec);
-  var share = Object.assign({}, packs['srv-share'], { dest: '/srv/share' });
-  var sqlite = packs['srv-sqlite'];
 
   // Server workers stage + boot in parallel with the client download.
   // Each worker has a private FS -> every node gets its own seeded sqlite
   // dir; only db's is saved to IndexedDB (player/account writes all go
-  // through db over the loopback).
+  // through db over the loopback). Skipped entirely in realm mode.
+  if (!m2realm) {
+  var share = Object.assign({}, packs['srv-share'], { dest: '/srv/share' });
+  var sqlite = packs['srv-sqlite'];
   setStatus('starting server…');
   spawnSrv('m2db.js', {
     argv: [], cwd: '/srv/db',
@@ -340,6 +379,7 @@ async function m2boot() {
     config: 'HOSTNAME: channel1_1\nCHANNEL: 1\nPORT: 11011\nP2P_PORT: 12111\nMAP_ALLOW: ' + MAP_ALLOW + '\n',
     pw: pw,
   });
+  }
 
   // Boot tier (scripts, UI, icons) goes into MEMFS; everything else stays
   // in disk-backed Blobs and is copied in per file when the engine opens it.
