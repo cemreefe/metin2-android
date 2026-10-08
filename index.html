@@ -206,6 +206,22 @@ h2 {
 .news h4 { font-family: 'Cinzel', serif; font-size: 15px; letter-spacing: .08em; color: var(--ink); margin-bottom: 4px; }
 .news p { color: var(--dim); font-size: 14px; }
 
+/* register */
+.regform { border: 1px solid var(--line); background: linear-gradient(180deg, var(--bg2), #0d0a08); padding: 26px; max-width: 760px; }
+.regform .row { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 18px; }
+.regform label { display: block; font-size: 11px; letter-spacing: .18em; text-transform: uppercase; color: var(--dim); }
+.regform .opt { text-transform: none; letter-spacing: .06em; color: var(--faint); }
+.regform input {
+  display: block; width: 100%; margin-top: 7px; padding: 11px 12px;
+  background: #0a0807; border: 1px solid var(--line); color: var(--ink);
+  font: 15px Georgia, serif; outline: none;
+}
+.regform input:focus { border-color: var(--gold); box-shadow: 0 0 10px rgba(201,162,39,.18); }
+.regactions { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+.regmsg { font-size: 13px; color: var(--dim); }
+.regmsg.ok { color: #7fce7f; }
+.regmsg.err { color: #e88c7f; }
+
 /* join */
 .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 18px; counter-reset: s; }
 .step { border: 1px solid var(--line); padding: 22px; background: var(--bg2); position: relative; }
@@ -240,6 +256,7 @@ footer .serif { letter-spacing: .3em; font-size: 13px; color: var(--dim); displa
   <a class="navlink" href="#kingdoms">Kingdoms</a>
   <a class="navlink" href="#gallery">Gallery</a>
   <a class="navlink" href="#news">News</a>
+  <a class="navlink" href="#register">Register</a>
   <span class="status" id="realmstatus"><span class="dot"></span><span id="statustext">checking</span></span>
 </nav>
 
@@ -253,7 +270,7 @@ footer .serif { letter-spacing: .3em; font-size: 13px; color: var(--dim); displa
       <a class="btn ghost" href="local.html">Single player</a>
     </div>
     <p style="margin-top:22px; font-size:12px; color:var(--faint); letter-spacing:.08em;">
-      Realm is in closed alpha — accounts are issued on request while registration is being built.
+      No account yet? <a href="#register">Register in ten seconds →</a>
     </p>
   </div>
   <div class="frame">
@@ -306,12 +323,31 @@ footer .serif { letter-spacing: .3em; font-size: 13px; color: var(--dim); displa
   </div>
 </section>
 
+<section id="register">
+  <h2>Forge your account</h2>
+  <div class="sub">One form, no email, no launcher</div>
+  <form class="regform" id="regform" autocomplete="off">
+    <div class="row">
+      <label>Username<input name="login" maxlength="16" required pattern="[A-Za-z0-9_]{4,16}" title="4-16 letters, digits or underscore"></label>
+      <label>Password<input name="password" type="password" minlength="6" maxlength="64" required></label>
+    </div>
+    <div class="row">
+      <label>Repeat password<input name="password2" type="password" minlength="6" maxlength="64" required></label>
+      <label>Deletion code <span class="opt">(optional, 7 digits)</span><input name="social_id" inputmode="numeric" pattern="[0-9]{7}" maxlength="7" placeholder="needed to delete a character"></label>
+    </div>
+    <div class="regactions">
+      <button class="btn primary" type="submit">Create account</button>
+      <span class="regmsg" id="regmsg"></span>
+    </div>
+  </form>
+</section>
+
 <section id="join">
   <h2>Join the realm</h2>
   <div class="sub">Under a minute, including the walk</div>
   <div class="steps">
     <div class="step"><p>Hit <b>Enter the realm</b>. The client streams in and caches — about a gigabyte once, then it's instant.</p><a href="local.html?realm=Dutluk">Enter →</a></div>
-    <div class="step"><p>Log in with your realm account. While registration is in closed alpha, ask for one — <a href="#news">watch the chronicle</a>.</p></div>
+    <div class="step"><p>No account? <a href="#register">Register below</a> — ten seconds, no email. Already have one? Log in on the realm's own login window.</p></div>
     <div class="step"><p>Pick a kingdom, make a character, walk out the gate. Prefer to roam alone? <a href="local.html">Single Player</a> runs entirely offline in the same client.</p></div>
   </div>
 </section>
@@ -330,6 +366,7 @@ footer .serif { letter-spacing: .3em; font-size: 13px; color: var(--dim); displa
   var statusUrl = /^[0-9.]+$|^localhost$/.test(host)
     ? 'http://' + host + ':8000/status'
     : 'https://srv.' + host + '/status';
+  var apiBase = statusUrl.replace(/\/status$/, '');
   fetch(statusUrl, { cache: 'no-store' })
     .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
     .then(function (s) {
@@ -340,6 +377,40 @@ footer .serif { letter-spacing: .3em; font-size: 13px; color: var(--dim); displa
       }
     })
     .catch(function () { el.classList.add('off'); txt.textContent = 'Realm offline'; });
+  var form = document.getElementById('regform');
+  var msg = document.getElementById('regmsg');
+  form.addEventListener('submit', function (ev) {
+    ev.preventDefault();
+    msg.className = 'regmsg'; msg.textContent = 'Sending…';
+    var f = form.elements;
+    if (f.password.value !== f.password2.value) {
+      msg.className = 'regmsg err'; msg.textContent = 'Passwords don\'t match.'; return;
+    }
+    fetch(apiBase + '/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        login: f.login.value.trim(),
+        password: f.password.value,
+        social_id: f.social_id.value.trim(),
+      }),
+    })
+      .then(function (r) { return r.json().then(function (j) { return { code: r.status, body: j }; }); })
+      .then(function (res) {
+        if (res.body.ok) {
+          msg.className = 'regmsg ok';
+          msg.textContent = 'Account forged — go Enter the realm and log in.';
+          form.reset();
+        } else {
+          msg.className = 'regmsg err';
+          msg.textContent = res.body.error || 'Registration failed.';
+        }
+      })
+      .catch(function () {
+        msg.className = 'regmsg err';
+        msg.textContent = 'The realm is unreachable right now — try again later.';
+      });
+  });
 })();
 </script>
 </body>
