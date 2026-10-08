@@ -41,8 +41,8 @@
 <canvas id="canvas"></canvas>
 <div id="status"><div id="spin"></div><span>starting…</span><div id="bar"><div id="barfill"></div></div><div id="srv"></div><div id="detail"></div></div>
 <div id="gate"><div><input id="pw" type="password" placeholder="passphrase" autocomplete="off"><button id="pwgo">play</button></div><div class="hint"></div></div>
-<script src="m2pack.js?v=e5984ecad2"></script>
-<script src="m2hud.js?v=e5984ecad2"></script>
+<script src="m2pack.js?v=d78faa43b9"></script>
+<script src="m2hud.js?v=d78faa43b9"></script>
 <script>
 // SharedArrayBuffer needs cross-origin isolation. On hosts that don't send
 // COOP/COEP (plain static hosting), a service worker injects the headers —
@@ -119,7 +119,7 @@ function setStatus(txt, frac) {
 // Latest line from each server worker, so the boot never looks dead.
 // Build stamp on every URL: Pages caches files for 10 min, and a new
 // page must never run with an old engine.
-var M2V = 'e5984ecad2';
+var M2V = 'd78faa43b9';
 var srvLines = {};
 function setSrv(tag, s) {
   srvLines[tag] = s;
@@ -370,6 +370,6 @@ async function m2boot() {
 
 document.addEventListener('contextmenu', function (e) { e.preventDefault(); });
 </script>
-<script async src="metin2_web.js?v=e5984ecad2"></script>
+<script async src="metin2_web.js?v=d78faa43b9"></script>
 </body>
 </html>
