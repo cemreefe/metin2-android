@@ -1,0 +1,27 @@
+services:
+  m2:
+    build: .
+    container_name: m2
+    restart: unless-stopped
+    volumes:
+      - m2data:/data
+    environment:
+      # Space-separated map indices the channel loads (see share/locale/english/map/index).
+      - M2_MAP_ALLOW=${M2_MAP_ALLOW:-1 21 41}
+    # No ports: published. The only way in is the Cloudflare tunnel.
+    # For LAN testing without the tunnel, uncomment:
+    # ports:
+    #   - "8000:8000"
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: m2-tunnel
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    environment:
+      - TUNNEL_TOKEN=${TUNNEL_TOKEN:?set TUNNEL_TOKEN in .env}
+    depends_on:
+      - m2
+
+volumes:
+  m2data:
