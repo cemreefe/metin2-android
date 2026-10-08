@@ -2,414 +2,345 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
-<title>metin2 — offline</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DUTLUK — a Metin2 realm</title>
+<meta name="description" content="Dutluk is a fan-run Metin2 PvP realm that plays right in your browser. No client, no patch.">
 <style>
-  html, body { margin: 0; padding: 0; height: 100%; background: #000; overflow: hidden; }
-  #canvas { width: 100vw; height: 100vh; display: block; }
-  #status {
-    position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%);
-    color: #888; font: 14px monospace; pointer-events: none; white-space: pre;
-    text-align: center;
-  }
-  #bar { width: 320px; height: 6px; background: #222; margin: 8px auto 0; }
-  #barfill { height: 100%; width: 0%; background: #888; transition: width .2s; }
-  #srv { color: #555; font-size: 11px; margin-top: 8px; max-width: 90vw;
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  #detail { color: #444; font-size: 10px; margin-top: 4px; max-width: 90vw;
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  #spin { width: 18px; height: 18px; margin: 0 auto 10px;
-    border: 2px solid #333; border-top-color: #999; border-radius: 50%;
-    animation: m2rot .8s linear infinite; }
-  @keyframes m2rot { to { transform: rotate(360deg); } }
-  #gate {
-    position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%);
-    display: none; text-align: center; font: 14px monospace;
-  }
-  #gate input {
-    background: #111; border: 1px solid #444; color: #ccc;
-    font: 16px monospace; padding: 6px 10px; width: 220px;
-  }
-  #gate button {
-    background: #222; border: 1px solid #444; color: #ccc;
-    font: 16px monospace; padding: 6px 14px; cursor: pointer;
-  }
-  #gate .hint { color: #555; margin-top: 10px; }
+@font-face {
+  font-family: 'Cinzel';
+  src: url(site/fonts/cinzel-latin.woff2) format('woff2');
+  font-weight: 400 900;
+  font-display: swap;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Cinzel';
+  src: url(site/fonts/cinzel-latin-ext.woff2) format('woff2');
+  font-weight: 400 900;
+  font-display: swap;
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+1E00-1E9F, U+1EF2-1EFF, U+2C60-2C7F, U+A720-A7FF;
+}
+:root {
+  --bg: #0a0807;
+  --bg2: #14100c;
+  --ink: #e8ddc8;
+  --dim: #a5977c;
+  --faint: #6b5f4c;
+  --gold: #c9a227;
+  --gold2: #e8c860;
+  --red: #a32b1e;
+  --line: #3a2f22;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: Georgia, 'Times New Roman', serif;
+  line-height: 1.55;
+}
+body::before {
+  content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+  background:
+    radial-gradient(1200px 500px at 70% -10%, rgba(163,43,30,.16), transparent 60%),
+    radial-gradient(900px 600px at 15% 110%, rgba(201,162,39,.07), transparent 60%),
+    linear-gradient(var(--bg), var(--bg));
+}
+.serif { font-family: 'Cinzel', Georgia, serif; }
+a { color: var(--gold2); text-decoration: none; }
+a:hover { color: #f5dd8a; }
+
+/* ---- nav ---- */
+nav {
+  position: sticky; top: 0; z-index: 10;
+  display: flex; align-items: center; gap: 26px;
+  padding: 14px 5vw;
+  background: linear-gradient(rgba(10,8,7,.96), rgba(10,8,7,.82));
+  border-bottom: 1px solid var(--line);
+  backdrop-filter: blur(4px);
+}
+nav .mark {
+  font-family: 'Cinzel', serif; font-weight: 700; letter-spacing: .28em;
+  font-size: 17px; color: var(--gold2);
+}
+nav .mark small { display:block; font-size: 9px; letter-spacing: .34em; color: var(--faint); font-weight: 400; }
+nav a.navlink {
+  font-size: 12px; letter-spacing: .18em; text-transform: uppercase;
+  color: var(--dim);
+}
+nav a.navlink:hover { color: var(--ink); }
+nav .spacer { flex: 1; }
+.status {
+  font-size: 11px; letter-spacing: .14em; text-transform: uppercase;
+  color: var(--dim); display: inline-flex; align-items: center; gap: 7px;
+  border: 1px solid var(--line); padding: 6px 12px; border-radius: 2px;
+}
+.status .dot { width: 7px; height: 7px; border-radius: 50%; background: #554; }
+.status.on .dot { background: #63c268; box-shadow: 0 0 7px #63c268; }
+.status.off .dot { background: #a32b1e; box-shadow: 0 0 7px #a32b1e; }
+
+/* ---- hero ---- */
+.hero {
+  display: grid; grid-template-columns: minmax(340px, 1.1fr) minmax(320px, .9fr);
+  gap: 4vw; align-items: center;
+  padding: 7vh 6vw 6vh;
+  max-width: 1280px; margin: 0 auto;
+}
+.eyebrow {
+  font-size: 12px; letter-spacing: .34em; text-transform: uppercase;
+  color: var(--gold); margin-bottom: 18px;
+}
+.eyebrow::before { content: "◆ "; color: var(--red); }
+h1 {
+  font-family: 'Cinzel', serif; font-weight: 700;
+  font-size: clamp(52px, 8vw, 104px); line-height: 1;
+  letter-spacing: .1em;
+  color: var(--ink);
+  text-shadow: 0 0 34px rgba(201,162,39,.25);
+}
+.pitch {
+  margin: 22px 0 30px; max-width: 46ch;
+  color: var(--dim); font-size: 17px; font-style: italic;
+}
+.cta { display: flex; gap: 14px; flex-wrap: wrap; }
+.btn {
+  font-family: 'Cinzel', serif; font-size: 14px; letter-spacing: .22em;
+  text-transform: uppercase; padding: 15px 30px;
+  border: 1px solid var(--gold); position: relative;
+  transition: background .15s, color .15s, box-shadow .15s;
+}
+.btn.primary {
+  background: linear-gradient(180deg, #d4af37, #a8801c);
+  color: #15100a; font-weight: 700;
+  box-shadow: 0 0 22px rgba(201,162,39,.28), inset 0 1px 0 rgba(255,255,255,.35);
+}
+.btn.primary:hover { background: linear-gradient(180deg, #e8c860, #b8901f); color: #000; box-shadow: 0 0 30px rgba(201,162,39,.45); }
+.btn.ghost { color: var(--gold2); background: rgba(0,0,0,.3); }
+.btn.ghost:hover { background: rgba(201,162,39,.12); color: #f5dd8a; }
+
+.frame {
+  position: relative; padding: 10px;
+  border: 1px solid var(--gold);
+  outline: 1px solid var(--line); outline-offset: 5px;
+  background: #0d0a08;
+  box-shadow: 0 14px 60px rgba(0,0,0,.7), 0 0 40px rgba(163,43,30,.12);
+}
+.frame::before, .frame::after {
+  content: ""; position: absolute; width: 34px; height: 34px;
+  border: 2px solid var(--gold);
+}
+.frame::before { top: -9px; left: -9px; border-right: none; border-bottom: none; }
+.frame::after { bottom: -9px; right: -9px; border-left: none; border-top: none; }
+.frame img { display: block; width: 100%; height: auto; }
+.frame .cap {
+  position: absolute; left: 14px; bottom: 10px; right: 14px;
+  font-size: 10px; letter-spacing: .24em; text-transform: uppercase;
+  color: rgba(232,221,200,.75); text-align: center;
+  background: rgba(8,6,5,.55); padding: 5px;
+}
+
+/* ---- dividers / sections ---- */
+.rule {
+  display: flex; align-items: center; gap: 14px;
+  max-width: 1280px; margin: 0 auto; padding: 0 6vw;
+  color: var(--line);
+}
+.rule::before, .rule::after {
+  content: ""; height: 1px; flex: 1;
+  background: linear-gradient(90deg, transparent, var(--line), transparent);
+}
+.rule span { color: var(--gold); font-size: 13px; }
+
+section { max-width: 1280px; margin: 0 auto; padding: 60px 6vw; }
+h2 {
+  font-family: 'Cinzel', serif; font-weight: 700;
+  font-size: clamp(24px, 3.4vw, 36px); letter-spacing: .12em;
+  text-transform: uppercase; margin-bottom: 8px;
+}
+.sub { color: var(--faint); font-size: 13px; letter-spacing: .16em; text-transform: uppercase; margin-bottom: 34px; }
+
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 18px; }
+.card {
+  border: 1px solid var(--line); background: linear-gradient(180deg, var(--bg2), #0d0a08);
+  padding: 24px 22px;
+}
+.card h3 {
+  font-family: 'Cinzel', serif; font-size: 15px; letter-spacing: .16em;
+  text-transform: uppercase; color: var(--gold2); margin-bottom: 10px;
+}
+.card h3::before { content: "◆ "; color: var(--red); font-size: 10px; }
+.card p { color: var(--dim); font-size: 14px; }
+
+/* kingdoms */
+.kingdoms { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px,1fr)); gap: 18px; }
+.kingdom {
+  position: relative; border: 1px solid var(--line); overflow: hidden;
+  min-height: 150px; display: flex; flex-direction: column; justify-content: flex-end;
+  background: #0d0a08;
+}
+.kingdom img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: .38; transition: opacity .25s; }
+.kingdom:hover img { opacity: .55; }
+.kingdom .inner { position: relative; padding: 18px; background: linear-gradient(transparent, rgba(8,6,5,.92) 55%); }
+.kingdom h3 { font-family:'Cinzel',serif; font-size: 17px; letter-spacing: .2em; text-transform: uppercase; }
+.kingdom.a h3 { color: #d4a5ff; }
+.kingdom.b h3 { color: #7fb8e8; }
+.kingdom.c h3 { color: #e88c7f; }
+.kingdom p { font-size: 13px; color: var(--dim); margin-top: 4px; }
+
+/* gallery */
+.gallery { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+.gallery figure {
+  border: 1px solid var(--line); overflow: hidden; position: relative; aspect-ratio: 1;
+}
+.gallery img { width: 100%; height: 100%; object-fit: cover; display: block; filter: saturate(.92); transition: transform .35s; }
+.gallery figure:hover img { transform: scale(1.045); }
+.gallery figcaption {
+  position: absolute; left: 0; right: 0; bottom: 0; padding: 8px 10px;
+  font-size: 10px; letter-spacing: .2em; text-transform: uppercase; color: var(--ink);
+  background: linear-gradient(transparent, rgba(8,6,5,.9));
+}
+
+/* news */
+.news .item { display: grid; grid-template-columns: 110px 1fr; gap: 18px; padding: 16px 0; border-bottom: 1px solid #241d15; }
+.news .date { color: var(--faint); font-size: 12px; letter-spacing: .14em; text-transform: uppercase; padding-top: 3px; }
+.news h4 { font-family: 'Cinzel', serif; font-size: 15px; letter-spacing: .08em; color: var(--ink); margin-bottom: 4px; }
+.news p { color: var(--dim); font-size: 14px; }
+
+/* join */
+.steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 18px; counter-reset: s; }
+.step { border: 1px solid var(--line); padding: 22px; background: var(--bg2); position: relative; }
+.step::before {
+  counter-increment: s; content: counter(s, upper-roman);
+  font-family: 'Cinzel', serif; font-size: 30px; color: var(--gold);
+  display: block; margin-bottom: 10px;
+}
+.step p { color: var(--dim); font-size: 14px; }
+.step a { display: inline-block; margin-top: 8px; letter-spacing: .1em; text-transform: uppercase; font-size: 12px; }
+
+footer {
+  border-top: 1px solid var(--line); margin-top: 20px;
+  padding: 30px 6vw 44px; text-align: center;
+  color: var(--faint); font-size: 12px;
+}
+footer .serif { letter-spacing: .3em; font-size: 13px; color: var(--dim); display: block; margin-bottom: 10px; }
+
+@media (max-width: 860px) {
+  .hero { grid-template-columns: 1fr; }
+  .frame { max-width: 520px; }
+  nav { gap: 14px; flex-wrap: wrap; }
+}
 </style>
 </head>
 <body>
-<canvas id="canvas"></canvas>
-<div id="status"><div id="spin"></div><span>starting…</span><div id="bar"><div id="barfill"></div></div><div id="srv"></div><div id="detail"></div></div>
-<div id="gate"><div><input id="pw" type="password" placeholder="passphrase" autocomplete="off"><button id="pwgo">play</button></div><div class="hint"></div><div class="hint"><a id="realmlink" href="#" style="color:#777"></a></div></div>
-<script src="m2pack.js?v=8bbad2f305"></script>
-<script src="m2hud.js?v=8bbad2f305"></script>
+
+<nav>
+  <a class="mark" href="./">DUTLUK<small>METIN2 REALM</small></a>
+  <span class="spacer"></span>
+  <a class="navlink" href="#realm">Realm</a>
+  <a class="navlink" href="#kingdoms">Kingdoms</a>
+  <a class="navlink" href="#gallery">Gallery</a>
+  <a class="navlink" href="#news">News</a>
+  <span class="status" id="realmstatus"><span class="dot"></span><span id="statustext">checking</span></span>
+</nav>
+
+<header class="hero">
+  <div>
+    <div class="eyebrow">The stones have fallen</div>
+    <h1>DUTLUK</h1>
+    <p class="pitch">A Metin2 realm that lives in your browser tab. No client, no patcher, no download. Pick a kingdom, raise your sword, walk in.</p>
+    <div class="cta">
+      <a class="btn primary" href="local.html?realm=Dutluk">Enter the realm</a>
+      <a class="btn ghost" href="local.html">Single player</a>
+    </div>
+    <p style="margin-top:22px; font-size:12px; color:var(--faint); letter-spacing:.08em;">
+      Realm is in closed alpha — accounts are issued on request while registration is being built.
+    </p>
+  </div>
+  <div class="frame">
+    <img src="site/art-login.jpg" alt="Metin2 splash art — three warriors before the Metin stones">
+    <div class="cap">Runs entirely in your browser — desktop &amp; mobile</div>
+  </div>
+</header>
+
+<div class="rule"><span>◆ ◆ ◆</span></div>
+
+<section id="realm">
+  <h2>The Realm</h2>
+  <div class="sub">Old maps, old fights, new plumbing</div>
+  <div class="cards">
+    <div class="card"><h3>Zero install</h3><p>The full client runs compiled to WebAssembly. Open the page, pick a channel, you're inside — first load caches to disk for good.</p></div>
+    <div class="card"><h3>Persistent world</h3><p>Dutluk is hosted on dedicated hardware. Your character, items and gold live on the server — not in your cache.</p></div>
+    <div class="card"><h3>Any screen</h3><p>Desktop gets the classic mouse HUD. Phones and tablets get a touch HUD designed for thumbs. Same realm, same characters.</p></div>
+  </div>
+</section>
+
+<section id="kingdoms">
+  <h2>Choose your kingdom</h2>
+  <div class="sub">Three empires, one war</div>
+  <div class="kingdoms">
+    <div class="kingdom a"><img src="site/art-samahi.jpg" alt=""><div class="inner"><h3>Shinsoo</h3><p>Empire of trade and silver. Their merchants built the roads the war now marches on.</p></div></div>
+    <div class="kingdom b"><img src="site/art-warrior.jpg" alt=""><div class="inner"><h3>Chunjo</h3><p>Empire of the sword and the vow. Held the west while the stones burned the sky.</p></div></div>
+    <div class="kingdom c"><img src="site/art-sura.jpg" alt=""><div class="inner"><h3>Jinno</h3><p>Empire of shadow and intrigue. They watched the stones fall, and learned what they carried.</p></div></div>
+  </div>
+</section>
+
+<section id="gallery">
+  <h2>Gallery</h2>
+  <div class="sub">Loading-screen art, straight from the client</div>
+  <div class="gallery">
+    <figure><img src="site/art-warrior.jpg" alt="Warrior loading art"><figcaption>Warrior</figcaption></figure>
+    <figure><img src="site/art-shaman.jpg" alt="Shaman loading art"><figcaption>Shaman</figcaption></figure>
+    <figure><img src="site/art-sura.jpg" alt="Sura loading art"><figcaption>Sura</figcaption></figure>
+    <figure><img src="site/art-samahi.jpg" alt="Samahi loading art"><figcaption>Samahi</figcaption></figure>
+    <figure><img src="site/art-dragon.jpg" alt="Dark dragon loading art"><figcaption>Dark dragons</figcaption></figure>
+  </div>
+</section>
+
+<section id="news">
+  <h2>Chronicle</h2>
+  <div class="sub">Latest from the realm</div>
+  <div class="news">
+    <div class="item"><div class="date">Oct 08</div><div><h4>Realm infrastructure lands</h4><p>The hosted Dutluk stack — auth, channel and database behind a websocket bridge — is verified end-to-end and waiting on its public tunnel.</p></div></div>
+    <div class="item"><div class="date">Oct 07</div><div><h4>Touch controls fixed, effects restored</h4><p>Single-tap actions were registering twice on touchscreens. In-world effects — the click marker among them — draw again on web.</p></div></div>
+    <div class="item"><div class="date">Oct 06</div><div><h4>The client runs in a browser</h4><p>The whole game — engine, scripts, data — boots to the login screen and into the world with no install. Single Player plays offline, fully in-browser.</p></div></div>
+  </div>
+</section>
+
+<section id="join">
+  <h2>Join the realm</h2>
+  <div class="sub">Under a minute, including the walk</div>
+  <div class="steps">
+    <div class="step"><p>Hit <b>Enter the realm</b>. The client streams in and caches — about a gigabyte once, then it's instant.</p><a href="local.html?realm=Dutluk">Enter →</a></div>
+    <div class="step"><p>Log in with your realm account. While registration is in closed alpha, ask for one — <a href="#news">watch the chronicle</a>.</p></div>
+    <div class="step"><p>Pick a kingdom, make a character, walk out the gate. Prefer to roam alone? <a href="local.html">Single Player</a> runs entirely offline in the same client.</p></div>
+  </div>
+</section>
+
+<footer>
+  <span class="serif">DUTLUK</span>
+  A fan-run Metin2 realm. Not affiliated with Webzen or Gameforge.<br>
+  Client and server are clean-room builds — all data files belong to their owners.
+</footer>
+
 <script>
-// SharedArrayBuffer needs cross-origin isolation. On hosts that don't send
-// COOP/COEP (plain static hosting), a service worker injects the headers —
-// first visit installs it and reloads once.
-if (self.crossOriginIsolated === false) {
-  var coiMsg = document.querySelector('#status span');
-  var coiTries = 0;
-  try { coiTries = +sessionStorage.getItem('m2coi') || 0; } catch (e) {}
-  function coiReload() {
-    if (coiTries >= 4) {
-      coiMsg.textContent = 'cross-origin isolation failed — try a hard reload';
-      return;
-    }
-    try { sessionStorage.setItem('m2coi', String(coiTries + 1)); } catch (e) {}
-    location.reload();
-  }
-  if (!('serviceWorker' in navigator)) {
-    coiMsg.textContent = 'this browser can\'t run the in-page server\n' +
-      '(SharedArrayBuffer needs COOP/COEP) — use Chrome';
-  } else if (navigator.serviceWorker.controller) {
-    // SW controls the page but this document was served before it took
-    // over — one more reload lands the injected headers. Bounded so a
-    // genuinely broken SW can't loop forever.
-    coiMsg.textContent = 'finishing setup…';
-    coiReload();
-  } else {
-    coiMsg.textContent = 'preparing page (one-time setup)…';
-    navigator.serviceWorker.register('coi-sw.js').then(function (reg) {
-      if (reg.active || reg.installing || reg.waiting) coiReload();
-      // else: registration produced no worker — watchdog below fires.
-    }).catch(function () {});
-    // Watchdog: registration/install hung or produced nothing — reload
-    // ourselves after 15s (bounded by m2coi) rather than sitting here.
-    setTimeout(function () {
-      if (self.crossOriginIsolated === false && !navigator.serviceWorker.controller)
-        coiReload();
-      else if (self.crossOriginIsolated === false)
-        coiMsg.textContent = 'cross-origin isolation failed — try a hard reload';
-    }, 15000);
-  }
-} else {
-  try { sessionStorage.removeItem('m2coi'); } catch (e) {}
-}
-</script>
-<script>
-// Single player, zero backend: the whole m2dev-server (db + auth + channel)
-// runs as wasm modules in workers on this page. Client and servers talk
-// over a SharedArrayBuffer loopback (server/web/m2lb.h); each module has its
-// own MEMFS, staged from .m2pack bundles cached in IndexedDB.
-//
-// Layout mirrors EmbeddedServer.java: db(:9000), auth(:11000),
-// channel1_core1(:11011); per-node cwd with symlinked share dirs + CONFIG.
-
-var statusEl = document.getElementById('status');
-var barEl = document.getElementById('barfill');
-var barWrap = document.getElementById('bar');
-var srvEl = document.getElementById('srv');
-var detailEl = document.getElementById('detail');
-var detailT = 0;
-function setDetail(path) {
-  // throttle: show at most ~8 updates/sec
-  var now = Date.now();
-  if (now - detailT < 120) return;
-  detailT = now;
-  detailEl.textContent = path;
-}
-var lastDl = '', worldTxt = '';
-var statusTxt = statusEl.querySelector('span');
-function setStatus(txt, frac) {
-  if (txt !== undefined) lastDl = txt;
-  statusTxt.textContent = lastDl + worldTxt;
-  if (frac !== undefined) barEl.style.width = Math.round(frac * 100) + '%';
-}
-// Latest line from each server worker, so the boot never looks dead.
-// Build stamp on every URL: Pages caches files for 10 min, and a new
-// page must never run with an old engine.
-var M2V = '8bbad2f305';
-var srvLines = {};
-function setSrv(tag, s) {
-  srvLines[tag] = s;
-  var order = ['m2db.js', 'm2game.js'];
-  var out = [];
-  for (var i = 0; i < order.length; i++)
-    if (srvLines[order[i]]) out.push(order[i].replace(/\.js$/, '') + ': ' + srvLines[order[i]]);
-  srvEl.textContent = out.join('   ·   ');
-}
-
-// SharedArrayBuffer loopback table (must exist before any module inits).
-// If isolation never landed, don't die silently — the COI script above
-// already swapped the status text; bail before touching the page further.
-if (self.crossOriginIsolated === false || typeof SharedArrayBuffer !== 'function')
-  throw new Error('cross-origin isolation missing');
-var M2LB_SIZE = 8192 + 32 * (32 + 2 * 131072);
-var m2sab = new SharedArrayBuffer(M2LB_SIZE);
-new Int32Array(m2sab)[0] = 0x424C324D;
-self.m2lbSab = m2sab;
-statusTxt.textContent = 'loading engine…';
-
-// Deliver the SAB to every pthread: Worker spawns post {m2:'sab'} at
-// construction, and the client module's own pthreads (URL metin2_web.js)
-// are rerouted through srv_worker.js so they wait for it before loading.
 (function () {
-  var RealWorker = self.Worker;
-  self.Worker = function (url, opts) {
-    var u = url;
-    if (typeof u === 'string' && /(^|\/)metin2_web\.js(\?.*)?$/.test(u))
-      u = 'srv_worker.js?v=' + M2V + '#metin2_web.js?v=' + M2V;
-    var w = new RealWorker(u, opts);
-    try { w.postMessage({ m2: 'sab', sab: m2sab }); } catch (e) {}
-    return w;
-  };
-  self.Worker.prototype = RealWorker.prototype;
-})();
-
-var MAP_ALLOW = "1 41";
-
-// ?realm=<name>[&realmhost=<host>] connects to a hosted server through its
-// ws->tcp bridge instead of booting the in-page single-player server. The
-// bridge resolves the connect targets (127.0.0.1:11000 auth, :11011 ch1)
-// on the server machine. Default bridge host: srv.<this hostname>.
-var m2realm = null;
-(function () {
-  var q = new URLSearchParams(location.search);
-  var r = q.get('realm');
-  if (!r) return;
-  var host = q.get('realmhost') || ('srv.' + location.hostname);
-  m2realm = {
-    name: r.replace(/["'\\]/g, ''),
-    bridge: (location.protocol === 'https:' ? 'wss://' : 'ws://') + host + '/ws',
-  };
-  // The engine uppercases m2_* query params into env vars at main(): the
-  // net layer reads M2_WS_BRIDGE for every TCP connect, and m2_local=0
-  // stops 127.0.0.1 targets being swallowed by the in-page loopback.
-  var u = new URL(location.href);
-  u.searchParams.set('m2_local', '0');
-  u.searchParams.set('m2_ws_bridge', m2realm.bridge);
-  history.replaceState(null, '', u);
-})();
-
-// Gate link: single-player mode offers the online realm; realm mode hides it.
-var m2realmLink = document.getElementById('realmlink');
-if (m2realmLink && !m2realm) {
-  var ru = new URL(location.href);
-  ru.searchParams.set('realm', 'Dutluk');
-  m2realmLink.textContent = 'online: Dutluk';
-  m2realmLink.href = ru.toString();
-}
-
-function spawnSrv(tag, cfg) {
-  var w = new Worker('srv_worker.js?v=' + M2V + '#' + tag);
-  cfg.m2 = 'init';
-  cfg.sab = m2sab;
-  w.onmessage = function (e) {
-    var d = e.data;
-    if (d && d.m2 === 'err') { console.warn('[' + tag + ']', d.s); setSrv(tag, d.s); }
-    else if (d && d.m2 === 'log') { console.log('[' + tag + ']', d.s); setSrv(tag, d.s); }
-    else if (d && d.m2 === 'stage') setSrv(tag, d.s);
-    else if (d && d.m2 === 'ready') { console.log('[' + tag + '] ready'); setSrv(tag, 'ready'); }
-  };
-  w.onerror = function (e) { console.warn('[' + tag + ']', e.message || e); };
-  w.postMessage(cfg);
-  return w;
-}
-
-var Module = {
-  canvas: document.getElementById('canvas'),
-  locateFile: function (p) { return p + '?v=' + M2V; },
-  print: function (s) { console.log(s); setDetail(s); },
-  printErr: function (s) { console.warn(s); },
-  onExit: function (code) {
-    console.error('[m2] engine exited: ' + code);
-    statusEl.style.display = '';
-    setStatus('game stopped (exit ' + code + ') — reload to restart');
-  },
-  onAbort: function (what) {
-    console.error('[m2] engine aborted: ' + what);
-    statusEl.style.display = '';
-    setStatus('engine crashed: ' + what);
-  },
-  m2lbSab: m2sab,
-  preRun: [
-    function () {
-      FS.mkdir('/data');
-      // local server list: auth :11000, channel :11011 on the loopback.
-      // In realm mode the same targets resolve on the hosted server through
-      // the ws bridge, and no credentials are seeded so the login page shows.
-      FS.writeFile('/data/m2profile.py',
-        'SERVER_IP = "127.0.0.1"\nPORT_AUTH = 11000\nPORT_1 = 11011\n' +
-        'SERVERS = [("' + (m2realm ? m2realm.name : 'Single Player') +
-        '", "127.0.0.1", 11000, 11011)]\n');
-      // Single player has no login page: the player picks Single Player / CH1,
-      // then the hidden local account logs in. ?m2auto=1 uses the seeded test
-      // account and enters the world directly.
-      var m2auto = new URLSearchParams(location.search).get('m2auto') === '1';
-      FS.writeFile('/data/loginInfo.py',
-        'addr = "127.0.0.1"\nport = 11011\n' +
-        'account_addr = "127.0.0.1"\naccount_port = 11000\n' +
-        (m2realm ? ''
-                : m2auto ? 'id = "test"\npwd = "test123"\nautoSelect = 1\nautoLogin = 1\n'
-                : 'id = "local"\npwd = "1234"\nautoSelect = 0\nhiddenAccount = 1\n') +
-        'serverName = "' + (m2realm ? m2realm.name : 'Single Player') + '"\nslot = 0\n');
-      addRunDependency('m2data');
-      if (!m2realm) {
-      // Don't let the engine reach main() until the in-page channel is
-      // listening: the login flow connects straight to :11011 and a too-early
-      // attempt just wedges on "connecting". Watch the shared listener table.
-      addRunDependency('m2chan');
-      var chanPoll = setInterval(function () {
-        var i32 = new Int32Array(m2sab), auth = false, chan = false;
-        for (var i = 0; i < 64; i++) {
-          var b = 8 + i * 24;
-          if (i32[b] === 1) {
-            if (i32[b + 1] === 11000) auth = true;
-            if (i32[b + 1] === 11011) chan = true;
-          }
-        }
-        worldTxt = ' · world: auth ' + (auth ? 'up' : '…') +
-          ', channel ' + (chan ? 'up' : '…');
-        if (!lastDl) setStatus('world loading'); else setStatus();
-        if (auth && chan) {
-          clearInterval(chanPoll);
-          worldTxt = '';
-          removeRunDependency('m2chan');
-        }
-      }, 1000);
+  var el = document.getElementById('realmstatus');
+  var txt = document.getElementById('statustext');
+  var host = location.hostname;
+  var statusUrl = /^[0-9.]+$|^localhost$/.test(host)
+    ? 'http://' + host + ':8000/status'
+    : 'https://srv.' + host + '/status';
+  fetch(statusUrl, { cache: 'no-store' })
+    .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
+    .then(function (s) {
+      if (s.auth && s.chan1) {
+        el.classList.add('on'); txt.textContent = 'Dutluk online';
+      } else {
+        el.classList.add('off'); txt.textContent = 'Realm starting';
       }
-      m2boot().catch(function (e) {
-        statusEl.textContent = 'boot failed: ' + (e && e.message || e);
-      });
-    },
-  ],
-  postRun: [
-    function () {
-      statusEl.style.display = 'none';
-    },
-  ],
-};
-
-// Mobile HUD (floating joystick + soft keyboard), same extras as the
-// Android build; the engine shows/hides it by game phase.
-m2HudInit(Module);
-
-// Passphrase gate: ?m2pw=<pw> skips the prompt (headless tests); a correct
-// entry is remembered in sessionStorage so in-app restarts (which reload
-// the page) don't re-ask. sessionStorage clears when the tab closes.
-var m2pw = new URLSearchParams(location.search).get('m2pw');
-if (m2pw === null)
-  try { m2pw = sessionStorage.getItem('m2pw'); } catch (e) {}
-
-function m2gate() {
-  return new Promise(function (res) {
-    if (m2pw !== null) return res(m2pw);
-    var g = document.getElementById('gate');
-    g.style.display = 'block';
-    document.getElementById('pw').focus();
-    function go() {
-      g.style.display = 'none';
-      var v = document.getElementById('pw').value;
-      res(v);
-    }
-    document.getElementById('pwgo').onclick = go;
-    document.getElementById('pw').onkeydown = function (e) {
-      if (e.key === 'Enter') go();
-    };
-  });
-}
-
-// Wrong passphrase -> AES-GCM decrypt throws. Verify against the first
-// client pack before booting (its bytes land in IDB, so the real unpack
-// reuses them); a bad or remembered-but-wrong value re-asks.
-async function m2gateLoop(checkSpec) {
-  while (true) {
-    var pw = await m2gate();
-    if (pw) await m2packSetPassphrase(pw);
-    setStatus('checking key…');
-    try {
-      await m2packDecrypt(await (await m2packFetch(checkSpec)).arrayBuffer());
-      m2pw = pw;
-      try { sessionStorage.setItem('m2pw', pw); } catch (e) {}
-      return pw;
-    } catch (e) {
-      if (!/encrypt|decrypt|required|OperationError/i.test(e && e.message || '' + e)) throw e;
-      m2pw = null;
-      try { sessionStorage.removeItem('m2pw'); } catch (e2) {}
-      document.querySelector('#gate .hint').textContent = 'wrong passphrase';
-    }
-  }
-}
-
-async function m2boot() {
-  var packs;
-  try {
-    packs = await (await fetch('packs.json')).json();
-  } catch (e) {
-    statusEl.textContent = 'packs.json: ' + e;
-    throw e;
-  }
-
-  var client = packs['client'];
-  var firstSpec = client.boot || (client.parts && client.parts[0]) || client;
-  var pw = await m2gateLoop(firstSpec);
-
-  // Server workers stage + boot in parallel with the client download.
-  // Each worker has a private FS -> every node gets its own seeded sqlite
-  // dir; only db's is saved to IndexedDB (player/account writes all go
-  // through db over the loopback). Skipped entirely in realm mode.
-  if (!m2realm) {
-  var share = Object.assign({}, packs['srv-share'], { dest: '/srv/share' });
-  var sqlite = packs['srv-sqlite'];
-  setStatus('starting server…');
-  spawnSrv('m2db.js', {
-    argv: [], cwd: '/srv/db',
-    packs: [share],
-    sqliteDir: '/srv/db/sqlite', sqliteIdb: true,
-    sqlitePacks: [sqlite],
-    env: { M2_SQLITE_DIR: '/srv/db/sqlite' },
-    pw: pw,
-  });
-  spawnSrv('m2game.js', {
-    argv: ['-I', '127.0.0.1'], cwd: '/srv/auth',
-    packs: [share],
-    sqliteDir: '/srv/auth/sqlite',
-    sqlitePacks: [sqlite],
-    env: { M2_SQLITE_DIR: '/srv/auth/sqlite' },
-    config: 'HOSTNAME: auth\nCHANNEL: 1\nPORT: 11000\nP2P_PORT: 12100\nAUTH_SERVER: master\n',
-    pw: pw,
-  });
-  spawnSrv('m2game.js', {
-    argv: ['-I', '127.0.0.1'], cwd: '/srv/chan1',
-    packs: [share],
-    sqliteDir: '/srv/chan1/sqlite',
-    sqlitePacks: [sqlite],
-    env: { M2_SQLITE_DIR: '/srv/chan1/sqlite' },
-    config: 'HOSTNAME: channel1_1\nCHANNEL: 1\nPORT: 11011\nP2P_PORT: 12111\nMAP_ALLOW: ' + MAP_ALLOW + '\n',
-    pw: pw,
-  });
-  }
-
-  // Boot tier (scripts, UI, icons) goes into MEMFS; everything else stays
-  // in disk-backed Blobs and is copied in per file when the engine opens it.
-  var partName = 'boot pack';
-  var packOpts = {
-    onProgress: function (f) {
-      setStatus('downloading ' + partName + ' — ' + Math.round(f * 100) + '%', f);
-    },
-    onFile: function (path, i, total) {
-      setStatus('unpacking ' + partName + ' — ' + i + ' / ' + total, i / total);
-    },
-  };
-  if (client.boot)
-    await m2LoadPack(FS, client.boot, '/data', packOpts);
-  packOpts.onPart = function (i, n) { partName = 'pack ' + (i + 1) + '/' + n; };
-  await m2LoadPackLazy(FS, client.parts || [], '/data', packOpts);
-
-  setStatus('starting…');
-  // Re-apply the user's saved display.cfg (ui_scale etc.): MEMFS is
-  // rebuilt from packs each boot, so M2Plat::RestartApp stashes it in
-  // localStorage before reloading.
-  try {
-    var cfg = localStorage.getItem('m2_display_cfg');
-    if (cfg) FS.writeFile('/data/display.cfg', cfg);
-  } catch (e) {}
-  removeRunDependency('m2data');
-}
-
-document.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+    })
+    .catch(function () { el.classList.add('off'); txt.textContent = 'Realm offline'; });
+})();
 </script>
-<script async src="metin2_web.js?v=8bbad2f305"></script>
 </body>
 </html>
