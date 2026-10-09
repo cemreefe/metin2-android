@@ -289,6 +289,7 @@ int M2Plat::KeyToDIK(int keyCode)
 	case 35: return DIK_END;
 	case 33: return DIK_PRIOR;
 	case 34: return DIK_NEXT;
+	case 188: return DIK_COMMA;
 	}
 	return 0;
 }
