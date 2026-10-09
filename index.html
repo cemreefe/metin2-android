@@ -39,29 +39,19 @@ body {
   font-family: Georgia, 'Times New Roman', serif;
   line-height: 1.55;
 }
-body::before {
-  content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
-  background:
-    radial-gradient(1200px 500px at 70% -10%, rgba(163,43,30,.16), transparent 60%),
-    radial-gradient(900px 600px at 15% 110%, rgba(201,162,39,.07), transparent 60%),
-    linear-gradient(var(--bg), var(--bg));
-}
-.serif { font-family: 'Cinzel', Georgia, serif; }
 a { color: var(--gold2); text-decoration: none; }
 a:hover { color: #f5dd8a; }
 
 /* ---- nav ---- */
 nav {
-  position: sticky; top: 0; z-index: 10;
+  position: fixed; top: 0; left: 0; right: 0; z-index: 10;
   display: flex; align-items: center; gap: 26px;
   padding: 14px 5vw;
-  background: linear-gradient(rgba(10,8,7,.96), rgba(10,8,7,.82));
-  border-bottom: 1px solid var(--line);
-  backdrop-filter: blur(4px);
+  background: linear-gradient(rgba(8,6,5,.92), rgba(8,6,5,.65) 80%, transparent);
 }
 nav .mark {
   font-family: 'Cinzel', serif; font-weight: 700; letter-spacing: .28em;
-  font-size: 17px; color: var(--gold2);
+  font-size: 17px; color: var(--gold2); line-height: 1.15;
 }
 nav .mark small { display:block; font-size: 9px; letter-spacing: .34em; color: var(--faint); font-weight: 400; }
 nav a.navlink {
@@ -74,6 +64,7 @@ nav .spacer { flex: 1; }
   font-size: 11px; letter-spacing: .14em; text-transform: uppercase;
   color: var(--dim); display: inline-flex; align-items: center; gap: 7px;
   border: 1px solid var(--line); padding: 6px 12px; border-radius: 2px;
+  background: rgba(8,6,5,.6);
 }
 .status .dot { width: 7px; height: 7px; border-radius: 50%; background: #554; }
 .status.on .dot { background: #63c268; box-shadow: 0 0 7px #63c268; }
@@ -81,113 +72,110 @@ nav .spacer { flex: 1; }
 
 /* ---- hero ---- */
 .hero {
-  display: grid; grid-template-columns: minmax(340px, 1.1fr) minmax(320px, .9fr);
-  gap: 4vw; align-items: center;
-  padding: 7vh 6vw 6vh;
+  position: relative;
+  min-height: 92vh;
+  display: flex; align-items: flex-end;
+  background: url(site/bg-hero.jpg) center 28% / cover no-repeat #0a0807;
+}
+.hero::before {
+  content: ""; position: absolute; inset: 0;
+  background:
+    linear-gradient(180deg, rgba(8,6,5,.62) 0%, rgba(8,6,5,.18) 34%, rgba(10,8,7,.55) 68%, var(--bg) 100%),
+    radial-gradient(1100px 500px at 30% 85%, rgba(10,8,7,.55), transparent 70%);
+}
+.hero .inner {
+  position: relative; width: 100%;
   max-width: 1280px; margin: 0 auto;
+  padding: 0 6vw 7vh;
 }
 .eyebrow {
   font-size: 12px; letter-spacing: .34em; text-transform: uppercase;
-  color: var(--gold); margin-bottom: 18px;
+  color: var(--gold); margin-bottom: 14px;
 }
 .eyebrow::before { content: "◆ "; color: var(--red); }
 h1 {
   font-family: 'Cinzel', serif; font-weight: 700;
-  font-size: clamp(52px, 8vw, 104px); line-height: 1;
+  font-size: clamp(58px, 9vw, 118px); line-height: 1;
   letter-spacing: .1em;
   color: var(--ink);
-  text-shadow: 0 0 34px rgba(201,162,39,.25);
+  text-shadow: 0 2px 30px rgba(0,0,0,.8), 0 0 34px rgba(201,162,39,.25);
 }
 .pitch {
-  margin: 22px 0 30px; max-width: 46ch;
-  color: var(--dim); font-size: 17px; font-style: italic;
+  margin: 18px 0 28px; max-width: 48ch;
+  color: #cfc4ae; font-size: 17px; font-style: italic;
+  text-shadow: 0 1px 10px rgba(0,0,0,.9);
 }
 .cta { display: flex; gap: 14px; flex-wrap: wrap; }
 .btn {
   font-family: 'Cinzel', serif; font-size: 14px; letter-spacing: .22em;
-  text-transform: uppercase; padding: 15px 30px;
-  border: 1px solid var(--gold); position: relative;
+  text-transform: uppercase; padding: 16px 32px;
+  border: 1px solid var(--gold); position: relative; display: inline-block;
   transition: background .15s, color .15s, box-shadow .15s;
+  text-align: center;
 }
 .btn.primary {
   background: linear-gradient(180deg, #d4af37, #a8801c);
   color: #15100a; font-weight: 700;
-  box-shadow: 0 0 22px rgba(201,162,39,.28), inset 0 1px 0 rgba(255,255,255,.35);
+  box-shadow: 0 0 22px rgba(201,162,39,.3), inset 0 1px 0 rgba(255,255,255,.35);
 }
-.btn.primary:hover { background: linear-gradient(180deg, #e8c860, #b8901f); color: #000; box-shadow: 0 0 30px rgba(201,162,39,.45); }
-.btn.ghost { color: var(--gold2); background: rgba(0,0,0,.3); }
-.btn.ghost:hover { background: rgba(201,162,39,.12); color: #f5dd8a; }
+.btn.primary:hover { background: linear-gradient(180deg, #e8c860, #b8901f); color: #000; box-shadow: 0 0 30px rgba(201,162,39,.5); }
+.btn.solo {
+  background: linear-gradient(180deg, #6b1d14, #4a130d);
+  border-color: #8a3a2c;
+  color: #e8c4ac; font-weight: 700;
+  box-shadow: 0 0 18px rgba(163,43,30,.3), inset 0 1px 0 rgba(255,255,255,.12);
+}
+.btn.solo:hover { background: linear-gradient(180deg, #7d2318, #571a11); color: #f5dcc9; box-shadow: 0 0 26px rgba(163,43,30,.5); }
+.btn small { display: block; font-size: 10px; letter-spacing: .2em; opacity: .75; margin-top: 4px; }
 
-.frame {
-  position: relative; padding: 10px;
-  border: 1px solid var(--gold);
-  outline: 1px solid var(--line); outline-offset: 5px;
-  background: #0d0a08;
-  box-shadow: 0 14px 60px rgba(0,0,0,.7), 0 0 40px rgba(163,43,30,.12);
+/* ---- register band ---- */
+.band {
+  position: relative;
+  background: url(site/bg-ruins.jpg) center 30% / cover no-repeat fixed #0a0807;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
 }
-.frame::before, .frame::after {
-  content: ""; position: absolute; width: 34px; height: 34px;
-  border: 2px solid var(--gold);
+.band::before {
+  content: ""; position: absolute; inset: 0;
+  background: linear-gradient(180deg, rgba(10,8,7,.9), rgba(10,8,7,.72) 50%, rgba(10,8,7,.9));
 }
-.frame::before { top: -9px; left: -9px; border-right: none; border-bottom: none; }
-.frame::after { bottom: -9px; right: -9px; border-left: none; border-top: none; }
-.frame img { display: block; width: 100%; height: auto; }
-.frame .cap {
-  position: absolute; left: 14px; bottom: 10px; right: 14px;
-  font-size: 10px; letter-spacing: .24em; text-transform: uppercase;
-  color: rgba(232,221,200,.75); text-align: center;
-  background: rgba(8,6,5,.55); padding: 5px;
-}
-
-/* ---- dividers / sections ---- */
-.rule {
-  display: flex; align-items: center; gap: 14px;
-  max-width: 1280px; margin: 0 auto; padding: 0 6vw;
-  color: var(--line);
-}
-.rule::before, .rule::after {
-  content: ""; height: 1px; flex: 1;
-  background: linear-gradient(90deg, transparent, var(--line), transparent);
-}
-.rule span { color: var(--gold); font-size: 13px; }
-
-section { max-width: 1280px; margin: 0 auto; padding: 60px 6vw; }
+.band .inner { position: relative; max-width: 1280px; margin: 0 auto; padding: 54px 6vw; }
 h2 {
   font-family: 'Cinzel', serif; font-weight: 700;
-  font-size: clamp(24px, 3.4vw, 36px); letter-spacing: .12em;
-  text-transform: uppercase; margin-bottom: 8px;
+  font-size: clamp(24px, 3.2vw, 34px); letter-spacing: .12em;
+  text-transform: uppercase; margin-bottom: 6px;
 }
-.sub { color: var(--faint); font-size: 13px; letter-spacing: .16em; text-transform: uppercase; margin-bottom: 34px; }
+.sub { color: var(--faint); font-size: 13px; letter-spacing: .16em; text-transform: uppercase; margin-bottom: 28px; }
 
-.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 18px; }
-.card {
-  border: 1px solid var(--line); background: linear-gradient(180deg, var(--bg2), #0d0a08);
-  padding: 24px 22px;
+.regform { display: flex; flex-direction: column; gap: 14px; max-width: 980px; }
+.regform .row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+.regform label { display: block; font-size: 10px; letter-spacing: .18em; text-transform: uppercase; color: var(--dim); }
+.regform input {
+  display: block; width: 100%; margin-top: 6px; padding: 12px 12px;
+  background: rgba(8,6,5,.85); border: 1px solid var(--line); color: var(--ink);
+  font: 15px Georgia, serif; outline: none;
 }
-.card h3 {
-  font-family: 'Cinzel', serif; font-size: 15px; letter-spacing: .16em;
-  text-transform: uppercase; color: var(--gold2); margin-bottom: 10px;
-}
-.card h3::before { content: "◆ "; color: var(--red); font-size: 10px; }
-.card p { color: var(--dim); font-size: 14px; }
+.regform input:focus { border-color: var(--gold); box-shadow: 0 0 10px rgba(201,162,39,.2); }
+.regactions { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+.regmsg { font-size: 13px; color: var(--dim); }
+.regmsg.ok { color: #7fce7f; }
+.regmsg.err { color: #e88c7f; }
 
-/* kingdoms */
-.kingdoms { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px,1fr)); gap: 18px; }
-.kingdom {
-  position: relative; border: 1px solid var(--line); overflow: hidden;
-  min-height: 150px; display: flex; flex-direction: column; justify-content: flex-end;
-  background: #0d0a08;
+/* ---- facts strip ---- */
+.facts {
+  max-width: 1280px; margin: 0 auto; padding: 34px 6vw;
+  display: flex; gap: 0; flex-wrap: wrap;
 }
-.kingdom img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: .38; transition: opacity .25s; }
-.kingdom:hover img { opacity: .55; }
-.kingdom .inner { position: relative; padding: 18px; background: linear-gradient(transparent, rgba(8,6,5,.92) 55%); }
-.kingdom h3 { font-family:'Cinzel',serif; font-size: 17px; letter-spacing: .2em; text-transform: uppercase; }
-.kingdom.a h3 { color: #d4a5ff; }
-.kingdom.b h3 { color: #7fb8e8; }
-.kingdom.c h3 { color: #e88c7f; }
-.kingdom p { font-size: 13px; color: var(--dim); margin-top: 4px; }
+.fact {
+  flex: 1 1 240px; padding: 6px 26px;
+  font-size: 14px; color: var(--dim);
+  border-left: 1px solid var(--line);
+}
+.fact:first-child { border-left: none; padding-left: 0; }
+.fact b { color: var(--gold2); font-family: 'Cinzel', serif; font-size: 12px; letter-spacing: .18em; text-transform: uppercase; display: block; margin-bottom: 4px; }
 
-/* gallery */
+/* ---- gallery ---- */
+section { max-width: 1280px; margin: 0 auto; padding: 46px 6vw; }
 .gallery { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
 .gallery figure {
   border: 1px solid var(--line); overflow: hidden; position: relative; aspect-ratio: 1;
@@ -200,50 +188,23 @@ h2 {
   background: linear-gradient(transparent, rgba(8,6,5,.9));
 }
 
-/* news */
-.news .item { display: grid; grid-template-columns: 110px 1fr; gap: 18px; padding: 16px 0; border-bottom: 1px solid #241d15; }
+/* ---- news ---- */
+.news .item { display: grid; grid-template-columns: 90px 1fr; gap: 18px; padding: 14px 0; border-bottom: 1px solid #241d15; }
 .news .date { color: var(--faint); font-size: 12px; letter-spacing: .14em; text-transform: uppercase; padding-top: 3px; }
-.news h4 { font-family: 'Cinzel', serif; font-size: 15px; letter-spacing: .08em; color: var(--ink); margin-bottom: 4px; }
+.news h4 { font-family: 'Cinzel', serif; font-size: 15px; letter-spacing: .08em; color: var(--ink); }
 .news p { color: var(--dim); font-size: 14px; }
 
-/* register */
-.regform { border: 1px solid var(--line); background: linear-gradient(180deg, var(--bg2), #0d0a08); padding: 26px; max-width: 760px; }
-.regform .row { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 18px; }
-.regform label { display: block; font-size: 11px; letter-spacing: .18em; text-transform: uppercase; color: var(--dim); }
-.regform .opt { text-transform: none; letter-spacing: .06em; color: var(--faint); }
-.regform input {
-  display: block; width: 100%; margin-top: 7px; padding: 11px 12px;
-  background: #0a0807; border: 1px solid var(--line); color: var(--ink);
-  font: 15px Georgia, serif; outline: none;
-}
-.regform input:focus { border-color: var(--gold); box-shadow: 0 0 10px rgba(201,162,39,.18); }
-.regactions { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
-.regmsg { font-size: 13px; color: var(--dim); }
-.regmsg.ok { color: #7fce7f; }
-.regmsg.err { color: #e88c7f; }
-
-/* join */
-.steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 18px; counter-reset: s; }
-.step { border: 1px solid var(--line); padding: 22px; background: var(--bg2); position: relative; }
-.step::before {
-  counter-increment: s; content: counter(s, upper-roman);
-  font-family: 'Cinzel', serif; font-size: 30px; color: var(--gold);
-  display: block; margin-bottom: 10px;
-}
-.step p { color: var(--dim); font-size: 14px; }
-.step a { display: inline-block; margin-top: 8px; letter-spacing: .1em; text-transform: uppercase; font-size: 12px; }
-
 footer {
-  border-top: 1px solid var(--line); margin-top: 20px;
-  padding: 30px 6vw 44px; text-align: center;
+  border-top: 1px solid var(--line);
+  padding: 26px 6vw 40px; text-align: center;
   color: var(--faint); font-size: 12px;
 }
-footer .serif { letter-spacing: .3em; font-size: 13px; color: var(--dim); display: block; margin-bottom: 10px; }
+footer .serif { font-family: 'Cinzel', serif; letter-spacing: .3em; font-size: 13px; color: var(--dim); display: block; margin-bottom: 10px; }
 
 @media (max-width: 860px) {
-  .hero { grid-template-columns: 1fr; }
-  .frame { max-width: 520px; }
-  nav { gap: 14px; flex-wrap: wrap; }
+  .regform .row { grid-template-columns: 1fr; }
+  nav { gap: 12px; flex-wrap: wrap; }
+  .hero { min-height: 88vh; }
 }
 </style>
 </head>
@@ -252,64 +213,56 @@ footer .serif { letter-spacing: .3em; font-size: 13px; color: var(--dim); displa
 <nav>
   <a class="mark" href="./">DUTLUK<small>METIN2 REALM</small></a>
   <span class="spacer"></span>
-  <a class="navlink" href="#realm">Realm</a>
-  <a class="navlink" href="#kingdoms">Kingdoms</a>
   <a class="navlink" href="#gallery">Gallery</a>
-  <a class="navlink" href="#news">News</a>
-  <a class="navlink" href="#register">Register</a>
+  <a class="navlink" href="#news">Chronicle</a>
   <span class="status" id="realmstatus"><span class="dot"></span><span id="statustext">checking</span></span>
 </nav>
 
 <header class="hero">
-  <div>
+  <div class="inner">
     <div class="eyebrow">The stones have fallen</div>
     <h1>DUTLUK</h1>
-    <p class="pitch">A Metin2 realm that lives in your browser tab. No client, no patcher, no download. Pick a kingdom, raise your sword, walk in.</p>
+    <p class="pitch">A Metin2 realm that lives in your browser tab. No client, no patcher, no download.</p>
     <div class="cta">
-      <a class="btn primary" href="local.html?realm=Dutluk">Enter the realm</a>
-      <a class="btn ghost" href="local.html">Single player</a>
+      <a class="btn primary" href="local.html?realm=Dutluk">Enter the realm<small>online · pvp</small></a>
+      <a class="btn solo" href="local.html">Single player<small>offline · in-browser</small></a>
     </div>
-    <p style="margin-top:22px; font-size:12px; color:var(--faint); letter-spacing:.08em;">
-      No account yet? <a href="#register">Register in ten seconds →</a>
-    </p>
-  </div>
-  <div class="frame">
-    <img src="site/art-login.jpg" alt="Metin2 splash art — three warriors before the Metin stones">
-    <div class="cap">Runs entirely in your browser — desktop &amp; mobile</div>
   </div>
 </header>
 
-<div class="rule"><span>◆ ◆ ◆</span></div>
-
-<section id="realm">
-  <h2>The Realm</h2>
-  <div class="sub">Old maps, old fights, new plumbing</div>
-  <div class="cards">
-    <div class="card"><h3>Zero install</h3><p>The full client runs compiled to WebAssembly. Open the page, pick a channel, you're inside — first load caches to disk for good.</p></div>
-    <div class="card"><h3>Persistent world</h3><p>Dutluk is hosted on dedicated hardware. Your character, items and gold live on the server — not in your cache.</p></div>
-    <div class="card"><h3>Any screen</h3><p>Desktop gets the classic mouse HUD. Phones and tablets get a touch HUD designed for thumbs. Same realm, same characters.</p></div>
+<div class="band" id="register">
+  <div class="inner">
+    <h2>Forge your account</h2>
+    <div class="sub">Ten seconds, no email — then Enter the realm</div>
+    <form class="regform" id="regform" autocomplete="off">
+      <div class="row">
+        <label>Username<input name="login" maxlength="16" required pattern="[A-Za-z0-9_]{4,16}" title="4-16 letters, digits or underscore"></label>
+        <label>Password<input name="password" type="password" minlength="6" maxlength="64" required></label>
+        <label>Repeat<input name="password2" type="password" minlength="6" maxlength="64" required></label>
+        <label>Delete code<span style="text-transform:none;letter-spacing:.05em;color:var(--faint)"> — optional</span><input name="social_id" inputmode="numeric" pattern="[0-9]{7}" maxlength="7" placeholder="7 digits"></label>
+      </div>
+      <div class="regactions">
+        <button class="btn primary" type="submit">Create account</button>
+        <span class="regmsg" id="regmsg"></span>
+      </div>
+    </form>
   </div>
-</section>
+</div>
 
-<section id="kingdoms">
-  <h2>Choose your kingdom</h2>
-  <div class="sub">Three empires, one war</div>
-  <div class="kingdoms">
-    <div class="kingdom a"><img src="site/art-samahi.jpg" alt=""><div class="inner"><h3>Shinsoo</h3><p>Empire of trade and silver. Their merchants built the roads the war now marches on.</p></div></div>
-    <div class="kingdom b"><img src="site/art-warrior.jpg" alt=""><div class="inner"><h3>Chunjo</h3><p>Empire of the sword and the vow. Held the west while the stones burned the sky.</p></div></div>
-    <div class="kingdom c"><img src="site/art-sura.jpg" alt=""><div class="inner"><h3>Jinno</h3><p>Empire of shadow and intrigue. They watched the stones fall, and learned what they carried.</p></div></div>
-  </div>
-</section>
+<div class="facts">
+  <div class="fact"><b>Zero install</b>The whole client runs compiled to WebAssembly. Open, pick a channel, you're in.</div>
+  <div class="fact"><b>Persistent world</b>Characters and items live on the server, hosted on dedicated hardware.</div>
+  <div class="fact"><b>Any screen</b>Classic mouse HUD on desktop, touch HUD on phones and tablets.</div>
+</div>
 
 <section id="gallery">
   <h2>Gallery</h2>
-  <div class="sub">Loading-screen art, straight from the client</div>
+  <div class="sub">Straight from the client</div>
   <div class="gallery">
     <figure><img src="site/art-warrior.jpg" alt="Warrior loading art"><figcaption>Warrior</figcaption></figure>
     <figure><img src="site/art-shaman.jpg" alt="Shaman loading art"><figcaption>Shaman</figcaption></figure>
     <figure><img src="site/art-sura.jpg" alt="Sura loading art"><figcaption>Sura</figcaption></figure>
     <figure><img src="site/art-samahi.jpg" alt="Samahi loading art"><figcaption>Samahi</figcaption></figure>
-    <figure><img src="site/art-dragon.jpg" alt="Dark dragon loading art"><figcaption>Dark dragons</figcaption></figure>
   </div>
 </section>
 
@@ -317,45 +270,15 @@ footer .serif { letter-spacing: .3em; font-size: 13px; color: var(--dim); displa
   <h2>Chronicle</h2>
   <div class="sub">Latest from the realm</div>
   <div class="news">
-    <div class="item"><div class="date">Oct 08</div><div><h4>Realm infrastructure lands</h4><p>The hosted Dutluk stack — auth, channel and database behind a websocket bridge — is verified end-to-end and waiting on its public tunnel.</p></div></div>
-    <div class="item"><div class="date">Oct 07</div><div><h4>Touch controls fixed, effects restored</h4><p>Single-tap actions were registering twice on touchscreens. In-world effects — the click marker among them — draw again on web.</p></div></div>
-    <div class="item"><div class="date">Oct 06</div><div><h4>The client runs in a browser</h4><p>The whole game — engine, scripts, data — boots to the login screen and into the world with no install. Single Player plays offline, fully in-browser.</p></div></div>
-  </div>
-</section>
-
-<section id="register">
-  <h2>Forge your account</h2>
-  <div class="sub">One form, no email, no launcher</div>
-  <form class="regform" id="regform" autocomplete="off">
-    <div class="row">
-      <label>Username<input name="login" maxlength="16" required pattern="[A-Za-z0-9_]{4,16}" title="4-16 letters, digits or underscore"></label>
-      <label>Password<input name="password" type="password" minlength="6" maxlength="64" required></label>
-    </div>
-    <div class="row">
-      <label>Repeat password<input name="password2" type="password" minlength="6" maxlength="64" required></label>
-      <label>Deletion code <span class="opt">(optional, 7 digits)</span><input name="social_id" inputmode="numeric" pattern="[0-9]{7}" maxlength="7" placeholder="needed to delete a character"></label>
-    </div>
-    <div class="regactions">
-      <button class="btn primary" type="submit">Create account</button>
-      <span class="regmsg" id="regmsg"></span>
-    </div>
-  </form>
-</section>
-
-<section id="join">
-  <h2>Join the realm</h2>
-  <div class="sub">Under a minute, including the walk</div>
-  <div class="steps">
-    <div class="step"><p>Hit <b>Enter the realm</b>. The client streams in and caches — about a gigabyte once, then it's instant.</p><a href="local.html?realm=Dutluk">Enter →</a></div>
-    <div class="step"><p>No account? <a href="#register">Register below</a> — ten seconds, no email. Already have one? Log in on the realm's own login window.</p></div>
-    <div class="step"><p>Pick a kingdom, make a character, walk out the gate. Prefer to roam alone? <a href="local.html">Single Player</a> runs entirely offline in the same client.</p></div>
+    <div class="item"><div class="date">Oct 08</div><div><h4>Realm infrastructure lands</h4><p>Auth, channel and database behind a websocket bridge — verified end-to-end, waiting on its public tunnel.</p></div></div>
+    <div class="item"><div class="date">Oct 07</div><div><h4>Touch controls fixed, effects restored</h4><p>Taps were registering twice on touchscreens; in-world effects draw again on web.</p></div></div>
+    <div class="item"><div class="date">Oct 06</div><div><h4>The client runs in a browser</h4><p>Engine, scripts and data boot to login and into the world with no install.</p></div></div>
   </div>
 </section>
 
 <footer>
   <span class="serif">DUTLUK</span>
-  A fan-run Metin2 realm. Not affiliated with Webzen or Gameforge.<br>
-  Client and server are clean-room builds — all data files belong to their owners.
+  A fan-run Metin2 realm. Not affiliated with Webzen or Gameforge.
 </footer>
 
 <script>
@@ -363,11 +286,10 @@ footer .serif { letter-spacing: .3em; font-size: 13px; color: var(--dim); displa
   var el = document.getElementById('realmstatus');
   var txt = document.getElementById('statustext');
   var host = location.hostname;
-  var statusUrl = /^[0-9.]+$|^localhost$/.test(host)
-    ? 'http://' + host + ':8000/status'
-    : 'https://srv.' + host + '/status';
-  var apiBase = statusUrl.replace(/\/status$/, '');
-  fetch(statusUrl, { cache: 'no-store' })
+  var apiBase = /^[0-9.]+$|^localhost$/.test(host)
+    ? 'http://' + host + ':8000'
+    : 'https://srv.' + host;
+  fetch(apiBase + '/status', { cache: 'no-store' })
     .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
     .then(function (s) {
       if (s.auth && s.chan1) {
@@ -377,6 +299,7 @@ footer .serif { letter-spacing: .3em; font-size: 13px; color: var(--dim); displa
       }
     })
     .catch(function () { el.classList.add('off'); txt.textContent = 'Realm offline'; });
+
   var form = document.getElementById('regform');
   var msg = document.getElementById('regmsg');
   form.addEventListener('submit', function (ev) {
