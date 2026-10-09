@@ -1,3 +1,23 @@
+diff --git a/src/db/ClientManager.cpp b/src/db/ClientManager.cpp
+index 2896c0a..9a8795a 100644
+--- a/src/db/ClientManager.cpp
++++ b/src/db/ClientManager.cpp
+@@ -111,6 +111,15 @@ bool CClientManager::Initialize()
+ 		return false;
+ 	}
+ 
++	// Remove orphan id-0 players left by the pre-fix sqlite insert of a literal
++	// 0 into the AUTO_INCREMENT column. Their rows are invisible on the
++	// character wheel but still reserve their name; real ids start at 1.
++	{
++		char szQuery[64];
++		snprintf(szQuery, sizeof(szQuery), "DELETE FROM player%s WHERE id=0", GetTablePostfix());
++		CDBManager::instance().DirectQuery(szQuery);
++	}
++
+ 	CGuildManager::instance().BootReserveWar();
+ 
+ 	if (!CConfig::instance().GetValue("BIND_PORT", &tmpValue))
 diff --git a/src/db/ClientManagerPlayer.cpp b/src/db/ClientManagerPlayer.cpp
 index 2dcffd6..d69b6db 100644
 --- a/src/db/ClientManagerPlayer.cpp
