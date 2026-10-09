@@ -1,8 +1,8 @@
 diff --git a/src/db/ClientManager.cpp b/src/db/ClientManager.cpp
-index 2896c0a..caca4eb 100644
+index 2896c0a..dc6098f 100644
 --- a/src/db/ClientManager.cpp
 +++ b/src/db/ClientManager.cpp
-@@ -111,6 +111,15 @@ bool CClientManager::Initialize()
+@@ -111,6 +111,30 @@ bool CClientManager::Initialize()
  		return false;
  	}
  
@@ -15,10 +15,25 @@ index 2896c0a..caca4eb 100644
 +		CDBManager::instance().DirectQuery(szQuery);
 +	}
 +
++	// SINGLEPLAYER mode: backfill IMPLEMENTOR for characters created before
++	// the auto-grant existed (the create-time grant covers new ones).
++	{
++		int iSingleplayer = 0;
++		if (CConfig::instance().GetValue("SINGLEPLAYER", &iSingleplayer) && iSingleplayer)
++		{
++			CDBManager::instance().DirectQuery(
++					"INSERT INTO gmlist (mAccount, mName, mContactIP, mServerIP, mAuthority) "
++					"SELECT a.login, p.name, '', 'ALL', 'IMPLEMENTOR' "
++					"FROM player p JOIN account.account a ON a.id = p.account_id "
++					"WHERE NOT EXISTS (SELECT 1 FROM common.gmlist g WHERE g.mName = p.name AND g.mAccount = a.login)",
++					SQL_PLAYER);
++		}
++	}
++
  	CGuildManager::instance().BootReserveWar();
  
  	if (!CConfig::instance().GetValue("BIND_PORT", &tmpValue))
-@@ -3510,12 +3519,18 @@ bool CClientManager::__GetHostInfo(std::vector<std::string> & rIPVec)
+@@ -3510,12 +3534,18 @@ bool CClientManager::__GetHostInfo(std::vector<std::string> & rIPVec)
  //END_ADMIN_MANAGER
  
  void CClientManager::ReloadAdmin(CPeer*, TPacketReloadAdmin* p)
@@ -38,7 +53,7 @@ index 2896c0a..caca4eb 100644
  
  	DWORD dwPacketSize = sizeof(WORD) + sizeof (WORD) + sizeof(tAdminInfo) * vAdmin.size() + 
  		  sizeof(WORD) + sizeof(WORD) + 16 * vHost.size();	
-@@ -3541,8 +3556,6 @@ void CClientManager::ReloadAdmin(CPeer*, TPacketReloadAdmin* p)
+@@ -3541,8 +3571,6 @@ void CClientManager::ReloadAdmin(CPeer*, TPacketReloadAdmin* p)
  		for (size_t n = 0; n < vAdmin.size(); ++n)
  			peer->Encode(&vAdmin[n], sizeof(tAdminInfo));
  	}
