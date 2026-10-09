@@ -191,8 +191,10 @@ if (m2realmLink && !m2realm) {
   m2realmLink.href = ru.toString();
 }
 
+window.m2workers = {};
 function spawnSrv(tag, cfg) {
   var w = new Worker('srv_worker.js?v=' + M2V + '#' + tag);
+  window.m2workers[tag] = w;
   cfg.m2 = 'init';
   cfg.sab = m2sab;
   w.onmessage = function (e) {
@@ -201,6 +203,7 @@ function spawnSrv(tag, cfg) {
     else if (d && d.m2 === 'log') { console.log('[' + tag + ']', d.s); setSrv(tag, d.s); }
     else if (d && d.m2 === 'stage') setSrv(tag, d.s);
     else if (d && d.m2 === 'ready') { console.log('[' + tag + '] ready'); setSrv(tag, 'ready'); }
+    else if (d && d.m2 === 'filedata') { console.log('[' + tag + ' FILE ' + d.path + ']\n' + d.s); }
   };
   w.onerror = function (e) { console.warn('[' + tag + ']', e.message || e); };
   w.postMessage(cfg);
@@ -359,6 +362,7 @@ async function m2boot() {
     sqliteDir: '/srv/db/sqlite', sqliteIdb: true,
     sqlitePacks: [sqlite],
     env: { M2_SQLITE_DIR: '/srv/db/sqlite' },
+    config: 'SINGLEPLAYER: 1\n',
     pw: pw,
   });
   spawnSrv('m2game.js', {
