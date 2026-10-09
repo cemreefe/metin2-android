@@ -1,5 +1,5 @@
 diff --git a/src/db/ClientManager.cpp b/src/db/ClientManager.cpp
-index 2896c0a..9a8795a 100644
+index 2896c0a..caca4eb 100644
 --- a/src/db/ClientManager.cpp
 +++ b/src/db/ClientManager.cpp
 @@ -111,6 +111,15 @@ bool CClientManager::Initialize()
@@ -18,11 +18,60 @@ index 2896c0a..9a8795a 100644
  	CGuildManager::instance().BootReserveWar();
  
  	if (!CConfig::instance().GetValue("BIND_PORT", &tmpValue))
+@@ -3510,12 +3519,18 @@ bool CClientManager::__GetHostInfo(std::vector<std::string> & rIPVec)
+ //END_ADMIN_MANAGER
+ 
+ void CClientManager::ReloadAdmin(CPeer*, TPacketReloadAdmin* p)
++{
++	BroadcastAdminReload(p->szIP);
++	sys_log(0, "ReloadAdmin End %s", p->szIP);
++}
++
++void CClientManager::BroadcastAdminReload(const char * szIP)
+ {
+ 	std::vector<tAdminInfo> vAdmin;
+ 	std::vector<std::string> vHost;
+ 	
+ 	__GetHostInfo(vHost);
+-	__GetAdminInfo(p->szIP, vAdmin);
++	__GetAdminInfo(szIP, vAdmin);
+ 
+ 	DWORD dwPacketSize = sizeof(WORD) + sizeof (WORD) + sizeof(tAdminInfo) * vAdmin.size() + 
+ 		  sizeof(WORD) + sizeof(WORD) + 16 * vHost.size();	
+@@ -3541,8 +3556,6 @@ void CClientManager::ReloadAdmin(CPeer*, TPacketReloadAdmin* p)
+ 		for (size_t n = 0; n < vAdmin.size(); ++n)
+ 			peer->Encode(&vAdmin[n], sizeof(tAdminInfo));
+ 	}
+-
+-	sys_log(0, "ReloadAdmin End %s", p->szIP);
+ }
+ 
+ //BREAK_MARRIAGE
+diff --git a/src/db/ClientManager.h b/src/db/ClientManager.h
+index 0ce7ab3..5a5e131 100644
+--- a/src/db/ClientManager.h
++++ b/src/db/ClientManager.h
+@@ -483,6 +483,7 @@ class CClientManager : public CNetBase, public singleton<CClientManager>
+ 		
+ 	//RELOAD_ADMIN
+ 	void ReloadAdmin(CPeer * peer, TPacketReloadAdmin * p);
++	void BroadcastAdminReload(const char * szIP);
+ 	//END_RELOAD_ADMIN
+ 	void BreakMarriage(CPeer * peer, const char * data);
+ 
 diff --git a/src/db/ClientManagerPlayer.cpp b/src/db/ClientManagerPlayer.cpp
-index 2dcffd6..d69b6db 100644
+index 2dcffd6..83e3de7 100644
 --- a/src/db/ClientManagerPlayer.cpp
 +++ b/src/db/ClientManagerPlayer.cpp
-@@ -858,8 +858,12 @@ void CClientManager::__QUERY_PLAYER_CREATE(CPeer *peer, DWORD dwHandle, TPlayerC
+@@ -3,6 +3,7 @@
+ 
+ #include "ClientManager.h"
+ 
++#include "Config.h"
+ #include "Main.h"
+ #include "QID.h"
+ #include "ItemAwardManager.h"
+@@ -858,8 +859,12 @@ void CClientManager::__QUERY_PLAYER_CREATE(CPeer *peer, DWORD dwHandle, TPlayerC
  	}
  	else
  	{
@@ -37,6 +86,35 @@ index 2dcffd6..d69b6db 100644
  	}
  
  	if (g_stLocale == "sjis")
+@@ -941,6 +946,28 @@ void CClientManager::__QUERY_PLAYER_CREATE(CPeer *peer, DWORD dwHandle, TPlayerC
+ 
+ 	player_id = pMsg2->Get()->uiInsertID;
+ 
++	// SINGLEPLAYER mode: grant IMPLEMENTOR so every new character is GM.
++	int iSingleplayer = 0;
++	if (CConfig::instance().GetValue("SINGLEPLAYER", &iSingleplayer) && iSingleplayer)
++	{
++		char szLogin[LOGIN_MAX_LEN + 1] = {0};
++		snprintf(queryStr, sizeof(queryStr), "SELECT login FROM account WHERE id=%u", packet->account_id);
++		auto pAcc = CDBManager::instance().DirectQuery(queryStr, SQL_ACCOUNT);
++		MYSQL_ROW accRow = mysql_fetch_row(pAcc->Get()->pSQLResult);
++		if (accRow && accRow[0])
++		{
++			strlcpy(szLogin, accRow[0], sizeof(szLogin));
++			char szNameEsc[CHARACTER_NAME_MAX_LEN * 2 + 1];
++			CDBManager::instance().EscapeString(szNameEsc, packet->player_table.name, strlen(packet->player_table.name));
++			snprintf(queryStr, sizeof(queryStr),
++					"INSERT INTO gmlist (mAccount, mName, mContactIP, mServerIP, mAuthority) VALUES('%s', '%s', '', 'ALL', 'IMPLEMENTOR')",
++					szLogin, szNameEsc);
++			CDBManager::instance().DirectQuery(queryStr, SQL_COMMON);
++			sys_log(0, "SINGLEPLAYER: granted IMPLEMENTOR to %s/%s", szLogin, packet->player_table.name);
++			BroadcastAdminReload(NULL);
++		}
++	}
++
+ 	snprintf(queryStr, sizeof(queryStr), "UPDATE player_index%s SET pid%d=%d WHERE id=%d", 
+ 			GetTablePostfix(), packet->account_index + 1, player_id, packet->account_id);
+ 	auto pMsg3 = CDBManager::instance().DirectQuery(queryStr);
 diff --git a/src/game/config.cpp b/src/game/config.cpp
 index fc2e102..957ef7d 100644
 --- a/src/game/config.cpp

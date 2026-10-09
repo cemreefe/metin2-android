@@ -359,6 +359,7 @@ async function m2boot() {
     sqliteDir: '/srv/db/sqlite', sqliteIdb: true,
     sqlitePacks: [sqlite],
     env: { M2_SQLITE_DIR: '/srv/db/sqlite' },
+    config: 'SINGLEPLAYER: 1\n',
     pw: pw,
   });
   spawnSrv('m2game.js', {
