@@ -64,8 +64,9 @@ namespace
 	{
 		if (type == EMSCRIPTEN_EVENT_KEYPRESS)
 		{
-			// Text input; keyCode 0 means "character only".
-			if (e->charCode)
+			// Text input; keyCode 0 means "character only". Skip control
+			// chars (Enter/Esc/Tab fire keypress too) — keydown covers them.
+			if (e->charCode >= 32)
 				CMSApplication::PushKeyEvent(0, 0, (int)e->charCode);
 			return EM_TRUE;
 		}

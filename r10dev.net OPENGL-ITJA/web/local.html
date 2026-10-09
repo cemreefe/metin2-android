@@ -405,7 +405,20 @@ async function m2boot() {
   try {
     var cfg = localStorage.getItem('m2_display_cfg');
     if (cfg) FS.writeFile('/data/display.cfg', cfg);
+    var m2cfg = localStorage.getItem('m2_metin2_cfg');
+    if (m2cfg) FS.writeFile('/data/metin2.cfg', m2cfg);
   } catch (e) {}
+  // Persist engine settings (metin2.cfg): MEMFS dies with the tab, so poll
+  // the file into localStorage and restore it above on next boot.
+  var m2cfgLast = null;
+  function m2cfgPoll() {
+    try {
+      var d = FS.readFile('/data/metin2.cfg', { encoding: 'utf8' });
+      if (d !== m2cfgLast) { m2cfgLast = d; localStorage.setItem('m2_metin2_cfg', d); }
+    } catch (e) {}
+  }
+  setInterval(m2cfgPoll, 2000);
+  window.addEventListener('pagehide', m2cfgPoll);
   removeRunDependency('m2data');
 }
 
