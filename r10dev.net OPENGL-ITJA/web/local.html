@@ -407,15 +407,30 @@ async function m2boot() {
     if (cfg) FS.writeFile('/data/display.cfg', cfg);
     var m2cfg = localStorage.getItem('m2_metin2_cfg');
     if (m2cfg) FS.writeFile('/data/metin2.cfg', m2cfg);
+    var lcfg = localStorage.getItem('m2_locale_cfg');
+    if (lcfg) {
+      var lcode = lcfg.trim();
+      try { FS.mkdir('/data/config'); } catch (e2) {}
+      FS.writeFile('/data/config/locale.cfg', lcode);
+      // loca.cfg is what the engine reads at boot ("<codepage> <name>").
+      var cp = { tr: 1254, ru: 1251, ae: 1256, gr: 1253, pl: 1250, cz: 1250, hu: 1250, ro: 1250 }[lcode] || 1252;
+      FS.writeFile('/data/loca.cfg', cp + ' ' + lcode + '\n');
+    }
   } catch (e) {}
-  // Persist engine settings (metin2.cfg): MEMFS dies with the tab, so poll
-  // the file into localStorage and restore it above on next boot.
-  var m2cfgLast = null;
+  // Persist engine + HUD + locale settings: MEMFS dies with the tab, so
+  // poll the files into localStorage and restore them above on next boot.
+  var m2persist = [
+    ['/data/metin2.cfg', 'm2_metin2_cfg'],
+    ['/data/display.cfg', 'm2_display_cfg'],
+    ['/data/config/locale.cfg', 'm2_locale_cfg'],
+  ];
   function m2cfgPoll() {
-    try {
-      var d = FS.readFile('/data/metin2.cfg', { encoding: 'utf8' });
-      if (d !== m2cfgLast) { m2cfgLast = d; localStorage.setItem('m2_metin2_cfg', d); }
-    } catch (e) {}
+    m2persist.forEach(function (p) {
+      try {
+        var d = FS.readFile(p[0], { encoding: 'utf8' });
+        if (d !== p[2]) { p[2] = d; localStorage.setItem(p[1], d); }
+      } catch (e) {}
+    });
   }
   setInterval(m2cfgPoll, 2000);
   window.addEventListener('pagehide', m2cfgPoll);

@@ -10,7 +10,38 @@ def _define(module, name, value):
 
 _define(app, "GetLocalePathCommon", lambda: "locale/common")
 _define(app, "IsRTL", lambda: 0)
-_define(app, "ReloadLocale", _noop)
+
+# Hot locale switch: the flag selector writes config/locale.cfg, then calls this.
+# Applies the new locale live — C++ path/tables, then the Python string modules —
+# so no restart is needed. Returns True when everything reloaded.
+def _ReloadLocale():
+	try:
+		f = open("config/locale.cfg", "r")
+		code = f.read().strip()
+		f.close()
+	except IOError:
+		return 0
+	if not code:
+		return 0
+	try:
+		app.ForceSetLocale(code, "locale/" + code)
+		app.LoadLocaleData("locale/" + code)
+	except AttributeError:
+		pass
+	ok = 1
+	try:
+		import localeInfo
+		ok = localeInfo.LoadLocaleData() and ok
+	except Exception:
+		ok = 0
+	try:
+		import uiScriptLocale
+		ok = uiScriptLocale.LoadLocaleData() and ok
+	except Exception:
+		ok = 0
+	return ok
+
+_define(app, "ReloadLocale", _ReloadLocale)
 _define(app, "loggined", 0)
 _define(chat, "SetAlign", _noop)
 _define(chrmgr, "EFFECT_STATE", 900)
