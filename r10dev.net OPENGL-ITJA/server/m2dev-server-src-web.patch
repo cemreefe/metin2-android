@@ -1,3 +1,22 @@
+diff --git a/src/db/ClientManagerPlayer.cpp b/src/db/ClientManagerPlayer.cpp
+index 2dcffd6..d69b6db 100644
+--- a/src/db/ClientManagerPlayer.cpp
++++ b/src/db/ClientManagerPlayer.cpp
+@@ -858,8 +858,12 @@ void CClientManager::__QUERY_PLAYER_CREATE(CPeer *peer, DWORD dwHandle, TPlayerC
+ 	}
+ 	else
+ 	{
+-		peer->EncodeHeader(HEADER_DG_PLAYER_CREATE_FAILED, dwHandle, 0);
+-		return;
++		// Same recovery as RESULT_LOGIN_BY_KEY: create the missing player_index
++		// row instead of failing, so a create raced with the login-time insert
++		// can still succeed.
++		snprintf(queryStr, sizeof(queryStr),
++				"INSERT INTO player_index%s (id) VALUES(%u)", GetTablePostfix(), packet->account_id);
++		CDBManager::instance().DirectQuery(queryStr);
+ 	}
+ 
+ 	if (g_stLocale == "sjis")
 diff --git a/src/game/config.cpp b/src/game/config.cpp
 index fc2e102..957ef7d 100644
 --- a/src/game/config.cpp
@@ -15,6 +34,37 @@ index fc2e102..957ef7d 100644
  #ifndef OS_WINDOWS
  	struct ifaddrs* ifaddrp = NULL;
  
+diff --git a/src/game/desc.cpp b/src/game/desc.cpp
+index f207b44..4a36d54 100644
+--- a/src/game/desc.cpp
++++ b/src/game/desc.cpp
+@@ -723,7 +723,7 @@ bool DESC::IsExpiredHandshake() const
+ 	if (m_handshake_time == 0)
+ 		return false;
+ 
+-	return (m_handshake_time + (5 * 1000)) < get_dword_time();
++	return (m_handshake_time + (30 * 1000)) < get_dword_time();
+ }
+ 
+ DWORD DESC::GetClientTime()
+@@ -737,7 +737,9 @@ void DESC::SendKeyAgreement()
+ 	TPacketKeyAgreement packet;
+ 
+ 	size_t data_length = TPacketKeyAgreement::MAX_DATA_LEN;
++	sys_log(0, "SendKeyAgreement: preparing (max %zu)", data_length);
+ 	size_t agreed_length = cipher_.Prepare(packet.data, &data_length);
++	sys_log(0, "SendKeyAgreement: prepared agreed=%zu data=%zu", agreed_length, data_length);
+ 	if (agreed_length == 0) {
+ 		// Initialization failure
+ 		SetPhase(PHASE_CLOSE);
+@@ -750,6 +752,7 @@ void DESC::SendKeyAgreement()
+ 	packet.wDataLength = (WORD)data_length;
+ 
+ 	Packet(&packet, sizeof(packet));
++	sys_log(0, "SendKeyAgreement: packet queued %zu", sizeof(packet));
+ }
+ 
+ void DESC::SendKeyAgreementCompleted()
 diff --git a/src/game/sectree_manager.cpp b/src/game/sectree_manager.cpp
 index 861b83b..362be5c 100644
 --- a/src/game/sectree_manager.cpp

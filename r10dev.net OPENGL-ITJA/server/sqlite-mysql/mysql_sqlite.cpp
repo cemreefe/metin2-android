@@ -800,6 +800,9 @@ bool RewriteStatement(m2sql_conn *c, std::string &s, Lexed &lx)
 	static const regex reInsertIgnore(R"re(^\s*INSERT\s+IGNORE\s+)re", kIcase);
 	static const regex reReplaceNoInto(R"re(^\s*REPLACE\s+(?!INTO\b))re", kIcase);
 	static const regex reInsertNoInto(R"re(^\s*INSERT(\s+OR\s+\w+)?\s+(?!INTO\b))re", kIcase);
+	// MySQL: inserting 0 into an AUTO_INCREMENT column auto-assigns; sqlite stores 0 literally.
+	// Rewrite a leading literal 0 to NULL when the column list starts with `id`.
+	static const regex reInsertZeroId(R"re((\b(?:INSERT|REPLACE)\s+(?:OR\s+\w+\s+)?INTO\s+(?:"?\w+"?\.)?"?\w+"?\s*\(\s*"?id"?\s*,[\s\S]*?\)\s*VALUES\s*\()\s*0\b)re", kIcase);
 	static const regex reInsertSet(R"re(^(\s*(?:INSERT|REPLACE)(?:\s+OR\s+\w+)?\s+INTO\s+(?:"?\w+"?\.)?"?\w+"?)\s+SET\s+([\s\S]*?)(\s+ON\s+DUPLICATE\s+KEY\s+UPDATE\s+[\s\S]*)?$)re", kIcase);
 	static const regex reOnDup(R"re(\bON\s+DUPLICATE\s+KEY\s+UPDATE\b)re", kIcase);
 	static const regex reValuesFn(R"re(\bVALUES\s*\(\s*"?(\w+)"?\s*\))re", kIcase);
@@ -860,6 +863,7 @@ bool RewriteStatement(m2sql_conn *c, std::string &s, Lexed &lx)
 	s = regex_replace(s, reInsertIgnore, "INSERT OR IGNORE ");
 	s = regex_replace(s, reReplaceNoInto, "REPLACE INTO ");
 	s = regex_replace(s, reInsertNoInto, "INSERT$1 INTO ");
+	s = regex_replace(s, reInsertZeroId, "$1NULL");
 
 	// INSERT INTO t SET a=1, b=2  ->  INSERT INTO t (a, b) VALUES (1, 2)
 	if (std::regex_match(s, m, reInsertSet))
