@@ -130,6 +130,22 @@ index 2dcffd6..83e3de7 100644
  	snprintf(queryStr, sizeof(queryStr), "UPDATE player_index%s SET pid%d=%d WHERE id=%d", 
  			GetTablePostfix(), packet->account_index + 1, player_id, packet->account_id);
  	auto pMsg3 = CDBManager::instance().DirectQuery(queryStr);
+diff --git a/src/game/char.cpp b/src/game/char.cpp
+index cd03edd..fc8abf3 100644
+--- a/src/game/char.cpp
++++ b/src/game/char.cpp
+@@ -7180,7 +7180,10 @@ EVENTFUNC(check_speedhack_event)
+ 		// write hack log
+ 		LogManager::instance().SpeedHackLog(ch->GetPlayerID(), ch->GetX(), ch->GetY(), ch->m_speed_hack_count);
+ 
+-		if (false == LC_IsEurope())
++		// test_server is a sandbox (singleplayer / dev realms): multi-hit
++		// skill hits trip this counter legitimately there, so warn instead of
++		// disconnecting.
++		if (false == LC_IsEurope() && false == test_server)
+ 		{
+ 			// close connection
+ 			LPDESC desc = ch->GetDesc();
 diff --git a/src/game/config.cpp b/src/game/config.cpp
 index fc2e102..957ef7d 100644
 --- a/src/game/config.cpp
@@ -148,10 +164,37 @@ index fc2e102..957ef7d 100644
  	struct ifaddrs* ifaddrp = NULL;
  
 diff --git a/src/game/desc.cpp b/src/game/desc.cpp
-index f207b44..4a36d54 100644
+index f207b44..10da705 100644
 --- a/src/game/desc.cpp
 +++ b/src/game/desc.cpp
-@@ -723,7 +723,7 @@ bool DESC::IsExpiredHandshake() const
+@@ -664,6 +664,19 @@ bool DESC::HandshakeProcess(DWORD dwTime, int32_t lDelta, bool bInfiniteRetry)
+ {
+ 	DWORD dwCurTime = get_dword_time();
+ 
++	// LOCAL BUILD ONLY: accept any handshake (loopback RTT exceeds the 50ms
++	// bias bound on slow/software-rendered clients, making login impossible).
++	m_dwClientTime = dwCurTime;
++	m_bHandshaking = false;
++	return true;
++
++	if (getenv("M2_LAX_HANDSHAKE"))
++	{
++		m_dwClientTime = dwCurTime;
++		m_bHandshaking = false;
++		return true;
++	}
++
+ 	if (lDelta < 0)
+ 	{
+ 		sys_err("Desc::HandshakeProcess : value error (lDelta %" PRId32 ", ip %s)", lDelta, m_stHost.c_str());
+@@ -720,10 +733,14 @@ bool DESC::IsHandshaking()
+ 
+ bool DESC::IsExpiredHandshake() const
+ {
++	// LOCAL BUILD ONLY: never expire handshakes (loopback clients can take
++	// arbitrarily long between packets under software rendering).
++	return false;
++
  	if (m_handshake_time == 0)
  		return false;
  
@@ -160,7 +203,7 @@ index f207b44..4a36d54 100644
  }
  
  DWORD DESC::GetClientTime()
-@@ -737,7 +737,9 @@ void DESC::SendKeyAgreement()
+@@ -737,7 +754,9 @@ void DESC::SendKeyAgreement()
  	TPacketKeyAgreement packet;
  
  	size_t data_length = TPacketKeyAgreement::MAX_DATA_LEN;
@@ -170,7 +213,7 @@ index f207b44..4a36d54 100644
  	if (agreed_length == 0) {
  		// Initialization failure
  		SetPhase(PHASE_CLOSE);
-@@ -750,6 +752,7 @@ void DESC::SendKeyAgreement()
+@@ -750,6 +769,7 @@ void DESC::SendKeyAgreement()
  	packet.wDataLength = (WORD)data_length;
  
  	Packet(&packet, sizeof(packet));
