@@ -320,6 +320,7 @@ public:
 	int		GetSkillIndex(DWORD dwSlotIndex);
 	int		GetSkillGrade(DWORD dwSlotIndex);
 	int		GetSkillLevel(DWORD dwSlotIndex);
+	int		GetSkillLevelByVnum(DWORD dwSkillIndex);
 	float	GetSkillCurrentEfficientPercentage(DWORD dwSlotIndex);
 	float	GetSkillNextEfficientPercentage(DWORD dwSlotIndex);
 	void	SetSkillLevel(DWORD dwSlotIndex, DWORD dwSkillLevel);
@@ -545,6 +546,8 @@ protected:
 
 	// Client Player Data
 	std::map<DWORD, DWORD>	m_skillSlotDict;
+	std::map<DWORD, DWORD>	m_mapSkillLevelByVnum;
+	std::map<DWORD, std::pair<DWORD, DWORD> >	m_mapSkillGradeRawByVnum;
 	std::string				m_stName;
 	DWORD					m_dwMainCharacterIndex;
 	DWORD					m_dwRace;

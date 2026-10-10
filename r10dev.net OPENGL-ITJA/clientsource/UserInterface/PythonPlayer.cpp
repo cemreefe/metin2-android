@@ -931,6 +931,12 @@ void CPythonPlayer::SetSkill(DWORD dwSlotIndex, DWORD dwSkillIndex)
 
 	m_playerStatus.aSkill[dwSlotIndex].dwIndex = dwSkillIndex;
 	m_skillSlotDict[dwSkillIndex] = dwSlotIndex;
+
+	// skills learned outside the registered window slots (sandbox/GM):
+	// re-apply the stored level/grade so the slot is usable right away
+	std::map<DWORD, std::pair<DWORD, DWORD> >::iterator f = m_mapSkillGradeRawByVnum.find(dwSkillIndex);
+	if (f != m_mapSkillGradeRawByVnum.end() && f->second.second > 0)
+		SetSkillLevel_(dwSkillIndex, f->second.first, f->second.second);
 }
 
 int CPythonPlayer::GetSkillIndex(DWORD dwSlotIndex)
@@ -970,6 +976,16 @@ int CPythonPlayer::GetSkillLevel(DWORD dwSlotIndex)
 	return m_playerStatus.aSkill[dwSlotIndex].iLevel;
 }
 
+// raw learned level of a skill vnum regardless of window slot registration
+int CPythonPlayer::GetSkillLevelByVnum(DWORD dwSkillIndex)
+{
+	std::map<DWORD, DWORD>::iterator f = m_mapSkillLevelByVnum.find(dwSkillIndex);
+	if (m_mapSkillLevelByVnum.end() == f)
+		return 0;
+
+	return f->second;
+}
+
 float CPythonPlayer::GetSkillCurrentEfficientPercentage(DWORD dwSlotIndex)
 {
 	if (dwSlotIndex >= SKILL_MAX_NUM)
@@ -998,12 +1014,26 @@ void CPythonPlayer::SetSkillLevel(DWORD dwSlotIndex, DWORD dwSkillLevel)
 
 void CPythonPlayer::SetSkillLevel_(DWORD dwSkillIndex, DWORD dwSkillGrade, DWORD dwSkillLevel)
 {
+	// learned level by vnum, normalized like the slot-store below (sandbox/GM
+	// skills may have no window slot, so keep it regardless of registration)
+	DWORD dwNormLevel = dwSkillLevel;
+	if (1 == dwSkillGrade) dwNormLevel = dwSkillLevel - 20 + 1;
+	else if (2 == dwSkillGrade) dwNormLevel = dwSkillLevel - 30 + 1;
+	else if (3 == dwSkillGrade) dwNormLevel = dwSkillLevel - 40 + 1;
+	m_mapSkillLevelByVnum[dwSkillIndex] = dwNormLevel;
+	m_mapSkillGradeRawByVnum[dwSkillIndex] = std::make_pair(dwSkillGrade, dwSkillLevel);
+
 	DWORD dwSlotIndex;
 	if (!GetSkillSlotIndex(dwSkillIndex, &dwSlotIndex))
 		return;
 
 	if (dwSlotIndex >= SKILL_MAX_NUM)
 		return;
+
+	// skills learned outside the registered window slots (sandbox/GM):
+	// restore the display index in case a re-registration cleared it
+	if (m_playerStatus.aSkill[dwSlotIndex].dwIndex != dwSkillIndex)
+		m_playerStatus.aSkill[dwSlotIndex].dwIndex = dwSkillIndex;
 
 	switch (dwSkillGrade)
 	{

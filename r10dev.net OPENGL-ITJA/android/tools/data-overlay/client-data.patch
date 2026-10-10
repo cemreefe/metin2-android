@@ -839,3 +839,44 @@
  		self.Lock()
  		self.SetTop()
  		self.CloseEvent = event
+--- a/playersettingmodule.py
++++ b/playersettingmodule.py
+@@ -80,6 +80,15 @@
+ 		},
+ 	}
+ 
++	## every learnable job/path skill vnum (active list, not support)
++	global JOB_SKILL_VNUMS
++	JOB_SKILL_VNUMS = (
++		1, 2, 3, 4, 5, 6, 16, 17, 18, 19, 20, 21,
++		31, 32, 33, 34, 35, 36, 46, 47, 48, 49, 50, 51,
++		61, 62, 63, 64, 65, 66, 76, 77, 78, 79, 80, 81,
++		91, 92, 93, 94, 95, 96, 106, 107, 108, 109, 110, 111,
++	)
++
+ def RegisterSkill(race, group, empire=0):
+ 
+ 	DefineSkillIndexDict()
+@@ -113,6 +122,22 @@
+ 				if i != 6 and i != 7:
+ 					player.SetSkill(i+1, skillIndex)
+ 
++			## GM sandbox: learned skills outside this path (other path's or
++			## other job's skills, set via /setskill) go into the free slots so
++			## they stay visible and castable
++			freeSlots = []
++			for i in xrange(len(activeSkillList)):
++				if i != 6 and i != 7 and 0 == activeSkillList[i]:
++					freeSlots.append(i + 1)
++
++			for v in JOB_SKILL_VNUMS:
++				if not freeSlots:
++					break
++				if v in activeSkillList:
++					continue
++				if player.GetSkillLevelByVnum(v) > 0:
++					player.SetSkill(freeSlots.pop(0), v)
++
+ 			supportSkillList = SKILL_INDEX_DICT[job]["SUPPORT"]
+ 
+ 			for i in xrange(len(supportSkillList)):

@@ -1,3 +1,201 @@
+diff --git a/src/db/ClientManager.cpp b/src/db/ClientManager.cpp
+index 2896c0a..dc6098f 100644
+--- a/src/db/ClientManager.cpp
++++ b/src/db/ClientManager.cpp
+@@ -111,6 +111,30 @@ bool CClientManager::Initialize()
+ 		return false;
+ 	}
+ 
++	// Remove orphan id-0 players left by the pre-fix sqlite insert of a literal
++	// 0 into the AUTO_INCREMENT column. Their rows are invisible on the
++	// character wheel but still reserve their name; real ids start at 1.
++	{
++		char szQuery[64];
++		snprintf(szQuery, sizeof(szQuery), "DELETE FROM player%s WHERE id=0", GetTablePostfix());
++		CDBManager::instance().DirectQuery(szQuery);
++	}
++
++	// SINGLEPLAYER mode: backfill IMPLEMENTOR for characters created before
++	// the auto-grant existed (the create-time grant covers new ones).
++	{
++		int iSingleplayer = 0;
++		if (CConfig::instance().GetValue("SINGLEPLAYER", &iSingleplayer) && iSingleplayer)
++		{
++			CDBManager::instance().DirectQuery(
++					"INSERT INTO gmlist (mAccount, mName, mContactIP, mServerIP, mAuthority) "
++					"SELECT a.login, p.name, '', 'ALL', 'IMPLEMENTOR' "
++					"FROM player p JOIN account.account a ON a.id = p.account_id "
++					"WHERE NOT EXISTS (SELECT 1 FROM common.gmlist g WHERE g.mName = p.name AND g.mAccount = a.login)",
++					SQL_PLAYER);
++		}
++	}
++
+ 	CGuildManager::instance().BootReserveWar();
+ 
+ 	if (!CConfig::instance().GetValue("BIND_PORT", &tmpValue))
+@@ -3510,12 +3534,18 @@ bool CClientManager::__GetHostInfo(std::vector<std::string> & rIPVec)
+ //END_ADMIN_MANAGER
+ 
+ void CClientManager::ReloadAdmin(CPeer*, TPacketReloadAdmin* p)
++{
++	BroadcastAdminReload(p->szIP);
++	sys_log(0, "ReloadAdmin End %s", p->szIP);
++}
++
++void CClientManager::BroadcastAdminReload(const char * szIP)
+ {
+ 	std::vector<tAdminInfo> vAdmin;
+ 	std::vector<std::string> vHost;
+ 	
+ 	__GetHostInfo(vHost);
+-	__GetAdminInfo(p->szIP, vAdmin);
++	__GetAdminInfo(szIP, vAdmin);
+ 
+ 	DWORD dwPacketSize = sizeof(WORD) + sizeof (WORD) + sizeof(tAdminInfo) * vAdmin.size() + 
+ 		  sizeof(WORD) + sizeof(WORD) + 16 * vHost.size();	
+@@ -3541,8 +3571,6 @@ void CClientManager::ReloadAdmin(CPeer*, TPacketReloadAdmin* p)
+ 		for (size_t n = 0; n < vAdmin.size(); ++n)
+ 			peer->Encode(&vAdmin[n], sizeof(tAdminInfo));
+ 	}
+-
+-	sys_log(0, "ReloadAdmin End %s", p->szIP);
+ }
+ 
+ //BREAK_MARRIAGE
+diff --git a/src/db/ClientManager.h b/src/db/ClientManager.h
+index 0ce7ab3..5a5e131 100644
+--- a/src/db/ClientManager.h
++++ b/src/db/ClientManager.h
+@@ -483,6 +483,7 @@ class CClientManager : public CNetBase, public singleton<CClientManager>
+ 		
+ 	//RELOAD_ADMIN
+ 	void ReloadAdmin(CPeer * peer, TPacketReloadAdmin * p);
++	void BroadcastAdminReload(const char * szIP);
+ 	//END_RELOAD_ADMIN
+ 	void BreakMarriage(CPeer * peer, const char * data);
+ 
+diff --git a/src/db/ClientManagerPlayer.cpp b/src/db/ClientManagerPlayer.cpp
+index 2dcffd6..83e3de7 100644
+--- a/src/db/ClientManagerPlayer.cpp
++++ b/src/db/ClientManagerPlayer.cpp
+@@ -3,6 +3,7 @@
+ 
+ #include "ClientManager.h"
+ 
++#include "Config.h"
+ #include "Main.h"
+ #include "QID.h"
+ #include "ItemAwardManager.h"
+@@ -858,8 +859,12 @@ void CClientManager::__QUERY_PLAYER_CREATE(CPeer *peer, DWORD dwHandle, TPlayerC
+ 	}
+ 	else
+ 	{
+-		peer->EncodeHeader(HEADER_DG_PLAYER_CREATE_FAILED, dwHandle, 0);
+-		return;
++		// Same recovery as RESULT_LOGIN_BY_KEY: create the missing player_index
++		// row instead of failing, so a create raced with the login-time insert
++		// can still succeed.
++		snprintf(queryStr, sizeof(queryStr),
++				"INSERT INTO player_index%s (id) VALUES(%u)", GetTablePostfix(), packet->account_id);
++		CDBManager::instance().DirectQuery(queryStr);
+ 	}
+ 
+ 	if (g_stLocale == "sjis")
+@@ -941,6 +946,28 @@ void CClientManager::__QUERY_PLAYER_CREATE(CPeer *peer, DWORD dwHandle, TPlayerC
+ 
+ 	player_id = pMsg2->Get()->uiInsertID;
+ 
++	// SINGLEPLAYER mode: grant IMPLEMENTOR so every new character is GM.
++	int iSingleplayer = 0;
++	if (CConfig::instance().GetValue("SINGLEPLAYER", &iSingleplayer) && iSingleplayer)
++	{
++		char szLogin[LOGIN_MAX_LEN + 1] = {0};
++		snprintf(queryStr, sizeof(queryStr), "SELECT login FROM account WHERE id=%u", packet->account_id);
++		auto pAcc = CDBManager::instance().DirectQuery(queryStr, SQL_ACCOUNT);
++		MYSQL_ROW accRow = mysql_fetch_row(pAcc->Get()->pSQLResult);
++		if (accRow && accRow[0])
++		{
++			strlcpy(szLogin, accRow[0], sizeof(szLogin));
++			char szNameEsc[CHARACTER_NAME_MAX_LEN * 2 + 1];
++			CDBManager::instance().EscapeString(szNameEsc, packet->player_table.name, strlen(packet->player_table.name));
++			snprintf(queryStr, sizeof(queryStr),
++					"INSERT INTO gmlist (mAccount, mName, mContactIP, mServerIP, mAuthority) VALUES('%s', '%s', '', 'ALL', 'IMPLEMENTOR')",
++					szLogin, szNameEsc);
++			CDBManager::instance().DirectQuery(queryStr, SQL_COMMON);
++			sys_log(0, "SINGLEPLAYER: granted IMPLEMENTOR to %s/%s", szLogin, packet->player_table.name);
++			BroadcastAdminReload(NULL);
++		}
++	}
++
+ 	snprintf(queryStr, sizeof(queryStr), "UPDATE player_index%s SET pid%d=%d WHERE id=%d", 
+ 			GetTablePostfix(), packet->account_index + 1, player_id, packet->account_id);
+ 	auto pMsg3 = CDBManager::instance().DirectQuery(queryStr);
+diff --git a/src/game/char.cpp b/src/game/char.cpp
+index cd03edd..61b4934 100644
+--- a/src/game/char.cpp
++++ b/src/game/char.cpp
+@@ -7180,7 +7180,10 @@ EVENTFUNC(check_speedhack_event)
+ 		// write hack log
+ 		LogManager::instance().SpeedHackLog(ch->GetPlayerID(), ch->GetX(), ch->GetY(), ch->m_speed_hack_count);
+ 
+-		if (false == LC_IsEurope())
++		// Never kick GMs / sandbox chars for this: multi-hit skill hits trip
++		// the counter legitimately (singleplayer runs test_server, where
++		// everyone is GM).
++		if (false == LC_IsEurope() && false == test_server && !ch->IsGM())
+ 		{
+ 			// close connection
+ 			LPDESC desc = ch->GetDesc();
+@@ -7323,7 +7326,8 @@ void CHARACTER::IncreaseComboHackCount(int k)
+ 
+ 	if (m_iComboHackCount >= 10)
+ 	{
+-		if (GetDesc())
++		// sandbox / GMs: log only, never kick
++		if (GetDesc() && false == test_server && !IsGM())
+ 			if (GetDesc()->DelayedDisconnect(number(2, 7)))
+ 			{
+ 				sys_log(0, "COMBO_HACK_DISCONNECT: %s count: %d", GetName(), m_iComboHackCount);
+diff --git a/src/game/char_skill.cpp b/src/game/char_skill.cpp
+index 1700829..44fe3d0 100644
+--- a/src/game/char_skill.cpp
++++ b/src/game/char_skill.cpp
+@@ -3430,7 +3430,8 @@ bool CHARACTER::IsUsableSkillMotion(DWORD dwMotionIndex) const
+ 		{
+ 			DWORD eachJobGroup = s_anSkill2JobGroup[eachSkillVNum];
+ 
+-			if (0 == eachJobGroup || eachJobGroup == selfJobGroup)
++			// GMs may use any job/path's skills
++			if (0 == eachJobGroup || eachJobGroup == selfJobGroup || IsGM())
+ 			{
+ 				// GUILDSKILL_BUG_FIX
+ 				DWORD eachSkillLevel = 0;
+@@ -3577,6 +3578,25 @@ bool CHARACTER::CanUseSkill(DWORD dwSkillVnum) const
+ 		{
+ 			if (pSkill[i] == dwSkillVnum) return true;
+ 		}
++
++	}
++
++	// GMs may use any job/path's skills (also with no path chosen)
++	if (IsGM())
++	{
++		const int SKILL_COUNT = 6;
++		static const DWORD SkillListAll[JOB_MAX_NUM][SKILL_GROUP_MAX_NUM][SKILL_COUNT] =
++		{
++			{ {	1,	2,	3,	4,	5,	6	}, {	16,	17,	18,	19,	20,	21	} },
++			{ {	31,	32,	33,	34,	35,	36	}, {	46,	47,	48,	49,	50,	51	} },
++			{ {	61,	62,	63,	64,	65,	66	}, {	76,	77,	78,	79,	80,	81	} },
++			{ {	91,	92,	93,	94,	95,	96	}, {	106,107,108,109,110,111	} },
++		};
++
++		for (int job = 0; job < JOB_MAX_NUM; ++job)
++			for (int grp = 0; grp < SKILL_GROUP_MAX_NUM; ++grp)
++				for (int i = 0; i < SKILL_COUNT; ++i)
++					if (SkillListAll[job][grp][i] == dwSkillVnum) return true;
+ 	}
+ 
+ 	//if (true == IsHorseRiding())
 diff --git a/src/game/config.cpp b/src/game/config.cpp
 index fc2e102..957ef7d 100644
 --- a/src/game/config.cpp
@@ -15,6 +213,109 @@ index fc2e102..957ef7d 100644
  #ifndef OS_WINDOWS
  	struct ifaddrs* ifaddrp = NULL;
  
+diff --git a/src/game/desc.cpp b/src/game/desc.cpp
+index f207b44..10da705 100644
+--- a/src/game/desc.cpp
++++ b/src/game/desc.cpp
+@@ -664,6 +664,19 @@ bool DESC::HandshakeProcess(DWORD dwTime, int32_t lDelta, bool bInfiniteRetry)
+ {
+ 	DWORD dwCurTime = get_dword_time();
+ 
++	// LOCAL BUILD ONLY: accept any handshake (loopback RTT exceeds the 50ms
++	// bias bound on slow/software-rendered clients, making login impossible).
++	m_dwClientTime = dwCurTime;
++	m_bHandshaking = false;
++	return true;
++
++	if (getenv("M2_LAX_HANDSHAKE"))
++	{
++		m_dwClientTime = dwCurTime;
++		m_bHandshaking = false;
++		return true;
++	}
++
+ 	if (lDelta < 0)
+ 	{
+ 		sys_err("Desc::HandshakeProcess : value error (lDelta %" PRId32 ", ip %s)", lDelta, m_stHost.c_str());
+@@ -720,10 +733,14 @@ bool DESC::IsHandshaking()
+ 
+ bool DESC::IsExpiredHandshake() const
+ {
++	// LOCAL BUILD ONLY: never expire handshakes (loopback clients can take
++	// arbitrarily long between packets under software rendering).
++	return false;
++
+ 	if (m_handshake_time == 0)
+ 		return false;
+ 
+-	return (m_handshake_time + (5 * 1000)) < get_dword_time();
++	return (m_handshake_time + (30 * 1000)) < get_dword_time();
+ }
+ 
+ DWORD DESC::GetClientTime()
+@@ -737,7 +754,9 @@ void DESC::SendKeyAgreement()
+ 	TPacketKeyAgreement packet;
+ 
+ 	size_t data_length = TPacketKeyAgreement::MAX_DATA_LEN;
++	sys_log(0, "SendKeyAgreement: preparing (max %zu)", data_length);
+ 	size_t agreed_length = cipher_.Prepare(packet.data, &data_length);
++	sys_log(0, "SendKeyAgreement: prepared agreed=%zu data=%zu", agreed_length, data_length);
+ 	if (agreed_length == 0) {
+ 		// Initialization failure
+ 		SetPhase(PHASE_CLOSE);
+@@ -750,6 +769,7 @@ void DESC::SendKeyAgreement()
+ 	packet.wDataLength = (WORD)data_length;
+ 
+ 	Packet(&packet, sizeof(packet));
++	sys_log(0, "SendKeyAgreement: packet queued %zu", sizeof(packet));
+ }
+ 
+ void DESC::SendKeyAgreementCompleted()
+diff --git a/src/game/input_main.cpp b/src/game/input_main.cpp
+index 1c9e414..462a0dc 100644
+--- a/src/game/input_main.cpp
++++ b/src/game/input_main.cpp
+@@ -683,7 +683,9 @@ int CInputMain::Chat(LPCHARACTER ch, const char * data, size_t uiBytes)
+ 		if (ch->GetChatCounter() == 10)
+ 		{
+ 			sys_log(0, "CHAT_HACK: %s", ch->GetName());
+-			ch->GetDesc()->DelayedDisconnect(5);
++			// sandbox / GMs: warn only, never kick
++			if (false == test_server && !ch->IsGM())
++				ch->GetDesc()->DelayedDisconnect(5);
+ 		}
+ 
+ 		return iExtraLen;
+@@ -1528,11 +1530,13 @@ bool CheckComboHack(LPCHARACTER ch, BYTE bArg, DWORD dwTime, bool CheckSpeedHack
+ 	else
+ 	{
+ 		// 말이 안되는 콤보가 왔다 해커일 가능성?
+-		if (ch->GetDesc()->DelayedDisconnect(number(2, 9)))
++		// sandbox / GMs: log only, never kick
++		if (false == test_server && !ch->IsGM())
+ 		{
+-			LogManager::instance().HackLog("Hacker", ch);
+-			sys_log(0, "HACKER: %s arg %u", ch->GetName(), bArg);
++			if (ch->GetDesc()->DelayedDisconnect(number(2, 9)))
++				LogManager::instance().HackLog("Hacker", ch);
+ 		}
++		sys_log(0, "HACKER: %s arg %u", ch->GetName(), bArg);
+ 
+ 		HackScalar = 10;
+ 		ch->SetValidComboInterval(300);
+@@ -1667,10 +1671,10 @@ void CInputMain::Move(LPCHARACTER ch, const char * data)
+ 
+ 				if (test_server)
+ 				{
+-					ch->GetDesc()->DelayedDisconnect(number(2, 8));
++					// sandbox: warn only, never kick
+ 					ch->ChatPacket(CHAT_TYPE_INFO, szBuf);
+ 				}
+-				else
++				else if (!ch->IsGM())
+ 				{
+ 					ch->GetDesc()->DelayedDisconnect(number(150, 500));
+ 				}
 diff --git a/src/game/sectree_manager.cpp b/src/game/sectree_manager.cpp
 index 861b83b..362be5c 100644
 --- a/src/game/sectree_manager.cpp
