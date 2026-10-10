@@ -131,7 +131,7 @@ index 2dcffd6..83e3de7 100644
  			GetTablePostfix(), packet->account_index + 1, player_id, packet->account_id);
  	auto pMsg3 = CDBManager::instance().DirectQuery(queryStr);
 diff --git a/src/game/char.cpp b/src/game/char.cpp
-index cd03edd..340029f 100644
+index cd03edd..61b4934 100644
 --- a/src/game/char.cpp
 +++ b/src/game/char.cpp
 @@ -7180,7 +7180,10 @@ EVENTFUNC(check_speedhack_event)
@@ -146,6 +146,16 @@ index cd03edd..340029f 100644
  		{
  			// close connection
  			LPDESC desc = ch->GetDesc();
+@@ -7323,7 +7326,8 @@ void CHARACTER::IncreaseComboHackCount(int k)
+ 
+ 	if (m_iComboHackCount >= 10)
+ 	{
+-		if (GetDesc())
++		// sandbox / GMs: log only, never kick
++		if (GetDesc() && false == test_server && !IsGM())
+ 			if (GetDesc()->DelayedDisconnect(number(2, 7)))
+ 			{
+ 				sys_log(0, "COMBO_HACK_DISCONNECT: %s count: %d", GetName(), m_iComboHackCount);
 diff --git a/src/game/config.cpp b/src/game/config.cpp
 index fc2e102..957ef7d 100644
 --- a/src/game/config.cpp
@@ -221,6 +231,51 @@ index f207b44..10da705 100644
  }
  
  void DESC::SendKeyAgreementCompleted()
+diff --git a/src/game/input_main.cpp b/src/game/input_main.cpp
+index 1c9e414..462a0dc 100644
+--- a/src/game/input_main.cpp
++++ b/src/game/input_main.cpp
+@@ -683,7 +683,9 @@ int CInputMain::Chat(LPCHARACTER ch, const char * data, size_t uiBytes)
+ 		if (ch->GetChatCounter() == 10)
+ 		{
+ 			sys_log(0, "CHAT_HACK: %s", ch->GetName());
+-			ch->GetDesc()->DelayedDisconnect(5);
++			// sandbox / GMs: warn only, never kick
++			if (false == test_server && !ch->IsGM())
++				ch->GetDesc()->DelayedDisconnect(5);
+ 		}
+ 
+ 		return iExtraLen;
+@@ -1528,11 +1530,13 @@ bool CheckComboHack(LPCHARACTER ch, BYTE bArg, DWORD dwTime, bool CheckSpeedHack
+ 	else
+ 	{
+ 		// 말이 안되는 콤보가 왔다 해커일 가능성?
+-		if (ch->GetDesc()->DelayedDisconnect(number(2, 9)))
++		// sandbox / GMs: log only, never kick
++		if (false == test_server && !ch->IsGM())
+ 		{
+-			LogManager::instance().HackLog("Hacker", ch);
+-			sys_log(0, "HACKER: %s arg %u", ch->GetName(), bArg);
++			if (ch->GetDesc()->DelayedDisconnect(number(2, 9)))
++				LogManager::instance().HackLog("Hacker", ch);
+ 		}
++		sys_log(0, "HACKER: %s arg %u", ch->GetName(), bArg);
+ 
+ 		HackScalar = 10;
+ 		ch->SetValidComboInterval(300);
+@@ -1667,10 +1671,10 @@ void CInputMain::Move(LPCHARACTER ch, const char * data)
+ 
+ 				if (test_server)
+ 				{
+-					ch->GetDesc()->DelayedDisconnect(number(2, 8));
++					// sandbox: warn only, never kick
+ 					ch->ChatPacket(CHAT_TYPE_INFO, szBuf);
+ 				}
+-				else
++				else if (!ch->IsGM())
+ 				{
+ 					ch->GetDesc()->DelayedDisconnect(number(150, 500));
+ 				}
 diff --git a/src/game/sectree_manager.cpp b/src/game/sectree_manager.cpp
 index 861b83b..362be5c 100644
 --- a/src/game/sectree_manager.cpp
