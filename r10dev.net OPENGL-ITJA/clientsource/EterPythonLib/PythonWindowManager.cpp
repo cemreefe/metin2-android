@@ -932,7 +932,6 @@ namespace UI
 		// Attach
 		if (pWin->IsFlag(CWindow::FLAG_ATTACH))
 			pWin = pWin->GetRoot();
-
 		// Drag
 		if (!pWin->IsFlag(CWindow::FLAG_NOT_CAPTURE))
 			m_pRightCaptureWindow = pWin;
@@ -950,13 +949,69 @@ namespace UI
 				return;
 			}
 		}
+		// A window that does not handle the right button must not swallow the
+		// release for windows below it (e.g. TOP_MOST quest letter buttons
+		// overlapping skill slots). Try candidates under the point,
+		// top-most first, until one accepts.
+		std::vector<CWindow*> vecCandidates;
 
-		CWindow* pWin = GetPointWindow();
-		if (pWin)
-			pWin->OnMouseRightButtonUp();
+		if (m_pLockWindow)
+		{
+			CWindow* pWin = m_pLockWindow->PickWindow(m_lMouseX, m_lMouseY);
+			if (pWin)
+				vecCandidates.push_back(pWin);
+		}
+		else
+		{
+			for (TWindowContainer::iterator itor = m_PickAlwaysWindowList.begin(); itor != m_PickAlwaysWindowList.end(); ++itor)
+			{
+				CWindow* pWindow = *itor;
+				if (pWindow->IsRendering())
+					if (pWindow->IsIn(m_lMouseX, m_lMouseY))
+						vecCandidates.push_back(pWindow);
+			}
+
+			for (TWindowContainer::reverse_iterator ritor = m_LayerWindowList.rbegin(); ritor != m_LayerWindowList.rend(); ++ritor)
+			{
+				__CollectPointWindows(*ritor, m_lMouseX, m_lMouseY, vecCandidates);
+			}
+		}
+
+		for (std::vector<CWindow*>::iterator itor = vecCandidates.begin(); itor != vecCandidates.end(); ++itor)
+		{
+			if ((*itor)->OnMouseRightButtonUp())
+				break;
+		}
 
 		m_pRightCaptureWindow = NULL;
 		DeattachIcon();
+	}
+
+	void CWindowManager::__CollectPointWindows(CWindow* pWin, long x, long y, std::vector<CWindow*>& rVec)
+	{
+		// Same traversal order as PickWindow (children, top-most/deepest first),
+		// but appends every candidate instead of stopping at the first hit.
+		const CWindow::TWindowContainer& rChildList = pWin->GetChildren();
+		for (CWindow::TWindowContainer::const_reverse_iterator ritor = rChildList.rbegin(); ritor != rChildList.rend(); ++ritor)
+		{
+			CWindow* pChild = *ritor;
+			if (pChild->IsShow())
+			{
+				if (!pChild->IsFlag(CWindow::FLAG_IGNORE_SIZE))
+				{
+					if (!pChild->IsIn(x, y)) {
+						if (0L <= pChild->GetWidth()) {
+							continue;
+						}
+					}
+				}
+
+				__CollectPointWindows(pChild, x, y, rVec);
+			}
+		}
+
+		if (!pWin->IsFlag(CWindow::FLAG_NOT_PICK))
+			rVec.push_back(pWin);
 	}
 
 	void CWindowManager::RunMouseRightButtonDoubleClick(long x, long y)
