@@ -2,7 +2,7 @@
  "client": {
   "boot": {
    "url": "client-boot.m2pack",
-   "ver": "47101304ebb6b34d-dost1"
+   "ver": "464c6a5fc93afe1f-dost1"
   },
   "parts": [
    {
