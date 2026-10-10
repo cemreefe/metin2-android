@@ -131,7 +131,7 @@ index 2dcffd6..83e3de7 100644
  			GetTablePostfix(), packet->account_index + 1, player_id, packet->account_id);
  	auto pMsg3 = CDBManager::instance().DirectQuery(queryStr);
 diff --git a/src/game/char.cpp b/src/game/char.cpp
-index cd03edd..fc8abf3 100644
+index cd03edd..340029f 100644
 --- a/src/game/char.cpp
 +++ b/src/game/char.cpp
 @@ -7180,7 +7180,10 @@ EVENTFUNC(check_speedhack_event)
@@ -139,10 +139,10 @@ index cd03edd..fc8abf3 100644
  		LogManager::instance().SpeedHackLog(ch->GetPlayerID(), ch->GetX(), ch->GetY(), ch->m_speed_hack_count);
  
 -		if (false == LC_IsEurope())
-+		// test_server is a sandbox (singleplayer / dev realms): multi-hit
-+		// skill hits trip this counter legitimately there, so warn instead of
-+		// disconnecting.
-+		if (false == LC_IsEurope() && false == test_server)
++		// Never kick GMs / sandbox chars for this: multi-hit skill hits trip
++		// the counter legitimately (singleplayer runs test_server, where
++		// everyone is GM).
++		if (false == LC_IsEurope() && false == test_server && !ch->IsGM())
  		{
  			// close connection
  			LPDESC desc = ch->GetDesc();
