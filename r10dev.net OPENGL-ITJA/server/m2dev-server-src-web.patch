@@ -156,6 +156,46 @@ index cd03edd..61b4934 100644
  			if (GetDesc()->DelayedDisconnect(number(2, 7)))
  			{
  				sys_log(0, "COMBO_HACK_DISCONNECT: %s count: %d", GetName(), m_iComboHackCount);
+diff --git a/src/game/char_skill.cpp b/src/game/char_skill.cpp
+index 1700829..44fe3d0 100644
+--- a/src/game/char_skill.cpp
++++ b/src/game/char_skill.cpp
+@@ -3430,7 +3430,8 @@ bool CHARACTER::IsUsableSkillMotion(DWORD dwMotionIndex) const
+ 		{
+ 			DWORD eachJobGroup = s_anSkill2JobGroup[eachSkillVNum];
+ 
+-			if (0 == eachJobGroup || eachJobGroup == selfJobGroup)
++			// GMs may use any job/path's skills
++			if (0 == eachJobGroup || eachJobGroup == selfJobGroup || IsGM())
+ 			{
+ 				// GUILDSKILL_BUG_FIX
+ 				DWORD eachSkillLevel = 0;
+@@ -3577,6 +3578,25 @@ bool CHARACTER::CanUseSkill(DWORD dwSkillVnum) const
+ 		{
+ 			if (pSkill[i] == dwSkillVnum) return true;
+ 		}
++
++	}
++
++	// GMs may use any job/path's skills (also with no path chosen)
++	if (IsGM())
++	{
++		const int SKILL_COUNT = 6;
++		static const DWORD SkillListAll[JOB_MAX_NUM][SKILL_GROUP_MAX_NUM][SKILL_COUNT] =
++		{
++			{ {	1,	2,	3,	4,	5,	6	}, {	16,	17,	18,	19,	20,	21	} },
++			{ {	31,	32,	33,	34,	35,	36	}, {	46,	47,	48,	49,	50,	51	} },
++			{ {	61,	62,	63,	64,	65,	66	}, {	76,	77,	78,	79,	80,	81	} },
++			{ {	91,	92,	93,	94,	95,	96	}, {	106,107,108,109,110,111	} },
++		};
++
++		for (int job = 0; job < JOB_MAX_NUM; ++job)
++			for (int grp = 0; grp < SKILL_GROUP_MAX_NUM; ++grp)
++				for (int i = 0; i < SKILL_COUNT; ++i)
++					if (SkillListAll[job][grp][i] == dwSkillVnum) return true;
+ 	}
+ 
+ 	//if (true == IsHorseRiding())
 diff --git a/src/game/config.cpp b/src/game/config.cpp
 index fc2e102..957ef7d 100644
 --- a/src/game/config.cpp

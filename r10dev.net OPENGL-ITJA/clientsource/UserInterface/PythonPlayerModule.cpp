@@ -726,6 +726,15 @@ PyObject* playerGetSkillLevel(PyObject* poSelf, PyObject* poArgs)
 	return Py_BuildValue("i", CPythonPlayer::Instance().GetSkillLevel(iSlotIndex));
 }
 
+PyObject* playerGetSkillLevelByVnum(PyObject* poSelf, PyObject* poArgs)
+{
+	int iSkillIndex;
+	if (!PyTuple_GetInteger(poArgs, 0, &iSkillIndex))
+		return Py_BuildException();
+
+	return Py_BuildValue("i", CPythonPlayer::Instance().GetSkillLevelByVnum(iSkillIndex));
+}
+
 PyObject* playerGetSkillCurrentEfficientPercentage(PyObject* poSelf, PyObject* poArgs)
 {
 	int iSlotIndex;
@@ -2280,6 +2289,7 @@ void initPlayer()
 		{ "GetSkillSlotIndex",					playerGetSkillSlotIndex,					METH_VARARGS },
 		{ "GetSkillGrade",						playerGetSkillGrade,						METH_VARARGS },
 		{ "GetSkillLevel",						playerGetSkillLevel,						METH_VARARGS },
+		{ "GetSkillLevelByVnum",				playerGetSkillLevelByVnum,				METH_VARARGS },
 		{ "GetSkillCurrentEfficientPercentage",	playerGetSkillCurrentEfficientPercentage,	METH_VARARGS },
 		{ "GetSkillNextEfficientPercentage",	playerGetSkillNextEfficientPercentage,		METH_VARARGS },
 		{ "ClickSkillSlot",						playerClickSkillSlot,						METH_VARARGS },
