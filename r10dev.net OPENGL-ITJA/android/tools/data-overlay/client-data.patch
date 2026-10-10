@@ -857,7 +857,7 @@
  def RegisterSkill(race, group, empire=0):
  
  	DefineSkillIndexDict()
-@@ -113,6 +122,25 @@
+@@ -113,6 +122,22 @@
  				if i != 6 and i != 7:
  					player.SetSkill(i+1, skillIndex)
  
@@ -874,11 +874,8 @@
 +					break
 +				if v in activeSkillList:
 +					continue
-+				vLevel = player.GetSkillLevelByVnum(v)
-+				if vLevel > 0:
-+					slot = freeSlots.pop(0)
-+					player.SetSkill(slot, v)
-+					player.SetSkillLevel(slot, vLevel)
++				if player.GetSkillLevelByVnum(v) > 0:
++					player.SetSkill(freeSlots.pop(0), v)
 +
  			supportSkillList = SKILL_INDEX_DICT[job]["SUPPORT"]
  

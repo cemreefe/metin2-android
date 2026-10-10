@@ -931,6 +931,12 @@ void CPythonPlayer::SetSkill(DWORD dwSlotIndex, DWORD dwSkillIndex)
 
 	m_playerStatus.aSkill[dwSlotIndex].dwIndex = dwSkillIndex;
 	m_skillSlotDict[dwSkillIndex] = dwSlotIndex;
+
+	// skills learned outside the registered window slots (sandbox/GM):
+	// re-apply the stored level/grade so the slot is usable right away
+	std::map<DWORD, std::pair<DWORD, DWORD> >::iterator f = m_mapSkillGradeRawByVnum.find(dwSkillIndex);
+	if (f != m_mapSkillGradeRawByVnum.end() && f->second.second > 0)
+		SetSkillLevel_(dwSkillIndex, f->second.first, f->second.second);
 }
 
 int CPythonPlayer::GetSkillIndex(DWORD dwSlotIndex)
@@ -1015,6 +1021,7 @@ void CPythonPlayer::SetSkillLevel_(DWORD dwSkillIndex, DWORD dwSkillGrade, DWORD
 	else if (2 == dwSkillGrade) dwNormLevel = dwSkillLevel - 30 + 1;
 	else if (3 == dwSkillGrade) dwNormLevel = dwSkillLevel - 40 + 1;
 	m_mapSkillLevelByVnum[dwSkillIndex] = dwNormLevel;
+	m_mapSkillGradeRawByVnum[dwSkillIndex] = std::make_pair(dwSkillGrade, dwSkillLevel);
 
 	DWORD dwSlotIndex;
 	if (!GetSkillSlotIndex(dwSkillIndex, &dwSlotIndex))
