@@ -929,8 +929,14 @@ void CPythonPlayer::SetSkill(DWORD dwSlotIndex, DWORD dwSkillIndex)
 	if (dwSlotIndex >= SKILL_MAX_NUM)
 		return;
 
+	DWORD oldSkillIndex = m_playerStatus.aSkill[dwSlotIndex].dwIndex;
+	std::map<DWORD, DWORD>::iterator oldSlot = m_skillSlotDict.find(oldSkillIndex);
+	if (oldSlot != m_skillSlotDict.end() && oldSlot->second == dwSlotIndex)
+		m_skillSlotDict.erase(oldSlot);
+
 	m_playerStatus.aSkill[dwSlotIndex].dwIndex = dwSkillIndex;
-	m_skillSlotDict[dwSkillIndex] = dwSlotIndex;
+	if (dwSkillIndex != 0)
+		m_skillSlotDict[dwSkillIndex] = dwSlotIndex;
 
 	// skills learned outside the registered window slots (sandbox/GM):
 	// re-apply the stored level/grade so the slot is usable right away
@@ -1052,7 +1058,11 @@ void CPythonPlayer::SetSkillLevel_(DWORD dwSkillIndex, DWORD dwSkillGrade, DWORD
 
 		// Preserve the registered support skills and use whichever existing V
 		// cells are empty for the additional GM skill(s).
-		for (DWORD candidateSlot = 101; candidateSlot <= 112; ++candidateSlot)
+		static const DWORD kExtraSkillSlots[] =
+		{
+			7, 8, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112
+		};
+		for (DWORD candidateSlot : kExtraSkillSlots)
 		{
 			if (m_playerStatus.aSkill[candidateSlot].dwIndex == 0)
 			{
@@ -1668,6 +1678,8 @@ void CPythonPlayer::ClearSkillDict()
 {
 	// ClearSkillDict
 	m_skillSlotDict.clear();
+	m_mapSkillLevelByVnum.clear();
+	m_mapSkillGradeRawByVnum.clear();
 
 	// Game End - Player Data Reset
 	m_isOpenPrivateShop = false;

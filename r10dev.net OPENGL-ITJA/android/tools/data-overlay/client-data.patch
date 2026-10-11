@@ -841,7 +841,7 @@
  		self.CloseEvent = event
 --- a/playersettingmodule.py
 +++ b/playersettingmodule.py
-@@ -80,6 +80,15 @@
+@@ -80,11 +80,21 @@
  		},
  	}
  
@@ -857,26 +857,87 @@
  def RegisterSkill(race, group, empire=0):
  
  	DefineSkillIndexDict()
-@@ -113,6 +122,22 @@
- 				if i != 6 and i != 7:
- 					player.SetSkill(i+1, skillIndex)
+ 	
+ 	job = chr.RaceToJob(race)
++	activeSkillList = ()
  
-+			## GM sandbox: learned job/path skills outside the selected path
-+			## use the existing empty support-window cells (111, 112, ...).
-+			## These slots are visible and clickable in the V window.
-+			freeSlots = []
-+			for slot in xrange(101, 113):
-+				if 0 == player.GetSkillIndex(slot):
-+					freeSlots.append(slot)
-+
-+			for v in JOB_SKILL_VNUMS:
-+				if not freeSlots:
-+					break
-+				if v in activeSkillList:
-+					continue
-+				if player.GetSkillLevelByVnum(v) > 0:
-+					player.SetSkill(freeSlots.pop(0), v)
-+
- 			supportSkillList = SKILL_INDEX_DICT[job]["SUPPORT"]
+ 	# Ensure group 0 exists (horse-only) when cooldown fix is on
+ 	if not SKILL_INDEX_DICT[job].has_key(0):
+@@ -127,6 +137,24 @@
+ 		for i in xrange(len(languageSkillList)):
+ 			player.SetSkill(107+i, languageSkillList[i])
  
- 			for i in xrange(len(supportSkillList)):
++	## Learned foreign skills use the existing empty active cells first.
++	freeSlots = []
++	for slot in (7, 8) + tuple(xrange(101, 113)):
++		if 0 == player.GetSkillIndex(slot):
++			freeSlots.append(slot)
++
++	for v in JOB_SKILL_VNUMS:
++		if not freeSlots:
++			break
++		if v in activeSkillList:
++			continue
++		existingSlot = player.GetSkillSlotIndex(v)
++		if existingSlot and player.GetSkillIndex(existingSlot) == v:
++			continue
++		vlev = player.GetSkillLevelByVnum(v)
++		if vlev > 0:
++			player.SetSkill(freeSlots.pop(0), v)
++
+ 	## Guild Skill
+ 	for i in xrange(len(PASSIVE_GUILD_SKILL_INDEX_LIST)):
+ 		player.SetSkill(200+i, PASSIVE_GUILD_SKILL_INDEX_LIST[i])
+--- a/uicharacter.py
++++ b/uicharacter.py
+@@ -627,7 +627,7 @@
+ 		skillType = skill.GetSkillType(skillIndex)
+ 
+ 		## ACTIVE
+-		if skill.SKILL_TYPE_ACTIVE == skillType:
++		if skill.SKILL_TYPE_ACTIVE == skillType and slotNumber <= 100:
+ 			overInSkillGrade = self.__GetSkillGradeFromSlot(slotNumber)
+ 
+ 			if overInSkillGrade == skill.SKILL_GRADE_COUNT-1 and skillGrade == skill.SKILL_GRADE_COUNT:
+@@ -782,8 +782,11 @@
+ 			slotIndex = i + startSlotIndex
+ 			skillIndex = getSkillIndex(slotIndex)
+ 
+-			for j in xrange(skill.SKILL_GRADE_COUNT):
+-				skillPage.ClearSlot(self.__GetRealSkillSlot(j, i))
++			if "SUPPORT" == name:
++				skillPage.ClearSlot(slotIndex)
++			else:
++				for j in xrange(skill.SKILL_GRADE_COUNT):
++					skillPage.ClearSlot(self.__GetRealSkillSlot(j, i))
+ 
+ 			if 0 == skillIndex:
+ 				continue
+@@ -792,8 +795,17 @@
+ 			skillLevel = getSkillLevel(slotIndex)
+ 			skillType = getSkillType(skillIndex)
+ 
++			if "SUPPORT" == name and skill.SKILL_TYPE_ACTIVE == skillType:
++				skillPage.SetSkillSlotNew(slotIndex, skillIndex, min(skillGrade, skill.SKILL_GRADE_COUNT-1), skillLevel)
++				skillPage.SetSlotCountNew(slotIndex, skillGrade, skillLevel)
++				skillPage.SetCoverButton(slotIndex)
++				if player.IsSkillActive(slotIndex):
++					skillPage.ActivateSlot(slotIndex)
++				else:
++					skillPage.DeactivateSlot(slotIndex)
++
+ 			## Horse riding skill exception handling
+-			if player.SKILL_INDEX_RIDING == skillIndex:
++			elif player.SKILL_INDEX_RIDING == skillIndex:
+ 				if 1 == skillGrade:
+ 					skillLevel += 19
+ 				elif 2 == skillGrade:
+@@ -1311,6 +1323,8 @@
+ 		return ret
+ 
+ 	def __GetRealSkillSlot(self, skillGrade, skillSlot):
++		if skillSlot > 100:
++			return skillSlot
+ 		return skillSlot + min(skill.SKILL_GRADE_COUNT-1, skillGrade)*skill.SKILL_GRADE_STEP_COUNT
+ 
+ 	def __GetETCSkillRealSlotIndex(self, skillSlot):
