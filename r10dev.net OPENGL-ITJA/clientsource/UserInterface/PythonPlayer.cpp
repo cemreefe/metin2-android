@@ -1023,7 +1023,7 @@ void CPythonPlayer::SetSkillLevel_(DWORD dwSkillIndex, DWORD dwSkillGrade, DWORD
 	m_mapSkillLevelByVnum[dwSkillIndex] = dwNormLevel;
 	m_mapSkillGradeRawByVnum[dwSkillIndex] = std::make_pair(dwSkillGrade, dwSkillLevel);
 
-	DWORD dwSlotIndex;
+	DWORD dwSlotIndex = SKILL_MAX_NUM;
 	if (!GetSkillSlotIndex(dwSkillIndex, &dwSlotIndex))
 	{
 		// The Python skill layout is registered before the first skill-level
@@ -1050,7 +1050,9 @@ void CPythonPlayer::SetSkillLevel_(DWORD dwSkillIndex, DWORD dwSkillGrade, DWORD
 		if (!isForeignJobSkill || dwSkillLevel == 0)
 			return;
 
-		for (DWORD candidateSlot = 111; candidateSlot <= 112; ++candidateSlot)
+		// Preserve the registered support skills and use whichever existing V
+		// cells are empty for the additional GM skill(s).
+		for (DWORD candidateSlot = 101; candidateSlot <= 112; ++candidateSlot)
 		{
 			if (m_playerStatus.aSkill[candidateSlot].dwIndex == 0)
 			{
