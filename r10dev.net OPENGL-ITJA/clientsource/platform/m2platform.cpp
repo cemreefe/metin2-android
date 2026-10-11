@@ -53,6 +53,10 @@ namespace M2Plat
 	{
 	}
 
+	__attribute__((weak)) void SetPointerLocked(bool)
+	{
+	}
+
 	__attribute__((weak)) bool IsTouchPrimary()
 	{
 		return true;

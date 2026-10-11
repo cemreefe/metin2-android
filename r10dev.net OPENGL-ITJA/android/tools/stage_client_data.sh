@@ -25,7 +25,10 @@ done
 rsync -a "$A/root/" "$OUT/"
 rsync -a "$SRC/lib/" "$OUT/lib/"
 rsync -a "$SRC/bgm/" "$OUT/bgm/"
-cp "$SRC"/config/*.cfg "$SRC/channel.inf" "$OUT/"
+cp "$SRC"/config/*.cfg "$OUT/"
+for ci in "$SRC/channel.inf" "$SRC/config/channel.inf"; do
+	[ -f "$ci" ] && cp "$ci" "$OUT/" && break
+done
 printf '1252 %s\n' "$LOCALE" > "$OUT/loca.cfg"
 
 for kind in item mob; do
@@ -36,6 +39,8 @@ done
 
 cp "$HERE/data-overlay/m2compat.py" "$HERE/data-overlay/uimobilehud.py" "$HERE/data-overlay/uiscale.py" "$HERE/data-overlay/uidevoptions.py" "$OUT/"
 rsync -a "$HERE/data-overlay/fonts/" "$OUT/fonts/"
+rsync -a "$HERE/data-overlay/stage/" "$OUT/"
 python3 "$HERE/data-overlay/make_hud_art.py" "$OUT"
 patch -d "$OUT" -p1 --forward < "$HERE/data-overlay/client-data.patch"
+printf '5301\tWEAPON\ticon/item/05301.tga\td:/ymir work/pc/tps/gun.gr2\n' >> "$OUT/locale/common/item_list.txt"
 echo "staged client data in $OUT"

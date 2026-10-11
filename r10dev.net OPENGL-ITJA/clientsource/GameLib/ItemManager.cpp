@@ -314,6 +314,7 @@ bool CItemManager::LoadItemTable(const char* c_szFileName)
 
 	char szName[64 + 1];
 	std::map<DWORD, DWORD> itemNameMap;
+	CItemData::TItemTable tBowTable = {};
 
 	for (DWORD i = 0; i < dwElements; ++i)
 	{
@@ -368,6 +369,27 @@ bool CItemManager::LoadItemTable(const char* c_szFileName)
 		{
 			m_vec_ItemRange.push_back(pItemData);
 		}
+		if (table->dwVnum == 2030)
+			tBowTable = *table;
+	}
+
+	// TPS gun: the binary proto is left untouched; vnum 5301 is synthesized in
+	// code as a weapon/BOW clone of the battle bow so it equips and renders
+	// like one. Its icon/model come from item_list.txt (05301).
+	if (tBowTable.dwVnum)
+	{
+		CItemData::TItemTable tGun = tBowTable;
+		tGun.dwVnum = 5301;
+		tGun.dwVnumRange = 0;
+		_snprintf(tGun.szName, sizeof(tGun.szName), "%s", "TPS Carbine");
+		_snprintf(tGun.szLocaleName, sizeof(tGun.szLocaleName), "%s", "TPS Carbine");
+		tGun.dwRefinedVnum = 0;
+		tGun.wRefineSet = 0;
+
+		CItemData* pGunData = CItemData::New();
+		pGunData->SetDefaultItemData("icon/item/05301.tga");
+		pGunData->SetItemTableData(&tGun);
+		m_ItemMap.insert(TItemMap::value_type(tGun.dwVnum, pGunData));
 	}
 
 	delete[] pbData;

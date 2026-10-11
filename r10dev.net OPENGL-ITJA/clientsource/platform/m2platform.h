@@ -60,6 +60,10 @@ namespace M2Plat
 	// Shows/hides the OS pointer over the game (Win32 ShowCursor).
 	void SetPointerVisible(bool visible);
 
+	// Locks the pointer for relative mouse look (web Pointer Lock API; no-op
+	// elsewhere — touch platforms drive look with drag deltas instead).
+	void SetPointerLocked(bool locked);
+
 	// Entries of directory dir the adapter holds outside the filesystem and
 	// has not materialized yet, one call per name. No-op without such data.
 	typedef void (*ListDirFn)(const char* name, bool isDir, void* user);

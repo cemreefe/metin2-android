@@ -1652,6 +1652,15 @@ void CPythonPlayer::Clear()
 	m_isDirKey = false;
 	m_isAtkKey = false;
 
+	m_isShooterMode = false;
+	m_isShooterAiming = false;
+	m_isShooterFiring = false;
+	m_fShooterYaw = 0.0f;
+	m_fShooterPitch = 0.0f;
+	m_fShooterRestDistance = 0.0f;
+	m_dwShooterLastShotTime = 0;
+	m_dwShooterFlyIndex = 0;
+
 	m_isCmrRot = true;
 	m_fCmrRotSpd = 20.0f;
 

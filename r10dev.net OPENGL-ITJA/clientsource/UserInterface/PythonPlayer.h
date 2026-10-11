@@ -211,6 +211,17 @@ public:
 	void	NEW_SetSingleDIKKeyState(int eDIKKey, bool isPress);
 	void	NEW_SetMultiDirKeyState(bool isLeft, bool isRight, bool isUp, bool isDown);
 
+	// Third-person shooter mode (PythonPlayerTPS.cpp). While on, the camera is
+	// player-driven over-the-shoulder, LMB fires at the crosshair, RMB aims.
+	void	ShooterModeToggle();
+	bool	IsShooterMode() const { return m_isShooterMode; }
+	void	ShooterOnLook(int iDeltaX, int iDeltaY);
+	void	ShooterSetAim(bool isAim);
+	void	ShooterSetFire(bool isFire);
+	void	ShooterUpdate();
+	void	ShooterRenderCrosshair();
+	void	ShooterFireOnce();
+
 	void	NEW_Attack();
 	// taps act like the mouse's MBF_AUTO function: a tap on an attackable
 	// character keeps attacking it until it dies
@@ -640,6 +651,16 @@ protected:
 	int						m_aeMBFButton[MBT_NUM];
 
 	DWORD					m_dwTargetVID;
+
+	// Third-person shooter mode state
+	bool					m_isShooterMode;
+	bool					m_isShooterAiming;
+	bool					m_isShooterFiring;
+	float					m_fShooterYaw;
+	float					m_fShooterPitch;
+	float					m_fShooterRestDistance;
+	DWORD					m_dwShooterLastShotTime;
+	DWORD					m_dwShooterFlyIndex;
 	DWORD					m_dwTargetEndTime;
 	DWORD					m_dwPlayTime;
 

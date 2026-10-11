@@ -26,6 +26,8 @@ void CPythonApplication::OnUIRender()
 {
 	UI::CWindowManager& rkUIMgr = UI::CWindowManager::Instance();
 	rkUIMgr.Render();
+
+	CPythonPlayer::Instance().ShooterRenderCrosshair();
 }
 
 void CPythonApplication::OnSizeChange(int width, int height)
@@ -137,9 +139,37 @@ bool CPythonApplication::OnMouseWheelScroll(long x, long y, short wDelta)
 }
 #endif
 
+static int ShooterDirForKey(int iIndex)
+{
+	switch (iIndex)
+	{
+	case DIK_W: return CPythonPlayer::DIR_UP;
+	case DIK_S: return CPythonPlayer::DIR_DOWN;
+	case DIK_A: return CPythonPlayer::DIR_LEFT;
+	case DIK_D: return CPythonPlayer::DIR_RIGHT;
+	}
+	return -1;
+}
+
 void CPythonApplication::OnKeyDown(int iIndex)
 {
 	UI::CWindowManager& rkWndMgr = UI::CWindowManager::Instance();
+
+	if (DIK_F6 == iIndex)
+	{
+		CPythonPlayer::Instance().ShooterModeToggle();
+		return;
+	}
+
+	if (CPythonPlayer::Instance().IsShooterMode())
+	{
+		int eDir = ShooterDirForKey(iIndex);
+		if (eDir >= 0)
+		{
+			CPythonPlayer::Instance().NEW_SetSingleDirKeyState(eDir, true);
+			return;
+		}
+	}
 
 	if (DIK_ESCAPE == iIndex)
 	{
@@ -152,6 +182,17 @@ void CPythonApplication::OnKeyDown(int iIndex)
 void CPythonApplication::OnKeyUp(int iIndex)
 {
 	UI::CWindowManager& rkWndMgr = UI::CWindowManager::Instance();
+
+	if (CPythonPlayer::Instance().IsShooterMode())
+	{
+		int eDir = ShooterDirForKey(iIndex);
+		if (eDir >= 0)
+		{
+			CPythonPlayer::Instance().NEW_SetSingleDirKeyState(eDir, false);
+			return;
+		}
+	}
+
 	rkWndMgr.RunKeyUp(iIndex);
 }
 
@@ -354,6 +395,12 @@ void CPythonApplication::OnTouchEvent(int action, int x, int y)
 		OnMouseWheel(x);
 		return;
 	}
+	// Pointer-locked relative mouse movement arrives as deltas (x=dx, y=dy).
+	if (action == TOUCH_LOOK)
+	{
+		CPythonPlayer::Instance().ShooterOnLook(x, y);
+		return;
+	}
 	if (iSurfW > 0 && iSurfH > 0 && m_dwWidth && m_dwHeight)
 	{
 		x = x * (int)m_dwWidth / iSurfW;
@@ -371,14 +418,28 @@ void CPythonApplication::OnTouchEvent(int action, int x, int y)
 	g_iPortCursorX = x;
 	g_iPortCursorY = y;
 
+	// In shooter mode buttons map to fire/aim instead of the classic presses.
+	CPythonPlayer& rkShooter = CPythonPlayer::Instance();
+	const bool bShooter = rkShooter.IsShooterMode();
+
 	if (action == TOUCH_SYNTHETIC_DOWN)
 	{
+		if (bShooter)
+		{
+			rkShooter.ShooterSetFire(true);
+			return;
+		}
 		OnMouseMove(x, y);
 		OnMouseLeftButtonDown(x, y);
 		return;
 	}
 	if (action == TOUCH_SYNTHETIC_UP)
 	{
+		if (bShooter)
+		{
+			rkShooter.ShooterSetFire(false);
+			return;
+		}
 		OnMouseMove(x, y);
 		OnMouseLeftButtonUp(x, y);
 		return;
@@ -386,12 +447,22 @@ void CPythonApplication::OnTouchEvent(int action, int x, int y)
 	// Right-button events exist so desktop-web mice keep the camera-drag button.
 	if (action == TOUCH_RIGHT_DOWN)
 	{
+		if (bShooter)
+		{
+			rkShooter.ShooterSetAim(true);
+			return;
+		}
 		OnMouseMove(x, y);
 		OnMouseRightButtonDown(x, y);
 		return;
 	}
 	if (action == TOUCH_RIGHT_UP)
 	{
+		if (bShooter)
+		{
+			rkShooter.ShooterSetAim(false);
+			return;
+		}
 		OnMouseMove(x, y);
 		OnMouseRightButtonUp(x, y);
 		g_iPortCursorX -= g_iPortCursorWarpX;
@@ -425,8 +496,17 @@ void CPythonApplication::OnTouchEvent(int action, int x, int y)
 		}
 		if (m_eTouchMode == TOUCH_CAMERA)
 		{
-			m_fTouchCameraDX += (x - m_iTouchLastX) * m_fTouchCameraSensitivity;
-			m_fTouchCameraDY += (y - m_iTouchLastY) * m_fTouchCameraSensitivity;
+			if (bShooter)
+			{
+				rkShooter.ShooterOnLook(
+					(int)((x - m_iTouchLastX) * m_fTouchCameraSensitivity * 4.0f),
+					(int)((y - m_iTouchLastY) * m_fTouchCameraSensitivity * 4.0f));
+			}
+			else
+			{
+				m_fTouchCameraDX += (x - m_iTouchLastX) * m_fTouchCameraSensitivity;
+				m_fTouchCameraDY += (y - m_iTouchLastY) * m_fTouchCameraSensitivity;
+			}
 			m_iTouchLastX = x;
 			m_iTouchLastY = y;
 			return;
@@ -489,10 +569,13 @@ void CPythonApplication::OnPortFrame()
 	// frame's pointer movement, so it stops the frame the pointer stops.
 	if (m_eTouchMode == TOUCH_CAMERA)
 	{
-		if (CCamera* pkCmrCur = CCameraManager::Instance().GetCurrentCamera())
-			pkCmrCur->DragBy(m_fTouchCameraDX, m_fTouchCameraDY);
+		if (!CPythonPlayer::Instance().IsShooterMode())
+			if (CCamera* pkCmrCur = CCameraManager::Instance().GetCurrentCamera())
+				pkCmrCur->DragBy(m_fTouchCameraDX, m_fTouchCameraDY);
 		m_fTouchCameraDX = m_fTouchCameraDY = 0.0f;
 	}
+
+	CPythonPlayer::Instance().ShooterUpdate();
 
 	if (m_eTouchMode == TOUCH_WORLD_PENDING && ELTimer_GetMSec() - m_dwTouchStartTime >= c_dwTouchHoldMs)
 	{

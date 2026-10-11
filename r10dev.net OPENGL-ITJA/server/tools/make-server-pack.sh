@@ -51,5 +51,16 @@ done
 
 echo "== sqlite seed"
 python3 "$HERE/mysql2sqlite.py" "$RUNTIME/sql" "$OUT/server/sqlite-seed" --test-account "$ACCOUNT"
+if [ -f "$HERE/tps-seed.sql" ]; then
+    python3 - "$OUT/server/sqlite-seed/player.sqlite3" "$HERE/tps-seed.sql" <<'PY'
+import sqlite3, sys
+con = sqlite3.connect(sys.argv[1])
+# Enum-conversion triggers installed by mysql2sqlite.py reference this UDF;
+# our seed rows already carry text values, so a passthrough is enough.
+con.create_function("m2_enum_text", 3, lambda v, _enums, _base: v)
+con.executescript(open(sys.argv[2]).read())
+con.commit()
+PY
+fi
 
 du -sh "$OUT/server"

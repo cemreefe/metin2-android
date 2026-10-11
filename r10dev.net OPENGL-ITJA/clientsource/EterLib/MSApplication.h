@@ -20,7 +20,9 @@ public:
 	// the synthetic ones replay a deferred tap.
 	// TOUCH_WHEEL carries a mouse-wheel delta in x, as a pinch gesture maps to camera distance.
 	enum { TOUCH_SYNTHETIC_DOWN = 16, TOUCH_SYNTHETIC_UP = 17, TOUCH_WHEEL = 18,
-		TOUCH_RIGHT_DOWN = 19, TOUCH_RIGHT_UP = 20 };
+		TOUCH_RIGHT_DOWN = 19, TOUCH_RIGHT_UP = 20,
+		// Pointer-locked relative mouse movement; x/y carry raw deltas.
+		TOUCH_LOOK = 21 };
 	static void PushTouchEvent(int action, int x, int y);
 	virtual void OnTouchEvent(int action, int x, int y) {}
 	static void PushKeyEvent(int action, int keyCode, int unicodeChar);

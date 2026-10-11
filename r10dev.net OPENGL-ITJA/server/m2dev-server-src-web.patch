@@ -195,3 +195,60 @@ index 3914655..05f5fd7 100644
  static struct timeval null_time = { 0, 0 };
  
  #define ishprint(x)     ((((x) & 0xE0) > 0x90) || isprint(x))
+diff --git a/src/game/char_battle.cpp b/src/game/char_battle.cpp
+index d76674b..21110a3 100644
+--- a/src/game/char_battle.cpp
++++ b/src/game/char_battle.cpp
+@@ -2944,6 +2944,11 @@ void CHARACTER::UseArrow(LPITEM pkArrow, DWORD dwArrowCount)
+ 	}
+ }
+ 
++// TPS gun shots sent by the ported client: 60 = body, 61 = head.
++// Head shots get a temporary crit-chance boost so head region hits crit far
++// more often than body shots. Neither requires a bow or assassin job.
++enum { M2_SHOOT_GUN = 60, M2_SHOOT_GUN_HEAD = 61 };
++
+ class CFuncShoot
+ {
+ 	public:
+@@ -3063,6 +3068,40 @@ class CFuncShoot
+ 					}
+ 					break;
+ 
++				case M2_SHOOT_GUN:
++				case M2_SHOOT_GUN_HEAD:
++					{
++						int iDam = 0;
++
++						if (!m_me->IsPC())
++							return;
++
++						if (m_bType == M2_SHOOT_GUN_HEAD)
++						{
++							int iCrit = m_me->GetPoint(POINT_CRITICAL_PCT);
++							m_me->SetPoint(POINT_CRITICAL_PCT, iCrit + 60);
++							iDam = CalcMeleeDamage(m_me, pkVictim);
++							m_me->SetPoint(POINT_CRITICAL_PCT, iCrit);
++						}
++						else
++							iDam = CalcMeleeDamage(m_me, pkVictim);
++
++						DWORD dwCurrentTime = get_dword_time();
++						if (IS_SPEED_HACK(m_me, pkVictim, dwCurrentTime))
++							iDam = 0;
++
++						NormalAttackAffect(m_me, pkVictim);
++
++						m_me->OnMove(true);
++						pkVictim->OnMove();
++
++						if (pkVictim->CanBeginFight())
++							pkVictim->BeginFight(m_me);
++
++						pkVictim->Damage(m_me, iDam, DAMAGE_TYPE_NORMAL_RANGE);
++					}
++					break;
++
+ 				case SKILL_YEONSA:	// 연사
+ 					{
+ 						//int iUseArrow = 2 + (m_me->GetSkillPower(SKILL_YEONSA) *6/100);

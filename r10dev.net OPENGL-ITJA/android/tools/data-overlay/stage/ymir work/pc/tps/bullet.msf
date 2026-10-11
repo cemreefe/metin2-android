@@ -1,0 +1,31 @@
+SpreadingFlag           0
+InitialVelocity         8000.000000
+ConeAngle               0.000000
+RollAngle               0.000000
+AngularVelocity         0.000000 0.000000 0.000000
+Gravity                 0.000000
+HitOnBackground         1
+HitOnAnotherMonster     0
+PierceCount             0
+BombRange               15.000000
+BombEffect              "d:/ymir work/effect/hit/blow_1/blow_1_low_center.mse"
+HomingFlag              0
+HomingStartTime         0.000000
+HomingMaxAngle          0.000000
+Range                   6000.000000
+Acceleration            0.000000 0.000000 0.000000
+Group AttachData
+{
+    Type          1
+    FlyType       1
+    AttachFile    ""
+    TailFlag      1
+    TailColor     4294943000d
+    TailLength    0.400000
+    TailSize      0.600000
+    TailShapeRect 0
+    Roll          0.000000
+    Distance      0.000000
+    Period        1.000000
+    Amplitude     0.000000
+}

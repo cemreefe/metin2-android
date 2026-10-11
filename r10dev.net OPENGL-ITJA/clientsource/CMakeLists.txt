@@ -301,6 +301,7 @@ set(USER_INTERFACE_SOURCES
     UserInterface/PythonPlayerEventHandler.cpp
     UserInterface/PythonPlayerInput.cpp
     UserInterface/PythonPlayerInputKeyboard.cpp
+    UserInterface/PythonPlayerTPS.cpp
     UserInterface/PythonPlayerInputMouse.cpp
     UserInterface/PythonPlayerSkill.cpp
     UserInterface/PythonProfilerModule.cpp
