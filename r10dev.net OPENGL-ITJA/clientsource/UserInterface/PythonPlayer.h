@@ -658,6 +658,7 @@ protected:
 	bool					m_isShooterFiring;
 	float					m_fShooterYaw;
 	float					m_fShooterPitch;
+	float					m_fShooterRecoil;
 	float					m_fShooterRestDistance;
 	DWORD					m_dwShooterLastShotTime;
 	DWORD					m_dwShooterFlyIndex;

@@ -20,7 +20,7 @@ Group AttachData
     FlyType       1
     AttachFile    ""
     TailFlag      1
-    TailColor     4294943000d
+    TailColor     4294943000
     TailLength    0.400000
     TailSize      0.600000
     TailShapeRect 0

@@ -42,5 +42,7 @@ rsync -a "$HERE/data-overlay/fonts/" "$OUT/fonts/"
 rsync -a "$HERE/data-overlay/stage/" "$OUT/"
 python3 "$HERE/data-overlay/make_hud_art.py" "$OUT"
 patch -d "$OUT" -p1 --forward < "$HERE/data-overlay/client-data.patch"
-printf '5301\tWEAPON\ticon/item/05301.tga\td:/ymir work/pc/tps/gun.gr2\n' >> "$OUT/locale/common/item_list.txt"
+# 5301 = TPS Carbine: icon in item_list, no .gr2 — the mesh is drawn
+# procedurally on the weapon bone (CInstanceBase::__RenderShooterWeapon).
+printf '5301\tWEAPON\ticon/item/05301.tga\n' >> "$OUT/locale/common/item_list.txt"
 echo "staged client data in $OUT"

@@ -1657,6 +1657,7 @@ void CPythonPlayer::Clear()
 	m_isShooterFiring = false;
 	m_fShooterYaw = 0.0f;
 	m_fShooterPitch = 0.0f;
+	m_fShooterRecoil = 0.0f;
 	m_fShooterRestDistance = 0.0f;
 	m_dwShooterLastShotTime = 0;
 	m_dwShooterFlyIndex = 0;

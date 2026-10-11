@@ -1022,6 +1022,10 @@ bool CInstanceBase::SetRace(DWORD eRace)
 
 BOOL CInstanceBase::__IsChangableWeapon(int iWeaponID)
 {
+	// the TPS Carbine always renders — costume shapes may not suppress it
+	if (iWeaponID == 5301)
+		return true;
+
 	// �巹�� �԰� �������� ���ɿ��� ���� ������ �ʰ�..
 	if (IsWearingDress())
 	{
@@ -2066,6 +2070,93 @@ void CInstanceBase::RenderTrace()
 	m_GraphicThingInstance.RenderTrace();
 }
 
+// The TPS Carbine (vnum 5301) has no .gr2 in the shipped pack — its mesh is
+// assembled here from boxes on the weapon bone: stock, receiver, handguard,
+// barrel, grip, magazine, sight. Units are roughly the character scale.
+static void __PushGunBox(std::vector<SPDTVertexRaw>& v, const D3DXMATRIX& m,
+						 float cx, float cy, float cz,
+						 float hx, float hy, float hz, DWORD col)
+{
+	const D3DXVECTOR3 p[8] = {
+		D3DXVECTOR3(cx-hx, cy-hy, cz-hz), D3DXVECTOR3(cx+hx, cy-hy, cz-hz),
+		D3DXVECTOR3(cx-hx, cy+hy, cz-hz), D3DXVECTOR3(cx+hx, cy+hy, cz-hz),
+		D3DXVECTOR3(cx-hx, cy-hy, cz+hz), D3DXVECTOR3(cx+hx, cy-hy, cz+hz),
+		D3DXVECTOR3(cx-hx, cy+hy, cz+hz), D3DXVECTOR3(cx+hx, cy+hy, cz+hz),
+	};
+	static const int idx[36] = {
+		0,2,1, 1,2,3,  4,5,6, 5,7,6,  // -z, +z
+		0,1,4, 1,5,4,  2,6,3, 3,6,7,  // -y, +y
+		0,4,2, 2,4,6,  1,3,5, 3,7,5,  // -x, +x
+	};
+	for (int i = 0; i < 36; i++)
+	{
+		D3DXVECTOR3 w;
+		D3DXVec3TransformCoord(&w, &p[idx[i]], &m);
+		SPDTVertexRaw vtx = { w.x, w.y, w.z, col, 0.0f, 0.0f };
+		v.push_back(vtx);
+	}
+}
+
+void CInstanceBase::__RenderShooterWeapon()
+{
+	// Draw the procedural carbine whenever TPS mode is on. Costume shapes
+	// suppress m_awPart[PART_WEAPON], so that part value is not reliable here.
+	if (!CPythonPlayer::Instance().IsShooterMode())
+		return;
+
+	const char* szBoneName = NULL;
+	if (!m_GraphicThingInstance.GetAttachingBoneName(CRaceData::PART_WEAPON, &szBoneName))
+		return;
+	int iBone = -1;
+	if (!m_GraphicThingInstance.FindBoneIndex(CRaceData::PART_MAIN, szBoneName, &iBone))
+		return;
+	D3DXMATRIX* pBoneMat = NULL;
+	if (!m_GraphicThingInstance.GetBoneMatrix(CRaceData::PART_MAIN, iBone, &pBoneMat))
+		return;
+
+	// Verts are transformed into ACTOR space by the bone matrix; the device
+	// world matrix (set to the actor's world below) applies the rest. Doing
+	// the full compose here would double-transform under DrawPrimitiveUP.
+	// The weapon bone's +Y follows the hand; 0 tilt keeps the silhouette
+	// attached exactly like a carried weapon (tilt reads wrong visually).
+	D3DXMATRIX matTilt;
+	D3DXMatrixRotationX(&matTilt, 0.0f);
+	D3DXMATRIX matWorld = matTilt * (*pBoneMat);
+
+	const DWORD cGunmetal = 0xFF1A1B1D;
+	const DWORD cBody     = 0xFF2A2C30;
+	const DWORD cAccent   = 0xFF383C42;
+
+	std::vector<SPDTVertexRaw> verts;
+	verts.reserve(36 * 9);
+	// gun forward = bone +Y; origin sits where the grip meets the hand
+	__PushGunBox(verts, matWorld, 0.0f, 15.0f, 4.0f,   3.0f, 24.0f, 4.5f, cBody);     // receiver
+	__PushGunBox(verts, matWorld, 0.0f, 45.0f, 3.4f,   3.4f, 12.0f, 3.8f, cAccent);   // handguard
+	__PushGunBox(verts, matWorld, 0.0f, 64.0f, 4.6f,   1.3f, 18.0f, 1.3f, cGunmetal); // barrel
+	__PushGunBox(verts, matWorld, 0.0f, 83.0f, 4.6f,   1.7f,  3.5f, 1.7f, cGunmetal); // muzzle
+	__PushGunBox(verts, matWorld, 0.0f,-10.0f, 4.6f,   2.8f,  9.0f, 4.0f, cBody);     // stock
+	__PushGunBox(verts, matWorld, 0.0f,-21.0f, 1.5f,   3.4f,  6.0f, 5.0f, cGunmetal); // butt
+	__PushGunBox(verts, matWorld, 0.0f,  3.0f,-9.0f,   2.6f,  4.5f, 8.0f, cGunmetal); // grip
+	__PushGunBox(verts, matWorld, 0.0f, 18.0f,-11.0f,  2.3f,  6.5f, 9.5f, cGunmetal); // magazine
+	__PushGunBox(verts, matWorld, 0.0f, 18.0f, 12.0f,  1.0f,  7.0f, 1.6f, cAccent);   // sight rail
+
+	STATEMANAGER.SaveTransform(D3DTS_WORLD, &m_GraphicThingInstance.GetWorldMatrix());
+	STATEMANAGER.SaveRenderState(D3DRS_LIGHTING, FALSE);
+	STATEMANAGER.SetTexture(0, NULL);
+	STATEMANAGER.SetTexture(1, NULL);
+	STATEMANAGER.SaveTextureStageState(0, D3DTSS_COLORARG1, D3DTA_DIFFUSE);
+	STATEMANAGER.SaveTextureStageState(0, D3DTSS_COLOROP, D3DTOP_SELECTARG1);
+	STATEMANAGER.SaveTextureStageState(1, D3DTSS_COLOROP, D3DTOP_DISABLE);
+	STATEMANAGER.SetVertexShader(D3DFVF_XYZ | D3DFVF_DIFFUSE | D3DFVF_TEX1);
+	STATEMANAGER.DrawPrimitiveUP(D3DPT_TRIANGLELIST, (UINT)(verts.size() / 3),
+								 &verts[0], sizeof(SPDTVertexRaw));
+	STATEMANAGER.RestoreTextureStageState(1, D3DTSS_COLOROP);
+	STATEMANAGER.RestoreTextureStageState(0, D3DTSS_COLOROP);
+	STATEMANAGER.RestoreTextureStageState(0, D3DTSS_COLORARG1);
+	STATEMANAGER.RestoreRenderState(D3DRS_LIGHTING);
+	STATEMANAGER.RestoreTransform(D3DTS_WORLD);
+}
+
 void CInstanceBase::Render()
 {
 	// 2004.07.17.levites.isShow�� ViewFrustumCheck�� ����
@@ -2076,6 +2167,7 @@ void CInstanceBase::Render()
 
 	m_kHorse.Render();
 	m_GraphicThingInstance.Render();
+	__RenderShooterWeapon();
 
 	if (CActorInstance::IsDirLine())
 	{
@@ -3072,6 +3164,15 @@ bool CInstanceBase::SetWeapon(DWORD eWeapon)
 
 	m_GraphicThingInstance.AttachWeapon(eWeapon);
 	m_awPart[CRaceData::PART_WEAPON] = eWeapon;
+
+	// The TPS Carbine has no shipped model: drop whatever the attach left on
+	// the weapon bone so the procedural mesh in __RenderShooterWeapon is the
+	// only thing drawn.
+	if (eWeapon == 5301)
+	{
+		m_GraphicThingInstance.RegisterModelThing(CRaceData::PART_WEAPON, NULL);
+		m_GraphicThingInstance.RefreshActorInstance();
+	}
 
 	//Weapon Effect
 	CItemData* pItemData;

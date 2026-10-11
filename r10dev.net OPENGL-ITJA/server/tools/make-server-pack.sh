@@ -78,9 +78,13 @@ row = con.execute(
     "SELECT p.id FROM player p JOIN acct.account a ON a.id = p.account_id"
     " WHERE a.login = ? ORDER BY p.id LIMIT 1", (login,)).fetchone()
 if row:
+    # EQUIPMENT pos 0 = weapon slot: the char spawns holding the carbine.
+    # Drop the offhand starter weapon (shaman fan, pos 4) so nothing else is
+    # drawn in the hands.
+    con.execute("DELETE FROM item WHERE owner_id = ? AND window = 'EQUIPMENT' AND pos = 4", (row[0],))
     con.execute(
-        "INSERT OR IGNORE INTO item (id, owner_id, window, pos, count, vnum)"
-        " VALUES (20000999, ?, 'INVENTORY', 19, 1, 5301)", (row[0],))
+        "INSERT OR REPLACE INTO item (id, owner_id, window, pos, count, vnum)"
+        " VALUES (20000999, ?, 'EQUIPMENT', 0, 1, 5301)", (row[0],))
 con.commit()
 PY
 fi

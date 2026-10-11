@@ -90,24 +90,27 @@ void CPythonPlayer::ShooterSetFire(bool isFire)
 	m_isShooterFiring = m_isShooterMode && isFire;
 }
 
-// Projects an attackable character to screen space and keeps it if it is the
-// closest one to the crosshair. Returns the VID or 0 when nothing is aimed at.
+// Ray-vs-vertical-column test in world space: the crosshair ray runs along the
+// camera view direction; a mob counts as picked when the ray passes within its
+// body radius + pick margin, with hit height deciding body vs head. This is
+// done in world space because the device's projection matrices hold UI state
+// at update time and cannot be trusted here.
 static DWORD PickCrosshairTarget(float fPickRadius, bool* pbHead)
 {
 	CPythonCharacterManager& rkChrMgr = CPythonCharacterManager::Instance();
-	CPythonGraphic& rkGraphic = CPythonGraphic::Instance();
 
 	CInstanceBase* pkInstMain = rkChrMgr.GetMainInstancePtr();
-	if (!pkInstMain)
+	CCamera* pkCmr = CCameraManager::Instance().GetCurrentCamera();
+	if (!pkInstMain || !pkCmr)
 		return 0;
 
-	const int iSurfW = M2Plat::SurfaceWidth();
-	const int iSurfH = M2Plat::SurfaceHeight();
-	const float fCX = iSurfW * 0.5f;
-	const float fCY = iSurfH * 0.5f;
+	const D3DXVECTOR3& v3Eye = pkCmr->GetEye();
+	D3DXVECTOR3 v3Dir = pkCmr->GetTarget() - v3Eye;
+	D3DXVec3Normalize(&v3Dir, &v3Dir);
 
+	const float fMaxRange = 8000.0f;
 	DWORD dwBestVID = 0;
-	float fBestDist = fPickRadius;
+	float fBestT = fMaxRange;
 	bool  bBestHead = false;
 
 	for (CPythonCharacterManager::CharacterIterator itor = rkChrMgr.CharacterInstanceBegin();
@@ -133,20 +136,36 @@ static DWORD PickCrosshairTarget(float fPickRadius, bool* pbHead)
 		if (fH < 50.0f)
 			fH = 180.0f;
 
-		float fSX, fSY;
-		rkGraphic.ProjectPosition(c_rPos.x, -c_rPos.y, c_rPos.z + fH * 0.5f, &fSX, &fSY);
-
-		float fDist = sqrtf((fSX - fCX) * (fSX - fCX) + (fSY - fCY) * (fSY - fCY));
-		if (fDist > fBestDist)
+		// Camera space uses the -y flip convention (same as ProjectPosition).
+		D3DXVECTOR3 c(c_rPos.x, -c_rPos.y, c_rPos.z);
+		D3DXVECTOR3 toC = c - v3Eye;
+		float fT = D3DXVec3Dot(&toC, &v3Dir);
+		if (fT < 50.0f || fT > fMaxRange)
 			continue;
 
-		float fHX, fHY;
-		rkGraphic.ProjectPosition(c_rPos.x, -c_rPos.y, c_rPos.z + fH * SHOOTER_HEAD_TOP_FRAC, &fHX, &fHY);
-		bool bHead = (fCY < fHY) && fabsf(fSX - fCX) < fPickRadius;
+		D3DXVECTOR3 v3Closest = v3Eye + v3Dir * fT;
+		float fBodyR = max(v3Max.x - v3Min.x, v3Max.y - v3Min.y) * 0.5f;
+		if (fBodyR < 30.0f)
+			fBodyR = 30.0f;
+		float fColR = fBodyR + fPickRadius * 0.8f;
 
-		dwBestVID = pkInst->GetVirtualID();
-		fBestDist = fDist;
-		bBestHead = bHead;
+		// horizontal miss distance from the mob's vertical axis
+		float fDX = v3Closest.x - c.x;
+		float fDY = v3Closest.y - c.y;
+		float fMiss2 = fDX * fDX + fDY * fDY;
+		if (fMiss2 > fColR * fColR)
+			continue;
+		// vertical range check: the ray may pass above/below the body
+		float fHitZ = v3Closest.z;
+		if (fHitZ < c.z - 20.0f || fHitZ > c.z + fH + 40.0f)
+			continue;
+
+		if (fT < fBestT)
+		{
+			dwBestVID = pkInst->GetVirtualID();
+			fBestT = fT;
+			bBestHead = (fHitZ - c.z) > fH * SHOOTER_HEAD_TOP_FRAC;
+		}
 	}
 
 	if (pbHead)
@@ -182,14 +201,8 @@ void CPythonPlayer::ShooterFireOnce()
 	if (!pkInstMain)
 		return;
 
-	// Mimed shot: the bow-attack motion reads as shouldering the gun. Its fly
-	// event needs m_kFlyTarget, which stays cleared, so no arrow spawns and no
-	// second shot packet goes out — the tracer below is the only projectile.
-	{
-		CActorInstance& rkAct = pkInstMain->GetGraphicThingInstanceRef();
-		rkAct.ClearFlyTarget();
-		rkAct.InterceptOnceMotion(rkAct.GetNormalAttackIndex(), 0.1f);
-	}
+	// Recoil: small camera kick per shot, decayed in ShooterUpdate.
+	m_fShooterRecoil += m_isShooterAiming ? 0.15f : 0.3f;
 
 	bool bHead = false;
 	DWORD dwVID = PickCrosshairTarget(m_isShooterAiming ? SHOOTER_AIM_PICK_RADIUS : SHOOTER_PICK_RADIUS, &bHead);
@@ -222,9 +235,19 @@ void CPythonPlayer::ShooterUpdate()
 
 	if (CCamera* pkCmrCur = CCameraManager::Instance().GetCurrentCamera())
 	{
-		pkCmrCur->Pitch(m_fShooterPitch - pkCmrCur->GetPitch());
+		m_fShooterRecoil *= 0.82f;
+		const float fPitch = ClampShooter(m_fShooterPitch - m_fShooterRecoil, SHOOTER_PITCH_MIN, SHOOTER_PITCH_MAX);
+		pkCmrCur->Pitch(fPitch - pkCmrCur->GetPitch());
 		pkCmrCur->Roll(m_fShooterYaw - pkCmrCur->GetRoll());
 		pkCmrCur->SetDistance(m_isShooterAiming ? SHOOTER_AIM_DISTANCE : SHOOTER_DISTANCE);
+		// over-the-shoulder framing: shift eye and target together along the
+		// camera right vector so the character sits left of the crosshair and
+		// the aim ray clears it
+		const D3DXVECTOR3& v3Cross = pkCmrCur->GetCross();
+		const float fOff = m_isShooterAiming ? 25.0f : 55.0f;
+		D3DXVECTOR3 v3Off(v3Cross.x * fOff, v3Cross.y * fOff, v3Cross.z * fOff);
+		pkCmrCur->SetEye(pkCmrCur->GetEye() + v3Off);
+		pkCmrCur->SetTarget(pkCmrCur->GetTarget() + v3Off);
 	}
 
 	if (m_isShooterFiring)
