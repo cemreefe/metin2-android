@@ -240,14 +240,9 @@ void CPythonPlayer::ShooterUpdate()
 		pkCmrCur->Pitch(fPitch - pkCmrCur->GetPitch());
 		pkCmrCur->Roll(m_fShooterYaw - pkCmrCur->GetRoll());
 		pkCmrCur->SetDistance(m_isShooterAiming ? SHOOTER_AIM_DISTANCE : SHOOTER_DISTANCE);
-		// over-the-shoulder framing: shift eye and target together along the
-		// camera right vector so the character sits left of the crosshair and
-		// the aim ray clears it
-		const D3DXVECTOR3& v3Cross = pkCmrCur->GetCross();
-		const float fOff = m_isShooterAiming ? 25.0f : 55.0f;
-		D3DXVECTOR3 v3Off(v3Cross.x * fOff, v3Cross.y * fOff, v3Cross.z * fOff);
-		pkCmrCur->SetEye(pkCmrCur->GetEye() + v3Off);
-		pkCmrCur->SetTarget(pkCmrCur->GetTarget() + v3Off);
+		// The shoulder offset itself is applied in __UpdateCamera right after
+		// SetPositionCamera rebuilds eye/target — eye/target writes done here
+		// would be wiped by that rebuild before the next render.
 	}
 
 	if (m_isShooterFiring)

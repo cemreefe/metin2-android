@@ -16,6 +16,12 @@
 #include "PythonSystem.h"
 #include "PythonTextTail.h"
 #endif
+#include "../EterBase/MappedFile.h"
+#include "../EterLib/GrpImageTexture.h"
+#include "../eterPack/EterPackManager.h"
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+#endif
 
 BOOL HAIR_COLOR_ENABLE = FALSE;
 BOOL USE_ARMOR_SPECULAR = FALSE;
@@ -2070,38 +2076,55 @@ void CInstanceBase::RenderTrace()
 	m_GraphicThingInstance.RenderTrace();
 }
 
-// The TPS Carbine (vnum 5301) has no .gr2 in the shipped pack — its mesh is
-// assembled here from boxes on the weapon bone: stock, receiver, handguard,
-// barrel, grip, magazine, sight. Units are roughly the character scale.
-static void __PushGunBox(std::vector<SPDTVertexRaw>& v, const D3DXMATRIX& m,
-						 float cx, float cy, float cz,
-						 float hx, float hy, float hz, DWORD col)
+// The TPS Carbine (vnum 5301) has no .gr2 in the shipped pack - there is no
+// Granny authoring toolchain on Linux. Instead a CC0 AK-47 model (baked
+// offline from glTF) ships in the pack as d:/ymir work/pc/tps/ak47.m2m: a
+// flat list of {x,y,z,u,v} verts (3 per tri) in bone space - +Y muzzle, +Z
+// up, grip at origin, ~90 units long - plus the albedo
+// d:/ymir work/pc/tps/ak.tga. Both are loaded lazily here and drawn parented
+// to the weapon bone each frame while TPS mode is on.
+static struct SGunMesh
 {
-	const D3DXVECTOR3 p[8] = {
-		D3DXVECTOR3(cx-hx, cy-hy, cz-hz), D3DXVECTOR3(cx+hx, cy-hy, cz-hz),
-		D3DXVECTOR3(cx-hx, cy+hy, cz-hz), D3DXVECTOR3(cx+hx, cy+hy, cz-hz),
-		D3DXVECTOR3(cx-hx, cy-hy, cz+hz), D3DXVECTOR3(cx+hx, cy-hy, cz+hz),
-		D3DXVECTOR3(cx-hx, cy+hy, cz+hz), D3DXVECTOR3(cx+hx, cy+hy, cz+hz),
-	};
-	static const int idx[36] = {
-		0,2,1, 1,2,3,  4,5,6, 5,7,6,  // -z, +z
-		0,1,4, 1,5,4,  2,6,3, 3,6,7,  // -y, +y
-		0,4,2, 2,4,6,  1,3,5, 3,7,5,  // -x, +x
-	};
-	for (int i = 0; i < 36; i++)
-	{
-		D3DXVECTOR3 w;
-		D3DXVec3TransformCoord(&w, &p[idx[i]], &m);
-		SPDTVertexRaw vtx = { w.x, w.y, w.z, col, 0.0f, 0.0f };
-		v.push_back(vtx);
-	}
-}
+	bool tried = false;
+	std::vector<SPDTVertexRaw> verts;   // bone-space, diffuse pre-colored white
+	CGraphicImageTexture tex;
+	bool ok = false;
+} s_gunMesh;
 
 void CInstanceBase::__RenderShooterWeapon()
 {
-	// Draw the procedural carbine whenever TPS mode is on. Costume shapes
-	// suppress m_awPart[PART_WEAPON], so that part value is not reliable here.
 	if (!CPythonPlayer::Instance().IsShooterMode())
+		return;
+
+	if (!s_gunMesh.tried)
+	{
+		s_gunMesh.tried = true;
+		CMappedFile file;
+		LPCVOID pData = NULL;
+		if (CEterPackManager::Instance().Get(file, "d:/ymir work/pc/tps/ak47.m2m", &pData))
+		{
+			const DWORD nVerts = *(const DWORD*)pData;
+			const float* pf = (const float*)((const BYTE*)pData + 4);
+			if ((DWORD)file.Size() >= 4 + nVerts * 5 * sizeof(float))
+			{
+				s_gunMesh.verts.resize(nVerts);
+				for (DWORD i = 0; i < nVerts; ++i)
+				{
+					SPDTVertexRaw vtx = { pf[i*5+0], pf[i*5+1], pf[i*5+2],
+										  0xFFFFFFFF, pf[i*5+3], pf[i*5+4] };
+					s_gunMesh.verts[i] = vtx;
+				}
+				CMappedFile tga;
+				LPCVOID pTga = NULL;
+				if (CEterPackManager::Instance().Get(tga, "d:/ymir work/pc/tps/ak.tga", &pTga))
+					s_gunMesh.ok = s_gunMesh.tex.CreateFromMemoryFile(
+						tga.Size(), pTga, D3DFMT_UNKNOWN, D3DX_FILTER_LINEAR);
+			}
+		}
+		if (!s_gunMesh.ok)
+			TraceError("TPS: failed to load ymir work/pc/tps/ak47.m2m + ak.tga");
+	}
+	if (!s_gunMesh.ok)
 		return;
 
 	const char* szBoneName = NULL;
@@ -2114,44 +2137,45 @@ void CInstanceBase::__RenderShooterWeapon()
 	if (!m_GraphicThingInstance.GetBoneMatrix(CRaceData::PART_MAIN, iBone, &pBoneMat))
 		return;
 
-	// Verts are transformed into ACTOR space by the bone matrix; the device
-	// world matrix (set to the actor's world below) applies the rest. Doing
-	// the full compose here would double-transform under DrawPrimitiveUP.
-	// The weapon bone's +Y follows the hand; 0 tilt keeps the silhouette
-	// attached exactly like a carried weapon (tilt reads wrong visually).
-	D3DXMATRIX matTilt;
-	D3DXMatrixRotationX(&matTilt, 0.0f);
-	D3DXMATRIX matWorld = matTilt * (*pBoneMat);
+	// Weapon-bone attach: real weapons are authored in bone space and rendered
+	// with the bone matrix untouched. matPre (hand-tuned in the bone-space
+	// aligner) re-poses the AK so its grip sits in the hand and the muzzle
+	// matches the bow direction: matWorld = matPre * boneMatrix.
+	D3DXMATRIX matPre;
+	memset(&matPre, 0, sizeof(matPre));
+	matPre._11 = -0.1143f; matPre._12 = 0.9933f; matPre._13 = 0.0157f;
+	matPre._21 = 0.8921f;  matPre._22 = 0.1095f; matPre._23 = -0.4384f;
+	matPre._31 = -0.4372f; matPre._32 = -0.0361f; matPre._33 = -0.8987f;
+	matPre._41 = 11.00f;   matPre._42 = 6.50f;   matPre._43 = 4.00f;
+	matPre._44 = 1.0f;
+	D3DXMATRIX matWorld;
+	D3DXMatrixMultiply(&matWorld, &matPre, pBoneMat);
 
-	const DWORD cGunmetal = 0xFF1A1B1D;
-	const DWORD cBody     = 0xFF2A2C30;
-	const DWORD cAccent   = 0xFF383C42;
 
-	std::vector<SPDTVertexRaw> verts;
-	verts.reserve(36 * 9);
-	// gun forward = bone +Y; origin sits where the grip meets the hand
-	__PushGunBox(verts, matWorld, 0.0f, 15.0f, 4.0f,   3.0f, 24.0f, 4.5f, cBody);     // receiver
-	__PushGunBox(verts, matWorld, 0.0f, 45.0f, 3.4f,   3.4f, 12.0f, 3.8f, cAccent);   // handguard
-	__PushGunBox(verts, matWorld, 0.0f, 64.0f, 4.6f,   1.3f, 18.0f, 1.3f, cGunmetal); // barrel
-	__PushGunBox(verts, matWorld, 0.0f, 83.0f, 4.6f,   1.7f,  3.5f, 1.7f, cGunmetal); // muzzle
-	__PushGunBox(verts, matWorld, 0.0f,-10.0f, 4.6f,   2.8f,  9.0f, 4.0f, cBody);     // stock
-	__PushGunBox(verts, matWorld, 0.0f,-21.0f, 1.5f,   3.4f,  6.0f, 5.0f, cGunmetal); // butt
-	__PushGunBox(verts, matWorld, 0.0f,  3.0f,-9.0f,   2.6f,  4.5f, 8.0f, cGunmetal); // grip
-	__PushGunBox(verts, matWorld, 0.0f, 18.0f,-11.0f,  2.3f,  6.5f, 9.5f, cGunmetal); // magazine
-	__PushGunBox(verts, matWorld, 0.0f, 18.0f, 12.0f,  1.0f,  7.0f, 1.6f, cAccent);   // sight rail
+	static std::vector<SPDTVertexRaw> verts;
+	verts.resize(s_gunMesh.verts.size());
+	for (size_t i = 0; i < s_gunMesh.verts.size(); ++i)
+	{
+		const SPDTVertexRaw& s = s_gunMesh.verts[i];
+		D3DXVECTOR3 w;
+		D3DXVec3TransformCoord(&w, &D3DXVECTOR3(s.px, s.py, s.pz), &matWorld);
+		verts[i] = { w.x, w.y, w.z, s.diffuse, s.u, s.v };
+	}
 
 	STATEMANAGER.SaveTransform(D3DTS_WORLD, &m_GraphicThingInstance.GetWorldMatrix());
 	STATEMANAGER.SaveRenderState(D3DRS_LIGHTING, FALSE);
-	STATEMANAGER.SetTexture(0, NULL);
+	STATEMANAGER.SetTexture(0, s_gunMesh.tex.GetD3DTexture());
 	STATEMANAGER.SetTexture(1, NULL);
-	STATEMANAGER.SaveTextureStageState(0, D3DTSS_COLORARG1, D3DTA_DIFFUSE);
-	STATEMANAGER.SaveTextureStageState(0, D3DTSS_COLOROP, D3DTOP_SELECTARG1);
+	STATEMANAGER.SaveTextureStageState(0, D3DTSS_COLORARG1, D3DTA_TEXTURE);
+	STATEMANAGER.SaveTextureStageState(0, D3DTSS_COLORARG2, D3DTA_DIFFUSE);
+	STATEMANAGER.SaveTextureStageState(0, D3DTSS_COLOROP, D3DTOP_MODULATE);
 	STATEMANAGER.SaveTextureStageState(1, D3DTSS_COLOROP, D3DTOP_DISABLE);
 	STATEMANAGER.SetVertexShader(D3DFVF_XYZ | D3DFVF_DIFFUSE | D3DFVF_TEX1);
 	STATEMANAGER.DrawPrimitiveUP(D3DPT_TRIANGLELIST, (UINT)(verts.size() / 3),
 								 &verts[0], sizeof(SPDTVertexRaw));
 	STATEMANAGER.RestoreTextureStageState(1, D3DTSS_COLOROP);
 	STATEMANAGER.RestoreTextureStageState(0, D3DTSS_COLOROP);
+	STATEMANAGER.RestoreTextureStageState(0, D3DTSS_COLORARG2);
 	STATEMANAGER.RestoreTextureStageState(0, D3DTSS_COLORARG1);
 	STATEMANAGER.RestoreRenderState(D3DRS_LIGHTING);
 	STATEMANAGER.RestoreTransform(D3DTS_WORLD);

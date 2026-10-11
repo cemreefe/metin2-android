@@ -215,6 +215,7 @@ public:
 	// player-driven over-the-shoulder, LMB fires at the crosshair, RMB aims.
 	void	ShooterModeToggle();
 	bool	IsShooterMode() const { return m_isShooterMode; }
+	bool	IsShooterAiming() const { return m_isShooterAiming; }
 	void	ShooterOnLook(int iDeltaX, int iDeltaY);
 	void	ShooterSetAim(bool isAim);
 	void	ShooterSetFire(bool isFire);

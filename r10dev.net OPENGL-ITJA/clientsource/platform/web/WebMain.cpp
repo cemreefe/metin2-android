@@ -202,7 +202,10 @@ void M2Plat::SetKeyboardVisible(bool visible, float focusBottomFraction)
 
 void M2Plat::SetGameControlsVisible(bool visible)
 {
-	MAIN_THREAD_ASYNC_EM_ASM({ if (Module.m2SetGameControls) Module.m2SetGameControls($0); }, (int)visible);
+	MAIN_THREAD_ASYNC_EM_ASM({
+		if (Module.m2SetGameControls) Module.m2SetGameControls($0);
+		window._m2gc = $0; // headless test hook: 1 once map ready + char spawned
+	}, (int)visible);
 }
 
 void M2Plat::SetTouchBlockers(const SRect* rects, int count, int width, int height)

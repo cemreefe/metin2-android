@@ -596,3 +596,47 @@ the client. Three binaries, one page, zero network after first load.
   the bone matrix + `SaveTransform(D3DTS_WORLD)`). Real .gr2 authoring
   has no toolchain on Linux; a proper modeled firearm + hold anim is
   follow-up work.
+- **Real AK-47 mesh**: procedural boxes replaced by a CC0 AK-47
+  (opengameart "ak" pack) exported to a flat vertex soup
+  `ymir work/pc/tps/ak47.m2m` (`<u32 count><5f x,y,z,u,v>`) + `ak.tga`,
+  shipped inside `client-p14.m2pack` and drawn via `DrawPrimitiveUP`.
+  `icon/item/05301.tga` is a software-rendered side view of the same
+  mesh (script-generated, muzzle up, 32x64).
+- **m2pack append**: packs are gzip of `M2PK` + `<u32 bootCount><u32
+  total>` + per-file `<u32 pathLen><path><u64 size><bytes>`; `ver` in
+  packs.json = `sha256(gz)[:16]`. Appending `icon/item/05301.tga` is how
+  the inventory icon ships without repacking the big client parts.
+- **Shoulder offset belongs inside `__UpdateCamera`**: `ShooterUpdate`
+  runs at frame end in `OnPortFrame`, but `__UpdateCamera` rebuilds
+  `m_v3Eye`/`m_v3Target` from stored scalars EVERY frame in `Update()`
+  — eye/target written late are wiped next frame. The lateral offset
+  is applied inside `__UpdateCamera` right after `SetPositionCamera`,
+  pushing `GetCross() * -dist * 0.38` (0.42 aiming) onto eye+target.
+  Distance/pitch survive because they are stored scalars.
+- **Bone-space weapon convention**: attached weapons are parented to
+  the bone raw (`AttachModelInstance` → `SetParentModelInstance`);
+  weapon .gr2s are authored in bone space. Bow mesh (item/weapon/
+  02100.gr2, extracted via `third_party/OpenGr2ndma` built natively)
+  has its long axis on +Z — weapons lie along Z, not Y.
+- **Headless gotchas**: `KeyboardEvent`/`MouseEvent` on `#canvas` reach
+  the game; CDP `key` does not. `movementX` is a read-only getter —
+  must `Object.defineProperty(e,'movementX',{value})`. `window.*` is
+  worker-scoped: EM_ASM on the game pthread cannot see main-thread
+  `window` (crashes with ReferenceError — guard `typeof window`).
+  Spawn gate that actually works: `window._m2gc` set by
+  `M2Plat::SetGameControlsVisible` (fires when map ready + char
+  spawned, on the main thread).
+- **Serve/playwright**: `web/serve.py --root <dir> --port 8081` uses
+  flags, not positional args. `pkill -f drive_headless` kills the
+  caller's own shell — launch with `setsid nohup`.
+- **AK-47 bone pose**: the AK mesh (`ymir work/pc/tps/ak47.m2m`, CC0,
+  +Y muzzle / +Z up / grip at origin) is posed by `matPre` in
+  `InstanceBase::__RenderShooterWeapon`: `matWorld = matPre * boneMat`,
+  matching the direct bone-attach convention real weapons use. The pose
+  was hand-tuned in an interactive WebGL aligner (`/tmp/akview`):
+  textured AK + real bow wireframe (extracted from 02100.gr2) + stick
+  mannequin + wrist-box + direction arrow, sliders for roll/pitch/yaw
+  and XYZ move, prints a D3DXMATRIX. Roll slider applies in gun-local
+  space first so it always spins around the barrel.
+- **Headless load takes 200-350s** before game-phase connect; size
+  drive runs accordingly (~480s) since the log ends at cutoff.
