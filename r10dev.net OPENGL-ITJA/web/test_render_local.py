@@ -20,6 +20,10 @@ class RenderLocalTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             validate("<html></html>")
 
+    def test_rejects_ungated_engine_script(self):
+        with self.assertRaises(ValueError):
+            validate('<script async src="metin2_web.js?v=test-build"></script>')
+
     def test_rejects_missing_template_placeholder(self):
         with self.assertRaises(ValueError):
             render("<html></html>", "test-build")

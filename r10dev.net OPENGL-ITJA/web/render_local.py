@@ -19,8 +19,12 @@ def render(template, version):
 def validate(html):
     if "{{{" in html or "}}}" in html:
         raise ValueError("unexpanded deployment template")
-    if not re.search(r'<script\s+async\s+src="metin2_web\.js\?v=[\w-]+"></script>', html):
-        raise ValueError("missing engine script")
+    if not re.search(
+        r'<template id="m2engine-script">\s*'
+        r'<script\s+async\s+src="metin2_web\.js\?v=[\w-]+"></script>\s*</template>',
+        html,
+    ):
+        raise ValueError("missing gated engine script")
 
 
 if __name__ == "__main__":
