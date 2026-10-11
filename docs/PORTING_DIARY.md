@@ -540,3 +540,35 @@ the client. Three binaries, one page, zero network after first load.
   test clicks land ~10px off — the "dead slider" was a coordinate bug,
   not an input bug. Verify handlers with a file-writing probe, not
   screenshots.
+
+## Third-person shooter mode (TPS branch)
+
+- **Loopback select**: `fdwatch` calls `select(0, &fds, ...)` — nfds is
+  always 0 and readiness must come from the fd_sets themselves. The Linux
+  build already had that fix (see troubleshooting table), but
+  `m2lb_bridge.cpp`'s `m2lp_select` re-implemented the same bug: it
+  scanned `fd < nfds`, so zero fds, so auth's listener never went
+  readable and the client's queued conn sat forever — login stalled on
+  the splash with a perfectly healthy connect. `m2lp_select` now scans
+  the fake-fd table and tests fd_set membership.
+- **Hitscan reuses the bow pipeline**: TPS fires
+  `SendFlyTargetingPacket(VID) + SendShootPacket(bType)` like an arrow,
+  but the VID is picked from whatever sits under the crosshair at fire
+  time (`PickCrosshairTarget` projects mob bounding boxes to screen
+  space). No homing: the tracer is a `CFlyTarget` on a position, not a
+  VID, so it flies straight. Head pick sends bType 61 vs 60; the server
+  adds +60 `POINT_CRITICAL_PCT` around `CalcMeleeDamage`.
+- **The shoot anim is mimed**: `InterceptOnceMotion` with the fly target
+  cleared plays the weapon attack motion without spawning an arrow or
+  re-sending the packet. On a sword-wielding char it logs a
+  missing-motion error — harmless, gone with the carbine equipped.
+- **New weapon without touching the binary proto**: vnum 5301 is
+  synthesized client-side in `ItemManager::LoadItemTable` (clone of the
+  2030 battle-bow `TItemTable` row) and cloned server-side in
+  `tools/tps-seed.sql` (INSERT-SELECT + a seeded inventory row). Icon /
+  gr2 / `item_list.txt` come from the data overlay.
+- **Headless driving**: `web/drive_headless.py` + CDP `Input.dispatch*`
+  works, but F-keys and level-triggered fire need DOM-dispatched events
+  (`KeyboardEvent` with `keyCode` forced via `defineProperty`, held
+  `mousedown` on `#canvas`) — CDP `rawKeyDown` for F6 did not reach the
+  wasm key path in our runs.
