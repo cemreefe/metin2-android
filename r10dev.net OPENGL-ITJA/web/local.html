@@ -89,8 +89,13 @@ if (!m2PageReady) {
   } else {
     coiMsg.textContent = 'preparing page (one-time setup)…';
     navigator.serviceWorker.addEventListener('controllerchange', coiReload);
-    navigator.serviceWorker.register('coi-sw.js').then(function () {
-      if (navigator.serviceWorker.controller) coiReload();
+    navigator.serviceWorker.register('coi-sw.js').then(function (registration) {
+      if (navigator.serviceWorker.controller ||
+          (registration.active && registration.active.state === 'activated')) {
+        coiReload();
+      } else {
+        navigator.serviceWorker.ready.then(coiReload);
+      }
     }).catch(function () { coiFail('page setup failed'); });
     setTimeout(function () {
       if (!coiReloading) coiFail('page setup timed out');

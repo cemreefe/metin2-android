@@ -8,7 +8,8 @@ const html = fs.readFileSync(path.join(__dirname, 'local.html'), 'utf8')
   .replaceAll('{{{ M2V }}}', 'test-build');
 const scripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m => m[1]);
 
-function setup({isolated = false, controller = null, tries = 0, serviceWorker = true} = {}) {
+function setup({isolated = false, controller = null, tries = 0, serviceWorker = true,
+  workerState = 'installing'} = {}) {
   const elements = new Map();
   function element(id) {
     if (!elements.has(id)) {
@@ -29,9 +30,16 @@ function setup({isolated = false, controller = null, tries = 0, serviceWorker = 
   const appended = [];
   const stored = new Map([['m2coi', String(tries)]]);
   let reloads = 0, buffers = 0, workers = 0;
+  let activateWorker;
+  const registration = workerState === 'installing'
+    ? {installing: {state: workerState}}
+    : {active: {state: workerState}};
   const sw = {
     controller,
-    register() { return Promise.resolve({installing: {}}); },
+    ready: new Promise(resolve => {
+      activateWorker = () => resolve({active: {state: 'activated'}});
+    }),
+    register() { return Promise.resolve(registration); },
     addEventListener(name, fn) { listeners[name] = fn; },
   };
   const context = {
@@ -67,7 +75,7 @@ function setup({isolated = false, controller = null, tries = 0, serviceWorker = 
   vm.createContext(context);
   for (const script of scripts) vm.runInContext(script, context);
   return {
-    context, elements, sw, listeners, timers, appended, stored,
+    context, elements, sw, listeners, timers, appended, stored, activateWorker,
     counts() { return {reloads, buffers, workers}; },
   };
 }
@@ -91,6 +99,36 @@ test('installing worker is not enough; wait for controller claim then reload onc
   state.timers[0]();
   assert.equal(state.counts().reloads, 1);
   assert.equal(state.stored.get('m2coi'), '1');
+  assert.equal(state.appended.length, 0);
+});
+
+test('activated registration reloads an uncontrolled document without waiting for takeover', async () => {
+  const state = setup({workerState: 'activated'});
+  await Promise.resolve();
+  assert.deepEqual(state.counts(), {reloads: 1, buffers: 0, workers: 0});
+  assert.equal(state.context.Module, undefined);
+  assert.equal(state.appended.length, 0);
+  state.listeners.controllerchange();
+  state.timers[0]();
+  assert.equal(state.counts().reloads, 1);
+});
+
+test('worker activation can recover setup even without controllerchange', async () => {
+  const state = setup({workerState: 'activating'});
+  await Promise.resolve();
+  assert.equal(state.counts().reloads, 0);
+  state.activateWorker();
+  await Promise.resolve();
+  assert.deepEqual(state.counts(), {reloads: 1, buffers: 0, workers: 0});
+  assert.equal(state.context.Module, undefined);
+  assert.equal(state.appended.length, 0);
+});
+
+test('activated registration cannot cause an unbounded isolation reload loop', async () => {
+  const state = setup({workerState: 'activated', tries: 4});
+  await Promise.resolve();
+  assert.equal(state.counts().reloads, 0);
+  assert.equal(state.elements.get('status-span').textContent, 'cross-origin isolation failed');
   assert.equal(state.appended.length, 0);
 });
 
