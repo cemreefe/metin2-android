@@ -572,3 +572,27 @@ the client. Three binaries, one page, zero network after first load.
   (`KeyboardEvent` with `keyCode` forced via `defineProperty`, held
   `mousedown` on `#canvas`) — CDP `rawKeyDown` for F6 did not reach the
   wasm key path in our runs.
+- **Shoot packets die in `CInputMain::Attack` on `CanUseSkill`**: the
+  dispatcher reinterprets packet bytes as `{header,type}` and calls
+  `ch->CanUseSkill(type)` for any `type > 0` — our bType 60/61 reads as a
+  skill vnum the char doesn't know, so `Shoot()` was never reached.
+  Verified by stderr probes: FlyTarget packets arrived and resolved VIDs
+  while `Shoot` logged nothing. Fixed by bypassing the skill gate for
+  shoot types 60/61 in `input_main.cpp`.
+- **`IS_SPEED_HACK` zeroes gun damage**: it rejects same-victim refires
+  faster than `GET_ATTACK_SPEED(ch)`; the 300ms firearm cadence tripped
+  it every shot. Removed for gun shoot types only.
+- **Server `sys_log` never reaches the wasm console**: `g_syslog` is a
+  spdlog file sink (`syslog_rotate_sink`). For debugging use
+  `fprintf(stderr, ...)` — worker stderr is forwarded to the page
+  console as `[m2game.js]` lines.
+- **`m2pw` URL param is mandatory**: `local.html` gates on a passphrase;
+  `?m2pw=x&m2acc=test:test123` is the working headless URL. Without it
+  the page sits at the gate with no error.
+- **Wiping `cdp-profile` costs ~200-280s of pack staging** before world
+  entry; keep the profile between runs.
+- **Procedural gun instead of .gr2**: `__RenderShooterWeapon` draws a
+  9-box carbine parented to the right-hand bone (actor-space verts via
+  the bone matrix + `SaveTransform(D3DTS_WORLD)`). Real .gr2 authoring
+  has no toolchain on Linux; a proper modeled firearm + hold anim is
+  follow-up work.
