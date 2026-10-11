@@ -18,6 +18,12 @@
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   #detail { color: #444; font-size: 10px; margin-top: 4px; max-width: 90vw;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #failure { display: none; color: #bbb; max-width: 90vw; white-space: pre-wrap;
+    overflow-wrap: anywhere; max-height: 50vh; overflow: auto; pointer-events: auto;
+    text-align: left; margin: 12px auto; }
+  #recovery { display: none; pointer-events: auto; }
+  #recovery button { background: #222; border: 1px solid #555; color: #ccc;
+    padding: 8px 12px; font: inherit; cursor: pointer; }
   #spin { width: 18px; height: 18px; margin: 0 auto 10px;
     border: 2px solid #333; border-top-color: #999; border-radius: 50%;
     animation: m2rot .8s linear infinite; }
@@ -39,10 +45,10 @@
 </head>
 <body>
 <canvas id="canvas"></canvas>
-<div id="status"><div id="spin"></div><span>starting…</span><div id="bar"><div id="barfill"></div></div><div id="srv"></div><div id="detail"></div></div>
+<div id="status"><div id="spin"></div><span>starting…</span><div id="bar"><div id="barfill"></div></div><div id="srv"></div><div id="detail"></div><pre id="failure"></pre><div id="recovery"><button id="restart">Restart</button> <button id="downloadlog">Save error log</button></div></div>
 <div id="gate"><div><input id="pw" type="password" placeholder="passphrase" autocomplete="off"><button id="pwgo">play</button></div><div class="hint"></div><div class="hint"><a id="realmlink" href="#" style="color:#777"></a></div></div>
-<script src="m2pack.js?v=fix1kk0018"></script>
-<script src="m2hud.js?v=fix1kk0018"></script>
+<script src="m2pack.js?v=fix1kk0019"></script>
+<script src="m2hud.js?v=fix1kk0019"></script>
 <script>
 // SharedArrayBuffer needs cross-origin isolation. On hosts that don't send
 // COOP/COEP (plain static hosting), a service worker injects the headers —
@@ -119,7 +125,7 @@ function setStatus(txt, frac) {
 // Latest line from each server worker, so the boot never looks dead.
 // Build stamp on every URL: Pages caches files for 10 min, and a new
 // page must never run with an old engine.
-var M2V = 'fix1kk0018';
+var M2V = 'fix1kk0019';
 var srvLines = {};
 function setSrv(tag, s) {
   srvLines[tag] = s;
@@ -191,10 +197,52 @@ if (m2realmLink && !m2realm) {
   m2realmLink.href = ru.toString();
 }
 
-window.m2workers = {};
+var m2ClientErrors = [];
+var m2ExitLog = '';
+var m2Stopped = false;
+function m2ReadExitLog(code, what) {
+  var log = '';
+  try {
+    log = FS.readFile('/data/syserr.txt', {encoding: 'utf8'}).slice(-65536);
+  } catch (e) {}
+  return 'Metin2 build: ' + M2V + '\nExit: ' + code +
+    (what ? '\nAbort: ' + what : '') + '\n\n' + log +
+    '\n\nClient stderr:\n' + m2ClientErrors.join('\n');
+}
+function m2ShowFailure(code, what) {
+  if (m2Stopped) return;
+  m2Stopped = true;
+  m2ExitLog = m2ReadExitLog(code, what);
+  try { localStorage.setItem('m2-last-error', m2ExitLog); } catch (e) {}
+  console.error(m2ExitLog);
+  worldTxt = '';
+  statusEl.style.display = '';
+  setStatus(what ? 'Client crashed' : 'Client stopped (exit ' + code + ')');
+  document.getElementById('spin').style.display = 'none';
+  barWrap.style.display = 'none';
+  srvEl.style.display = 'none';
+  detailEl.style.display = 'none';
+  var errors = m2ExitLog.split('\n').filter(function (line) {
+    return /abort|traceback|error|exception|failed|not found|cannot|^.*\(line:\d+\)/i.test(line);
+  }).slice(-12);
+  var failure = document.getElementById('failure');
+  failure.textContent = errors.length ? errors.join('\n') :
+    'No client error was recorded. The error log includes the last client messages.';
+  failure.style.display = 'block';
+  document.getElementById('recovery').style.display = 'block';
+}
+document.getElementById('restart').onclick = function () { location.reload(); };
+document.getElementById('downloadlog').onclick = function () {
+  var url = URL.createObjectURL(new Blob([m2ExitLog], {type: 'text/plain;charset=utf-8'}));
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = 'metin2-error.txt';
+  a.click();
+  setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+};
+
 function spawnSrv(tag, cfg) {
   var w = new Worker('srv_worker.js?v=' + M2V + '#' + tag);
-  window.m2workers[tag] = w;
   cfg.m2 = 'init';
   cfg.sab = m2sab;
   w.onmessage = function (e) {
@@ -203,7 +251,6 @@ function spawnSrv(tag, cfg) {
     else if (d && d.m2 === 'log') { console.log('[' + tag + ']', d.s); setSrv(tag, d.s); }
     else if (d && d.m2 === 'stage') setSrv(tag, d.s);
     else if (d && d.m2 === 'ready') { console.log('[' + tag + '] ready'); setSrv(tag, 'ready'); }
-    else if (d && d.m2 === 'filedata') { console.log('[' + tag + ' FILE ' + d.path + ']\n' + d.s); }
   };
   w.onerror = function (e) { console.warn('[' + tag + ']', e.message || e); };
   w.postMessage(cfg);
@@ -214,16 +261,18 @@ var Module = {
   canvas: document.getElementById('canvas'),
   locateFile: function (p) { return p + '?v=' + M2V; },
   print: function (s) { console.log(s); setDetail(s); },
-  printErr: function (s) { console.warn(s); },
+  printErr: function (s) {
+    console.warn(s);
+    m2ClientErrors.push(String(s).slice(-2048));
+    if (m2ClientErrors.length > 100) m2ClientErrors.shift();
+  },
   onExit: function (code) {
     console.error('[m2] engine exited: ' + code);
-    statusEl.style.display = '';
-    setStatus('game stopped (exit ' + code + ') — reload to restart');
+    m2ShowFailure(code);
   },
   onAbort: function (what) {
     console.error('[m2] engine aborted: ' + what);
-    statusEl.style.display = '';
-    setStatus('engine crashed: ' + what);
+    m2ShowFailure('abort', what);
   },
   m2lbSab: m2sab,
   preRun: [
@@ -338,7 +387,8 @@ async function m2gateLoop(checkSpec) {
 async function m2boot() {
   var packs;
   try {
-    packs = await (await fetch('packs.json')).json();
+    packs = await (await fetch('packs.json?v=' + encodeURIComponent(M2V),
+      {cache: 'no-cache'})).json();
   } catch (e) {
     statusEl.textContent = 'packs.json: ' + e;
     throw e;
@@ -442,6 +492,6 @@ async function m2boot() {
 
 document.addEventListener('contextmenu', function (e) { e.preventDefault(); });
 </script>
-<script async src="metin2_web.js?v=fix1kk0018"></script>
+<script async src="metin2_web.js?v=fix1kk0019"></script>
 </body>
 </html>

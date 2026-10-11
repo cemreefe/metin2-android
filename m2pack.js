@@ -68,9 +68,9 @@ async function m2idbPut(url, ver, gz) {
     var db = await m2idbOpen();
     await new Promise(function (resolve) {
       var tx = db.transaction('packs', 'readwrite');
-      tx.objectStore('packs').put({ url: url, ver: ver, gz: gz });
+      tx.objectStore('packs').put({ url: url, ver: ver, gz: gz, versioned: true });
       tx.oncomplete = resolve;
-      tx.onerror = resolve;
+      tx.onerror = tx.onabort = resolve;
     });
   } catch (e) {}
 }
@@ -80,10 +80,12 @@ async function m2idbPut(url, ver, gz) {
 // JS heap, and IndexedDB stores it straight through.
 async function m2packFetch(spec, onProgress) {
   var hit = await m2idbGet(spec.url);
-  if (hit && hit.ver === spec.ver)
+  if (hit && hit.ver === spec.ver && hit.versioned === true)
     return hit.gz instanceof Blob ? hit.gz : new Blob([hit.gz]);
 
-  var resp = await fetch(spec.url);
+  var requestUrl = new URL(spec.url, location.href);
+  requestUrl.searchParams.set('v', spec.ver);
+  var resp = await fetch(requestUrl.href, {cache: 'no-cache'});
   if (!resp.ok) throw new Error(spec.url + ': HTTP ' + resp.status);
   var total = +resp.headers.get('content-length') || 0;
   var rd = resp.body.getReader();
@@ -237,11 +239,13 @@ async function m2LoadPackLazy(FS, specs, dest, opts) {
           var tx = db.transaction('packs', 'readwrite');
           tx.objectStore('packs').put({ url: key, ver: sp.ver, gz: blob, index: index });
           tx.oncomplete = resolve;
-          tx.onerror = resolve;
+          tx.onerror = tx.onabort = resolve;
         } catch (e) { resolve(); }
       });
       // Re-read so the Blob handle is the disk-backed IndexedDB copy.
-      rec = (await m2idbGet(key)) || { gz: blob, index: index };
+      var stored = await m2idbGet(key);
+      rec = stored && stored.ver === sp.ver && stored.gz instanceof Blob && stored.index
+        ? stored : { gz: blob, index: index };
       blob = null;
       m2idbDel(sp.url);
     }
