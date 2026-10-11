@@ -47,8 +47,8 @@
 <canvas id="canvas"></canvas>
 <div id="status"><div id="spin"></div><span>starting…</span><div id="bar"><div id="barfill"></div></div><div id="srv"></div><div id="detail"></div><pre id="failure"></pre><div id="recovery"><button id="restart">Restart</button> <button id="downloadlog">Save error log</button></div></div>
 <div id="gate"><div><input id="pw" type="password" placeholder="passphrase" autocomplete="off"><button id="pwgo">play</button></div><div class="hint"></div><div class="hint"><a id="realmlink" href="#" style="color:#777"></a></div></div>
-<script src="m2pack.js?v=fix1kk0021"></script>
-<script src="m2hud.js?v=fix1kk0021"></script>
+<script src="m2pack.js?v=fix1kk0022"></script>
+<script src="m2hud.js?v=fix1kk0022"></script>
 <script>
 // SharedArrayBuffer needs cross-origin isolation. On hosts that don't send
 // COOP/COEP (plain static hosting), a service worker injects the headers —
@@ -89,8 +89,13 @@ if (!m2PageReady) {
   } else {
     coiMsg.textContent = 'preparing page (one-time setup)…';
     navigator.serviceWorker.addEventListener('controllerchange', coiReload);
-    navigator.serviceWorker.register('coi-sw.js').then(function () {
-      if (navigator.serviceWorker.controller) coiReload();
+    navigator.serviceWorker.register('coi-sw.js').then(function (registration) {
+      if (navigator.serviceWorker.controller ||
+          (registration.active && registration.active.state === 'activated')) {
+        coiReload();
+      } else {
+        navigator.serviceWorker.ready.then(coiReload);
+      }
     }).catch(function () { coiFail('page setup failed'); });
     setTimeout(function () {
       if (!coiReloading) coiFail('page setup timed out');
@@ -133,7 +138,7 @@ function setStatus(txt, frac) {
 // Latest line from each server worker, so the boot never looks dead.
 // Build stamp on every URL: Pages caches files for 10 min, and a new
 // page must never run with an old engine.
-var M2V = 'fix1kk0021';
+var M2V = 'fix1kk0022';
 var srvLines = {};
 function setSrv(tag, s) {
   srvLines[tag] = s;
@@ -499,7 +504,7 @@ async function m2boot() {
 document.addEventListener('contextmenu', function (e) { e.preventDefault(); });
 }
 </script>
-<template id="m2engine-script"><script async src="metin2_web.js?v=fix1kk0021"></script></template>
+<template id="m2engine-script"><script async src="metin2_web.js?v=fix1kk0022"></script></template>
 <script>
 if (m2PageReady) {
   var m2Engine = document.createElement('script');
