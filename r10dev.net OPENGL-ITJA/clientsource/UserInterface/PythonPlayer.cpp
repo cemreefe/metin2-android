@@ -1025,7 +1025,45 @@ void CPythonPlayer::SetSkillLevel_(DWORD dwSkillIndex, DWORD dwSkillGrade, DWORD
 
 	DWORD dwSlotIndex;
 	if (!GetSkillSlotIndex(dwSkillIndex, &dwSlotIndex))
-		return;
+	{
+		// The Python skill layout is registered before the first skill-level
+		// packet arrives.  A GM can have a learned skill outside the selected
+		// job/path, so it has no slot yet; use the existing empty V cells.
+		static const DWORD kForeignJobSkills[] =
+		{
+			1, 2, 3, 4, 5, 6, 16, 17, 18, 19, 20, 21,
+			31, 32, 33, 34, 35, 36, 46, 47, 48, 49, 50, 51,
+			61, 62, 63, 64, 65, 66, 76, 77, 78, 79, 80, 81,
+			91, 92, 93, 94, 95, 96, 106, 107, 108, 109, 110, 111
+		};
+
+		bool isForeignJobSkill = false;
+		for (DWORD candidate : kForeignJobSkills)
+		{
+			if (candidate == dwSkillIndex)
+			{
+				isForeignJobSkill = true;
+				break;
+			}
+		}
+
+		if (!isForeignJobSkill || dwSkillLevel == 0)
+			return;
+
+		for (DWORD candidateSlot = 111; candidateSlot <= 112; ++candidateSlot)
+		{
+			if (m_playerStatus.aSkill[candidateSlot].dwIndex == 0)
+			{
+				dwSlotIndex = candidateSlot;
+				m_playerStatus.aSkill[dwSlotIndex].dwIndex = dwSkillIndex;
+				break;
+			}
+		}
+
+		if (dwSlotIndex >= SKILL_MAX_NUM ||
+			m_playerStatus.aSkill[dwSlotIndex].dwIndex != dwSkillIndex)
+			return;
+	}
 
 	if (dwSlotIndex >= SKILL_MAX_NUM)
 		return;
