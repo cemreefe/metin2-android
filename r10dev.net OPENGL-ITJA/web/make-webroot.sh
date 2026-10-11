@@ -26,9 +26,7 @@ mkdir -p "$OUT"
 cp "$CLIENT_BUILD/metin2_web.js" "$CLIENT_BUILD/metin2_web.wasm" "$OUT/"
 cp "$CLIENT_BUILD/metin2_web.html" "$OUT/index.html"
 M2V=$(cat "$CLIENT_BUILD/metin2_web.wasm" "$HERE"/*.js "$HERE/local.html" | md5sum | cut -c1-10)
-sed -e "s/{{{ SCRIPT }}}/<script async src=\"metin2_web.js?v=$M2V\"><\/script>/" \
-    -e "s/{{{ M2V }}}/$M2V/g" \
-    "$HERE/local.html" > "$OUT/local.html"
+python3 "$HERE/render_local.py" "$HERE/local.html" "$OUT/local.html" "$M2V"
 
 cp "$HERE/m2pack.js" "$HERE/srv_worker.js" "$HERE/m2hud.js" "$HERE/coi-sw.js" "$OUT/"
 cp "$SRV_BUILD/bin/m2db.js" "$SRV_BUILD/bin/m2db.wasm" "$OUT/"
