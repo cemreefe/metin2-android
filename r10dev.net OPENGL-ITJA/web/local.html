@@ -387,7 +387,8 @@ async function m2gateLoop(checkSpec) {
 async function m2boot() {
   var packs;
   try {
-    packs = await (await fetch('packs.json')).json();
+    packs = await (await fetch('packs.json?v=' + encodeURIComponent(M2V),
+      {cache: 'no-cache'})).json();
   } catch (e) {
     statusEl.textContent = 'packs.json: ' + e;
     throw e;
