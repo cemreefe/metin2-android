@@ -47,8 +47,8 @@
 <canvas id="canvas"></canvas>
 <div id="status"><div id="spin"></div><span>starting…</span><div id="bar"><div id="barfill"></div></div><div id="srv"></div><div id="detail"></div><pre id="failure"></pre><div id="recovery"><button id="restart">Restart</button> <button id="downloadlog">Save error log</button></div></div>
 <div id="gate"><div><input id="pw" type="password" placeholder="passphrase" autocomplete="off"><button id="pwgo">play</button></div><div class="hint"></div><div class="hint"><a id="realmlink" href="#" style="color:#777"></a></div></div>
-<script src="m2pack.js?v=fix1kk0019"></script>
-<script src="m2hud.js?v=fix1kk0019"></script>
+<script src="m2pack.js?v=fix1kk0020"></script>
+<script src="m2hud.js?v=fix1kk0020"></script>
 <script>
 // SharedArrayBuffer needs cross-origin isolation. On hosts that don't send
 // COOP/COEP (plain static hosting), a service worker injects the headers —
@@ -125,7 +125,7 @@ function setStatus(txt, frac) {
 // Latest line from each server worker, so the boot never looks dead.
 // Build stamp on every URL: Pages caches files for 10 min, and a new
 // page must never run with an old engine.
-var M2V = 'fix1kk0019';
+var M2V = 'fix1kk0020';
 var srvLines = {};
 function setSrv(tag, s) {
   srvLines[tag] = s;
@@ -223,7 +223,9 @@ function m2ShowFailure(code, what) {
   srvEl.style.display = 'none';
   detailEl.style.display = 'none';
   var errors = m2ExitLog.split('\n').filter(function (line) {
-    return /abort|traceback|error|exception|failed|not found|cannot|^.*\(line:\d+\)/i.test(line);
+    if (/^Exception .* in <bound method .*__del__.* ignored$/.test(line))
+      return false;
+    return /abort|traceback|error|exception|SystemExit|failed|not found|cannot|\(line:\d+\)|File ".+", line \d+/i.test(line);
   }).slice(-12);
   var failure = document.getElementById('failure');
   failure.textContent = errors.length ? errors.join('\n') :
@@ -492,6 +494,6 @@ async function m2boot() {
 
 document.addEventListener('contextmenu', function (e) { e.preventDefault(); });
 </script>
-<script async src="metin2_web.js?v=fix1kk0019"></script>
+{{{ SCRIPT }}}
 </body>
 </html>
