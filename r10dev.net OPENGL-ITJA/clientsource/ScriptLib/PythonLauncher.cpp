@@ -28,7 +28,7 @@ int	g_nCurTraceN = 0;
 void Traceback()
 {
 #ifdef M2_PORT
-	PyErr_Print();
+	PyPrintException();
 	fflush(stderr);
 	return;
 #endif

@@ -58,6 +58,36 @@ test('missing FS and blocked storage do not break error recovery', () => {
   assert.match(elements.get('failure').textContent, /unreachable/);
 });
 
+test('shutdown cleanup cannot displace the initiating error', () => {
+  const cleanup = 'Exception TypeError: "\'NoneType\' object is not callable" in ' +
+    '<bound method CursorImage.__del__ of <mouseModule.CursorImage object at 0x123>> ignored\n';
+  const log = 'uicharacter.py(line:1012) RefreshSkillPlusButtonList\n' +
+    'CharacterWindow - RuntimeError: missing icon\nAbort!!!!\n' + cleanup.repeat(15);
+  const {context, elements, saved} = setup(log);
+  context.m2ShowFailure(0);
+  assert.match(elements.get('failure').textContent, /missing icon/);
+  assert.match(elements.get('failure').textContent, /line:1012/);
+  assert.doesNotMatch(elements.get('failure').textContent, /CursorImage/);
+  assert.match(saved.get('m2-last-error'), /CursorImage/);
+});
+
+test('cleanup alone is not presented as the initiating fault', () => {
+  const log = 'Exception AttributeError: "\'NoneType\' object has no attribute \'__del__\'" in ' +
+    '<bound method NumberLine.__del__ of <ui.NumberLine object at 0x123>> ignored\n';
+  const {context, elements, saved} = setup(log);
+  context.m2ShowFailure(0);
+  assert.match(elements.get('failure').textContent, /No client error was recorded/);
+  assert.match(saved.get('m2-last-error'), /NumberLine/);
+});
+
+test('SystemExit origin remains visible instead of only its zero code', () => {
+  const {context, elements} = setup('Python requested client shutdown (SystemExit)\n' +
+    'Traceback (most recent call last):\n  File "exception.py", line 36, in Abort\nSystemExit: 0\n');
+  context.m2ShowFailure(0);
+  assert.match(elements.get('failure').textContent, /exception.py.*line 36/);
+  assert.match(elements.get('failure').textContent, /SystemExit: 0/);
+});
+
 test('normal exit with no error does not invent a cause', () => {
   const {context, elements} = setup('FrameSkip Adjusting... 958\n');
   context.m2ShowFailure(0);

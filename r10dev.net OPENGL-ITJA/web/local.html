@@ -223,7 +223,9 @@ function m2ShowFailure(code, what) {
   srvEl.style.display = 'none';
   detailEl.style.display = 'none';
   var errors = m2ExitLog.split('\n').filter(function (line) {
-    return /abort|traceback|error|exception|failed|not found|cannot|^.*\(line:\d+\)/i.test(line);
+    if (/^Exception .* in <bound method .*__del__.* ignored$/.test(line))
+      return false;
+    return /abort|traceback|error|exception|SystemExit|failed|not found|cannot|\(line:\d+\)|File ".+", line \d+/i.test(line);
   }).slice(-12);
   var failure = document.getElementById('failure');
   failure.textContent = errors.length ? errors.join('\n') :
