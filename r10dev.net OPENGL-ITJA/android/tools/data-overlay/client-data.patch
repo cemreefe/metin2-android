@@ -861,13 +861,13 @@
  				if i != 6 and i != 7:
  					player.SetSkill(i+1, skillIndex)
  
-+			## GM sandbox: learned skills outside this path (other path's or
-+			## other job's skills, set via /setskill) go into the free slots so
-+			## they stay visible and castable
++			## GM sandbox: learned job/path skills outside the selected path
++			## use the existing empty support-window cells (111, 112, ...).
++			## These slots are visible and clickable in the V window.
 +			freeSlots = []
-+			for i in xrange(len(activeSkillList)):
-+				if i != 6 and i != 7 and 0 == activeSkillList[i]:
-+					freeSlots.append(i + 1)
++			for slot in xrange(101, 113):
++				if 0 == player.GetSkillIndex(slot):
++					freeSlots.append(slot)
 +
 +			for v in JOB_SKILL_VNUMS:
 +				if not freeSlots:

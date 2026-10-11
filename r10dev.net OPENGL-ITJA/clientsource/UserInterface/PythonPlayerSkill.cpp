@@ -244,7 +244,10 @@ bool CPythonPlayer::__CheckSkillUsable(DWORD dwSlotIndex)
 	// NOTE : ���� üũ
 	if (m_sysIsLevelLimit)
 	{
-		if (rkSkillInst.iLevel <= 0)
+		// Fall back to the vnum-keyed learned-skill map so skills that were
+		// learned out-of-band (GM /setskill, foreign path) can be used even
+		// when the slot's own level bookkeeping was not populated.
+		if (rkSkillInst.iLevel <= 0 && GetSkillLevelByVnum(rkSkillInst.dwIndex) <= 0)
 		{
 			PyCallClassMemberFunc(m_ppyGameWindow, "OnCannotUseSkill", Py_BuildValue("(is)", GetMainCharacterIndex(), "NOT_YET_LEARN"));
 			return false;
