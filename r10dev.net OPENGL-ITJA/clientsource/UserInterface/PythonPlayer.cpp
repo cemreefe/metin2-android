@@ -1058,6 +1058,7 @@ void CPythonPlayer::SetSkillLevel_(DWORD dwSkillIndex, DWORD dwSkillGrade, DWORD
 			{
 				dwSlotIndex = candidateSlot;
 				m_playerStatus.aSkill[dwSlotIndex].dwIndex = dwSkillIndex;
+				m_skillSlotDict[dwSkillIndex] = dwSlotIndex;
 				break;
 			}
 		}
