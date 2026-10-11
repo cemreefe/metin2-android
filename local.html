@@ -47,27 +47,39 @@
 <canvas id="canvas"></canvas>
 <div id="status"><div id="spin"></div><span>starting…</span><div id="bar"><div id="barfill"></div></div><div id="srv"></div><div id="detail"></div><pre id="failure"></pre><div id="recovery"><button id="restart">Restart</button> <button id="downloadlog">Save error log</button></div></div>
 <div id="gate"><div><input id="pw" type="password" placeholder="passphrase" autocomplete="off"><button id="pwgo">play</button></div><div class="hint"></div><div class="hint"><a id="realmlink" href="#" style="color:#777"></a></div></div>
-<script src="m2pack.js?v=fix1kk0020"></script>
-<script src="m2hud.js?v=fix1kk0020"></script>
+<script src="m2pack.js?v=fix1kk0021"></script>
+<script src="m2hud.js?v=fix1kk0021"></script>
 <script>
 // SharedArrayBuffer needs cross-origin isolation. On hosts that don't send
 // COOP/COEP (plain static hosting), a service worker injects the headers —
 // first visit installs it and reloads once.
-if (self.crossOriginIsolated === false) {
+var m2PageReady = self.crossOriginIsolated === true &&
+  typeof SharedArrayBuffer === 'function';
+if (!m2PageReady) {
   var coiMsg = document.querySelector('#status span');
   var coiTries = 0;
+  var coiReloading = false;
   try { coiTries = +sessionStorage.getItem('m2coi') || 0; } catch (e) {}
+  function coiFail(message) {
+    coiMsg.textContent = message;
+    document.getElementById('spin').style.display = 'none';
+    document.getElementById('bar').style.display = 'none';
+    document.getElementById('recovery').style.display = 'block';
+    document.getElementById('downloadlog').style.display = 'none';
+    document.getElementById('restart').onclick = function () { location.reload(); };
+  }
   function coiReload() {
+    if (coiReloading) return;
     if (coiTries >= 4) {
-      coiMsg.textContent = 'cross-origin isolation failed — try a hard reload';
+      coiFail('cross-origin isolation failed');
       return;
     }
+    coiReloading = true;
     try { sessionStorage.setItem('m2coi', String(coiTries + 1)); } catch (e) {}
     location.reload();
   }
   if (!('serviceWorker' in navigator)) {
-    coiMsg.textContent = 'this browser can\'t run the in-page server\n' +
-      '(SharedArrayBuffer needs COOP/COEP) — use Chrome';
+    coiFail('this browser cannot run the game — use Chrome');
   } else if (navigator.serviceWorker.controller) {
     // SW controls the page but this document was served before it took
     // over — one more reload lands the injected headers. Bounded so a
@@ -76,17 +88,12 @@ if (self.crossOriginIsolated === false) {
     coiReload();
   } else {
     coiMsg.textContent = 'preparing page (one-time setup)…';
-    navigator.serviceWorker.register('coi-sw.js').then(function (reg) {
-      if (reg.active || reg.installing || reg.waiting) coiReload();
-      // else: registration produced no worker — watchdog below fires.
-    }).catch(function () {});
-    // Watchdog: registration/install hung or produced nothing — reload
-    // ourselves after 15s (bounded by m2coi) rather than sitting here.
+    navigator.serviceWorker.addEventListener('controllerchange', coiReload);
+    navigator.serviceWorker.register('coi-sw.js').then(function () {
+      if (navigator.serviceWorker.controller) coiReload();
+    }).catch(function () { coiFail('page setup failed'); });
     setTimeout(function () {
-      if (self.crossOriginIsolated === false && !navigator.serviceWorker.controller)
-        coiReload();
-      else if (self.crossOriginIsolated === false)
-        coiMsg.textContent = 'cross-origin isolation failed — try a hard reload';
+      if (!coiReloading) coiFail('page setup timed out');
     }, 15000);
   }
 } else {
@@ -102,6 +109,7 @@ if (self.crossOriginIsolated === false) {
 // Layout mirrors EmbeddedServer.java: db(:9000), auth(:11000),
 // channel1_core1(:11011); per-node cwd with symlinked share dirs + CONFIG.
 
+if (m2PageReady) {
 var statusEl = document.getElementById('status');
 var barEl = document.getElementById('barfill');
 var barWrap = document.getElementById('bar');
@@ -125,7 +133,7 @@ function setStatus(txt, frac) {
 // Latest line from each server worker, so the boot never looks dead.
 // Build stamp on every URL: Pages caches files for 10 min, and a new
 // page must never run with an old engine.
-var M2V = 'fix1kk0020';
+var M2V = 'fix1kk0021';
 var srvLines = {};
 function setSrv(tag, s) {
   srvLines[tag] = s;
@@ -137,10 +145,6 @@ function setSrv(tag, s) {
 }
 
 // SharedArrayBuffer loopback table (must exist before any module inits).
-// If isolation never landed, don't die silently — the COI script above
-// already swapped the status text; bail before touching the page further.
-if (self.crossOriginIsolated === false || typeof SharedArrayBuffer !== 'function')
-  throw new Error('cross-origin isolation missing');
 var M2LB_SIZE = 8192 + 32 * (32 + 2 * 131072);
 var m2sab = new SharedArrayBuffer(M2LB_SIZE);
 new Int32Array(m2sab)[0] = 0x424C324D;
@@ -493,7 +497,18 @@ async function m2boot() {
 }
 
 document.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+}
 </script>
-<script async src="metin2_web.js?v=fix1kk0020"></script>
+<template id="m2engine-script"><script async src="metin2_web.js?v=fix1kk0021"></script></template>
+<script>
+if (m2PageReady) {
+  var m2Engine = document.createElement('script');
+  m2Engine.src = document.getElementById('m2engine-script').content
+    .querySelector('script').getAttribute('src');
+  m2Engine.async = true;
+  m2Engine.onerror = function () { m2ShowFailure('load', 'engine script failed to load'); };
+  document.body.appendChild(m2Engine);
+}
+</script>
 </body>
 </html>
