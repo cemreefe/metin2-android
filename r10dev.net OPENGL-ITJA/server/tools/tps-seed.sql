@@ -19,5 +19,6 @@ SELECT 5301, 'carbine', 'TPS Carbine', type, subtype, weight, size, antiflag, fl
      specular, socket_pct, addon_type
 FROM item_proto WHERE vnum = 2030;
 
-INSERT OR IGNORE INTO item (id, owner_id, window, pos, count, vnum)
-VALUES (20000999, 1, 'INVENTORY', 19, 1, 5301);
+-- The starter carbine goes to the first character of the seeded test account;
+-- account lives in a separate sqlite, so make-server-pack.sh resolves the
+-- player id and does the item INSERT itself.
