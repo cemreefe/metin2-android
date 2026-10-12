@@ -10,7 +10,9 @@ INSERT OR IGNORE INTO item_proto
      value0, value1, value2, value3, value4, value5,
      socket0, socket1, socket2, socket3, socket4, socket5,
      specular, socket_pct, addon_type)
-SELECT 5301, 'carbine', 'TPS Carbine', type, subtype, weight, size, antiflag, flag,
+-- antiflag 312 like a normal weapon: the bow clone's 52 bans warrior/sura/
+-- shaman (incl. the seeded test shaman) so the server refused the equip.
+SELECT 5301, 'carbine', 'TPS Carbine', type, subtype, weight, size, 312, flag,
      wearflag, immuneflag, gold, shop_buy_price, 0, 0,
      0, magic_pct, limittype0, limitvalue0, limittype1, limitvalue1,
      applytype0, applyvalue0, applytype1, applyvalue1, applytype2, applyvalue2,
