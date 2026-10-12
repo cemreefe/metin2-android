@@ -258,7 +258,11 @@ void CPythonApplication::OnPortKeyEvent(int action, int keyCode, int unicodeChar
 	if (unicodeChar && !iVK)
 		FeedDevSequence(unicodeChar);
 
-	if (iChar)
+	// Only feed WM_CHAR for events that have no keypress twin: unicodeChar
+	// events, or control keys (VK < 0x20: Backspace/Tab/Enter/Esc). Printable
+	// keys get their WM_CHAR from keypress — feeding it here too types the
+	// letter twice (and fires OnReturn twice, instantly closing chat).
+	if (iChar && (unicodeChar || iVK < 0x20))
 		CPythonIME::Instance().WMChar(NULL, WM_CHAR, iChar, 0);
 
 	if (iVK)

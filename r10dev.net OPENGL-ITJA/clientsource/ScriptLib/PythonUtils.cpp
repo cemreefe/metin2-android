@@ -4,6 +4,26 @@
 #define PyLong_AsUnsignedLong (unsigned long)PyLong_AsLongLong // it may return random values without the explicit cast
 IPythonExceptionSender* g_pkExceptionSender = NULL;
 
+void PyPrintException()
+{
+#ifdef M2_PORT
+	if (PyErr_ExceptionMatches(PyExc_SystemExit))
+	{
+		PyObject* type = NULL;
+		PyObject* value = NULL;
+		PyObject* traceback = NULL;
+		PyErr_Fetch(&type, &value, &traceback);
+		PyErr_NormalizeException(&type, &value, &traceback);
+		TraceError("Python requested client shutdown (SystemExit)");
+		// PyErr_Print handles SystemExit by exiting without displaying its traceback.
+		PyErr_Display(type, value, traceback);
+		fflush(stderr);
+		PyErr_Restore(type, value, traceback);
+	}
+#endif
+	PyErr_Print();
+}
+
 bool __PyCallClassMemberFunc_ByCString(PyObject* poClass, const char* c_szFunc, PyObject* poArgs, PyObject** poRet);
 bool __PyCallClassMemberFunc_ByPyString(PyObject* poClass, PyObject* poFuncName, PyObject* poArgs, PyObject** poRet);
 bool __PyCallClassMemberFunc(PyObject* poClass, PyObject* poFunc, PyObject* poArgs, PyObject** poRet);
@@ -321,7 +341,7 @@ bool __PyCallClassMemberFunc_ByCString(PyObject* poClass, const char* c_szFunc, 
 		if (g_pkExceptionSender)
 			g_pkExceptionSender->Clear();
 
-		PyErr_Print();
+		PyPrintException();
 
 		if (g_pkExceptionSender)
 			g_pkExceptionSender->Send();
@@ -369,7 +389,7 @@ bool __PyCallClassMemberFunc_ByPyString(PyObject* poClass, PyObject* poFuncName,
 		if (g_pkExceptionSender)
 			g_pkExceptionSender->Clear();
 
-		PyErr_Print();
+		PyPrintException();
 
 		if (g_pkExceptionSender)
 			g_pkExceptionSender->Send();
@@ -412,7 +432,7 @@ bool __PyCallClassMemberFunc(PyObject* poClass, PyObject* poFunc, PyObject* poAr
 
 	if (!poRet)
 	{
-		PyErr_Print();
+		PyPrintException();
 		Py_DECREF(poFunc);
 		Py_XDECREF(poArgs);
 		return false;

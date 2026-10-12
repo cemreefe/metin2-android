@@ -24,6 +24,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <stdarg.h>
+#include <set>
 #include <sys/stat.h>
 #include <vector>
 #include <mutex>
@@ -60,19 +61,39 @@ namespace
 	// (which, under emscripten, is the browser main thread — no locking needed
 	// beyond what the queue already does).
 
+	static std::set<int> s_downKeys;
+
 	EM_BOOL KeyCb(int type, const EmscriptenKeyboardEvent* e, void*)
 	{
 		if (type == EMSCRIPTEN_EVENT_KEYPRESS)
 		{
-			// Text input; keyCode 0 means "character only".
-			if (e->charCode)
+			// Text input; keyCode 0 means "character only". Skip control
+			// chars (Enter/Esc/Tab fire keypress too) — keydown covers them.
+			if (e->charCode >= 32)
 				CMSApplication::PushKeyEvent(0, 0, (int)e->charCode);
 			return EM_TRUE;
 		}
 		// Ignore repeat so held keys do not spam WM_CHAR-free presses.
 		if (e->repeat)
 			return EM_TRUE;
-		CMSApplication::PushKeyEvent(type == EMSCRIPTEN_EVENT_KEYUP ? 1 : 0, (int)e->keyCode, 0);
+		int keyCode = (int)e->keyCode;
+		if (type == EMSCRIPTEN_EVENT_KEYUP)
+			s_downKeys.erase(keyCode);
+		else
+			s_downKeys.insert(keyCode);
+		CMSApplication::PushKeyEvent(type == EMSCRIPTEN_EVENT_KEYUP ? 1 : 0, keyCode, 0);
+		return EM_TRUE;
+	}
+
+	// A keyup delivered while the window is blurred never reaches us, which
+	// leaves the key "pressed" forever (e.g. a stuck Shift turns Enter into
+	// open-whisper instead of open-chat). On blur, emit keyups for every key
+	// we still believe is down so the engine's pressed-state unwinds.
+	EM_BOOL BlurCb(int, const EmscriptenFocusEvent*, void*)
+	{
+		for (int keyCode : s_downKeys)
+			CMSApplication::PushKeyEvent(1, keyCode, 0);
+		s_downKeys.clear();
 		return EM_TRUE;
 	}
 
@@ -288,6 +309,7 @@ int M2Plat::KeyToDIK(int keyCode)
 	case 35: return DIK_END;
 	case 33: return DIK_PRIOR;
 	case 34: return DIK_NEXT;
+	case 188: return DIK_COMMA;
 	}
 	return 0;
 }
@@ -393,6 +415,7 @@ int main(int argc, char** argv)
 	emscripten_set_keydown_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, NULL, EM_TRUE, KeyCb);
 	emscripten_set_keyup_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, NULL, EM_TRUE, KeyCb);
 	emscripten_set_keypress_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, NULL, EM_TRUE, KeyCb);
+	emscripten_set_blur_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, NULL, EM_TRUE, BlurCb);
 	emscripten_set_mousedown_callback("#canvas", NULL, EM_TRUE, MouseCb);
 	emscripten_set_mouseup_callback("#canvas", NULL, EM_TRUE, MouseCb);
 	emscripten_set_mousemove_callback("#canvas", NULL, EM_TRUE, MouseCb);

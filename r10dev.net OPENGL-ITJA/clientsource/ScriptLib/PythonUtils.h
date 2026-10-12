@@ -2,6 +2,8 @@
 
 #define SET_EXCEPTION(x) PyErr_SetString(PyExc_RuntimeError, #x)
 
+void PyPrintException();
+
 bool PyTuple_GetString(PyObject* poArgs, int pos, char** ret);
 bool PyTuple_GetInteger(PyObject* poArgs, int pos, unsigned char* ret);
 bool PyTuple_GetInteger(PyObject* poArgs, int pos, int* ret);

@@ -142,6 +142,7 @@ namespace UI
 	private:
 		void		SetMousePosition(long x, long y);
 		CWindow* __PickWindow(long x, long y);
+		void		__CollectPointWindows(CWindow* pWin, long x, long y, std::vector<CWindow*>& rVec);
 
 		CWindow* __NewWindow(PyObject* po, DWORD dwWndType);
 		void		__ClearReserveDeleteWindowList();
