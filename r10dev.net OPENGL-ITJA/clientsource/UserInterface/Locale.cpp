@@ -240,6 +240,20 @@ void LocaleService_ForceSetLocale(const char* name, const char* localePath)
 {
 	strcpy(MULTI_LOCALE_NAME, name);
 	strcpy(MULTI_LOCALE_PATH, localePath);
+#ifdef M2_PORT
+	static const struct { const char* name; unsigned int codePage; } codePages[] = {
+		{ "tr", 1254 }, { "ru", 1251 }, { "ae", 1256 }, { "gr", 1253 },
+		{ "pl", 1250 }, { "cz", 1250 }, { "hu", 1250 }, { "ro", 1250 },
+	};
+	MULTI_LOCALE_CODE = 1252;
+	for (const auto& locale : codePages)
+		if (0 == stricmp(name, locale.name))
+		{
+			MULTI_LOCALE_CODE = locale.codePage;
+			break;
+		}
+	SetDefaultCodePage(MULTI_LOCALE_CODE);
+#endif
 
 	// ���� õ�� ������ ���ӽÿ��� security key ���� (WE ���� Ŭ��� õ������ �����ϱ� ����)
 	if (0 == stricmp(name, "ymir"))

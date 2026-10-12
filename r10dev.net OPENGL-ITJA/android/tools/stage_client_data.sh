@@ -3,7 +3,7 @@
 #
 # usage: tools/stage_client_data.sh <m2dev-client checkout> <output dir> [locale]
 #
-# Needs: python3, libsodium (apt install libsodium23), patch, rsync.
+# Needs: python3, libsodium23, liblzo2-2, patch, rsync.
 # Afterwards point M2_CLIENT_DATA at <output dir> for tools/make_bundle.sh.
 set -euo pipefail
 
@@ -29,13 +29,7 @@ cp "$SRC"/config/*.cfg "$OUT/"
 for ci in "$SRC/channel.inf" "$SRC/config/channel.inf"; do
 	[ -f "$ci" ] && cp "$ci" "$OUT/" && break
 done
-printf '1252 %s\n' "$LOCALE" > "$OUT/loca.cfg"
-
-for kind in item mob; do
-	f="$OUT/locale/$LOCALE/${kind}_proto"
-	python3 "$HERE/m2dev_proto_plain.py" "$A/locale/locale/$LOCALE/${kind}_proto" "$f.tmp" "$kind"
-	mv "$f.tmp" "$f"
-done
+python3 "$HERE/stage_client_locales.py" "$OUT" "$LOCALE"
 
 cp "$HERE/data-overlay/m2compat.py" "$HERE/data-overlay/uimobilehud.py" "$HERE/data-overlay/uiscale.py" "$HERE/data-overlay/uidevoptions.py" "$OUT/"
 rsync -a "$HERE/data-overlay/fonts/" "$OUT/fonts/"

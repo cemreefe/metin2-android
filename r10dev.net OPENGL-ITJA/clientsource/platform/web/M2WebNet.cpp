@@ -80,6 +80,7 @@ namespace
 	EM_BOOL OnOpen(int, const EmscriptenWebSocketOpenEvent*, void* userData)
 	{
 		SWebSock* s = GetSock((int)(intptr_t)userData);
+		M2Plat::Log(M2Plat::LOG_INFO, "net", "ws open h=%d", (int)(intptr_t)userData);
 		if (s)
 			s->eState = WS_OPEN;
 		return EM_TRUE;
@@ -107,6 +108,7 @@ namespace
 	EM_BOOL OnClose(int, const EmscriptenWebSocketCloseEvent* e, void* userData)
 	{
 		SWebSock* s = GetSock((int)(intptr_t)userData);
+		M2Plat::Log(M2Plat::LOG_INFO, "net", "ws close h=%d code=%d state=%d", (int)(intptr_t)userData, (int)e->code, s ? (int)s->eState : -1);
 		if (s && s->eState != WS_FAILED)
 		{
 			s->eState = WS_CLOSED;
@@ -164,7 +166,11 @@ int M2Net::Connect(const char* host, int port)
 	emscripten_websocket_init_create_attributes(&attrs);
 	attrs.url = szUrl;
 	attrs.protocols = NULL;   // ws_bridge speaks plain binary ws
-	attrs.createOnMainThread = EM_TRUE;
+	attrs.createOnMainThread = EM_FALSE;	// game runs in a worker; creating
+										// the ws here registers the callbacks
+										// synchronously. With EM_TRUE the
+										// registration is proxied and any
+										// frame arriving first is dropped.
 
 	EMSCRIPTEN_WEBSOCKET_T ws = emscripten_websocket_new(&attrs);
 	if (ws <= 0)
@@ -242,6 +248,8 @@ int M2Net::Send(int handle, const void* buf, int len)
 	}
 	// Browsers buffer ws sends internally; report all bytes queued.
 	EMSCRIPTEN_RESULT r = emscripten_websocket_send_binary(s->ws, (void*)buf, len);
+	if (r != EMSCRIPTEN_RESULT_SUCCESS)
+		M2Plat::Log(M2Plat::LOG_INFO, "net", "ws send failed h=%d r=%d", handle, (int)r);
 	return r == EMSCRIPTEN_RESULT_SUCCESS ? len : NET_ERROR;
 }
 
