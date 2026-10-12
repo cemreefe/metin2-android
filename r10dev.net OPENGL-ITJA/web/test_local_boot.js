@@ -28,6 +28,7 @@ function setup({isolated = false, controller = null, tries = 0, serviceWorker = 
   const listeners = {};
   const timers = [];
   const appended = [];
+  const registrations = [];
   const stored = new Map([['m2coi', String(tries)]]);
   let reloads = 0, buffers = 0, workers = 0;
   let activateWorker;
@@ -39,7 +40,10 @@ function setup({isolated = false, controller = null, tries = 0, serviceWorker = 
     ready: new Promise(resolve => {
       activateWorker = () => resolve({active: {state: 'activated'}});
     }),
-    register() { return Promise.resolve(registration); },
+    register(url, options) {
+      registrations.push({url, options});
+      return Promise.resolve(registration);
+    },
     addEventListener(name, fn) { listeners[name] = fn; },
   };
   const context = {
@@ -75,7 +79,7 @@ function setup({isolated = false, controller = null, tries = 0, serviceWorker = 
   vm.createContext(context);
   for (const script of scripts) vm.runInContext(script, context);
   return {
-    context, elements, sw, listeners, timers, appended, stored, activateWorker,
+    context, elements, sw, listeners, timers, appended, stored, activateWorker, registrations,
     counts() { return {reloads, buffers, workers}; },
   };
 }
@@ -172,4 +176,18 @@ test('isolated page initializes Module before loading exactly one versioned engi
   assert.equal(state.appended.length, 1);
   assert.equal(state.appended[0].src, 'metin2_web.js?v=test-build');
   assert.equal(state.stored.has('m2coi'), false);
+});
+
+test('already isolated pages still update the worker without cached SW scripts', () => {
+  const state = setup({isolated: true});
+  assert.equal(state.registrations.length, 1);
+  assert.equal(state.registrations[0].url, 'coi-sw.js');
+  assert.equal(state.registrations[0].options.updateViaCache, 'none');
+  assert.equal(state.counts().reloads, 0);
+});
+
+test('isolation bootstrap runs before either external helper can block parsing', () => {
+  const bootstrapEnd = html.indexOf('</script>', html.indexOf('var m2PageReady'));
+  assert(bootstrapEnd < html.indexOf('<script src="m2pack.js'));
+  assert(bootstrapEnd < html.indexOf('<script src="m2hud.js'));
 });
