@@ -107,8 +107,8 @@ if (!m2PageReady) {
   }
 }
 </script>
-<script src="m2pack.js?v=fix1kk0023"></script>
-<script src="m2hud.js?v=fix1kk0023"></script>
+<script src="m2pack.js?v=fix1kk0024"></script>
+<script src="m2hud.js?v=fix1kk0024"></script>
 <script>
 // Single player, zero backend: the whole m2dev-server (db + auth + channel)
 // runs as wasm modules in workers on this page. Client and servers talk
@@ -142,7 +142,7 @@ function setStatus(txt, frac) {
 // Latest line from each server worker, so the boot never looks dead.
 // Build stamp on every URL: Pages caches files for 10 min, and a new
 // page must never run with an old engine.
-var M2V = 'fix1kk0023';
+var M2V = 'fix1kk0024';
 var srvLines = {};
 function setSrv(tag, s) {
   srvLines[tag] = s;
@@ -508,7 +508,7 @@ async function m2boot() {
 document.addEventListener('contextmenu', function (e) { e.preventDefault(); });
 }
 </script>
-<template id="m2engine-script"><script async src="metin2_web.js?v=fix1kk0023"></script></template>
+<template id="m2engine-script"><script async src="metin2_web.js?v=fix1kk0024"></script></template>
 <script>
 if (m2PageReady) {
   var m2Engine = document.createElement('script');
