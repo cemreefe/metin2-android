@@ -33,14 +33,18 @@ cp -r "$RUNTIME/share/conf" "$RUNTIME/share/data" "$RUNTIME/share/locale" "$RUNT
 
 # TPS Carbine (vnum 5301): the server reads protos from conf/item_proto.txt,
 # not the sqlite item_proto table — clone the battle bow's row here so the
-# seeded item isn't dropped as an unknown vnum at load.
-if ! grep -qP "^5301\t" "$OUT/server/share/conf/item_proto.txt"; then
-    # upstream file has no trailing newline; append would glue onto its last row
-    printf '\n' >> "$OUT/server/share/conf/item_proto.txt"
-    grep -P "^2030\t" "$OUT/server/share/conf/item_proto.txt" \
-        | sed -e 's/^2030/5301/' -e 's/Battle Bow+0/TPS Carbine/' \
-              -e 's/\t2031\t/\t0\t/' >> "$OUT/server/share/conf/item_proto.txt"
-fi
+# seeded item isn't dropped as an unknown vnum at load. The bow's antiflags
+# (ANTI_MUSA|ANTI_SURA|ANTI_MUDANG) would ban every non-ninja job from
+# equipping it, so they are stripped. Always regenerated: a stale row from
+# an older run carries the ban.
+sed -i '/^5301\t/d' "$OUT/server/share/conf/item_proto.txt"
+# upstream file has no trailing newline; append would glue onto its last row
+printf '\n' >> "$OUT/server/share/conf/item_proto.txt"
+grep -P "^2030\t" "$OUT/server/share/conf/item_proto.txt" \
+    | sed -e 's/^2030/5301/' -e 's/Battle Bow+0/TPS Carbine/' \
+          -e 's/\t2031\t/\t0\t/' \
+          -e 's/ANTI_MUSA | ANTI_SURA | ANTI_MUDANG/NONE/' \
+    >> "$OUT/server/share/conf/item_proto.txt"
 
 # Shorter save/flush cycles: Android may kill the app without a clean shutdown.
 cat >> "$OUT/server/share/conf/db.txt" <<'CONF'
