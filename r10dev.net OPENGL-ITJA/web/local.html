@@ -313,6 +313,17 @@ async function m2boot() {
   var share = Object.assign({}, packs['srv-share'], { dest: '/srv/share' });
   var sqlite = packs['srv-sqlite'];
 
+  // ?m2_reset=1 wipes the saved-game snapshot so the pack's sqlite seed
+  // wins again on this load (e.g. to pick up a re-seeded item).
+  if (new URLSearchParams(location.search).get('m2_reset')) {
+    try {
+      await new Promise(function (res) {
+        var q = indexedDB.deleteDatabase('m2save-v2');
+        q.onsuccess = q.onerror = q.onblocked = function () { res(); };
+      });
+    } catch (e) {}
+  }
+
   // Server workers stage + boot in parallel with the client download.
   // Each worker has a private FS -> every node gets its own seeded sqlite
   // dir; only db's is saved to IndexedDB (player/account writes all go
