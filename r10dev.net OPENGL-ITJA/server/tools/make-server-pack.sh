@@ -78,13 +78,14 @@ row = con.execute(
     "SELECT p.id FROM player p JOIN acct.account a ON a.id = p.account_id"
     " WHERE a.login = ? ORDER BY p.id LIMIT 1", (login,)).fetchone()
 if row:
-    # EQUIPMENT pos 0 = weapon slot: the char spawns holding the carbine.
-    # Drop the offhand starter weapon (shaman fan, pos 4) so nothing else is
-    # drawn in the hands.
-    con.execute("DELETE FROM item WHERE owner_id = ? AND window = 'EQUIPMENT' AND pos = 4", (row[0],))
+    # Item positions are absolute cells: inventory 0-89, wear slots start at
+    # INVENTORY_MAX_NUM(90) and WEAR_WEAPON is enum index 4 -> cell 94.
+    # Replace whatever starter weapon sits there so the char spawns holding
+    # the carbine and nothing else is drawn in the hands.
+    con.execute("DELETE FROM item WHERE owner_id = ? AND window = 'EQUIPMENT' AND pos = 94", (row[0],))
     con.execute(
         "INSERT OR REPLACE INTO item (id, owner_id, window, pos, count, vnum)"
-        " VALUES (20000999, ?, 'EQUIPMENT', 0, 1, 5301)", (row[0],))
+        " VALUES (20000999, ?, 'EQUIPMENT', 94, 1, 5301)", (row[0],))
 con.commit()
 PY
 fi
