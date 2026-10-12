@@ -25,7 +25,8 @@ def _ReloadLocale():
 		return 0
 	try:
 		app.ForceSetLocale(code, "locale/" + code)
-		app.LoadLocaleData("locale/" + code)
+		if not app.LoadLocaleData("locale/" + code):
+			return 0
 	except AttributeError:
 		pass
 	ok = 1
