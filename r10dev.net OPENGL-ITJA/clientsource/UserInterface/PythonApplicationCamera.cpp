@@ -59,6 +59,23 @@ void CPythonApplication::__UpdateCamera()
 		float fDistance, fPitch, fRotation, fHeight;
 		GetCamera(&fDistance, &fPitch, &fRotation, &fHeight);
 		m_pyGraphic.SetPositionCamera(m_v3CenterPosition.x, m_v3CenterPosition.y, m_v3CenterPosition.z + pMainCamera->GetTargetHeight(), fDistance, fPitch, fRotation);
+
+		// Over-the-shoulder framing for TPS mode. This must run here, after
+		// SetPositionCamera rebuilt eye/target for the frame: doing it in
+		// ShooterUpdate (OnPortFrame, end of frame) is pointless since this
+		// rebuild wipes per-frame eye/target writes. GetCross() is up x view
+		// (screen-left), so the negative sign pushes the frame right and the
+		// character sits left of the crosshair. The offset scales with
+		// distance so the aim ray always clears the character.
+		if (CPythonPlayer::Instance().IsShooterMode())
+		{
+			const D3DXVECTOR3& v3Cross = pMainCamera->GetCross();
+			const float fDist = pMainCamera->GetDistance();
+			const float fOff = -(fDist * (CPythonPlayer::Instance().IsShooterAiming() ? 0.42f : 0.38f));
+			const D3DXVECTOR3 v3Off(v3Cross.x * fOff, v3Cross.y * fOff, v3Cross.z * fOff);
+			pMainCamera->SetEye(pMainCamera->GetEye() + v3Off);
+			pMainCamera->SetTarget(pMainCamera->GetTarget() + v3Off);
+		}
 	}
 
 	if (0.0f != m_fRotationSpeed)

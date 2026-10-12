@@ -540,3 +540,103 @@ the client. Three binaries, one page, zero network after first load.
   test clicks land ~10px off — the "dead slider" was a coordinate bug,
   not an input bug. Verify handlers with a file-writing probe, not
   screenshots.
+
+## Third-person shooter mode (TPS branch)
+
+- **Loopback select**: `fdwatch` calls `select(0, &fds, ...)` — nfds is
+  always 0 and readiness must come from the fd_sets themselves. The Linux
+  build already had that fix (see troubleshooting table), but
+  `m2lb_bridge.cpp`'s `m2lp_select` re-implemented the same bug: it
+  scanned `fd < nfds`, so zero fds, so auth's listener never went
+  readable and the client's queued conn sat forever — login stalled on
+  the splash with a perfectly healthy connect. `m2lp_select` now scans
+  the fake-fd table and tests fd_set membership.
+- **Hitscan reuses the bow pipeline**: TPS fires
+  `SendFlyTargetingPacket(VID) + SendShootPacket(bType)` like an arrow,
+  but the VID is picked from whatever sits under the crosshair at fire
+  time (`PickCrosshairTarget` projects mob bounding boxes to screen
+  space). No homing: the tracer is a `CFlyTarget` on a position, not a
+  VID, so it flies straight. Head pick sends bType 61 vs 60; the server
+  adds +60 `POINT_CRITICAL_PCT` around `CalcMeleeDamage`.
+- **The shoot anim is mimed**: `InterceptOnceMotion` with the fly target
+  cleared plays the weapon attack motion without spawning an arrow or
+  re-sending the packet. On a sword-wielding char it logs a
+  missing-motion error — harmless, gone with the carbine equipped.
+- **New weapon without touching the binary proto**: vnum 5301 is
+  synthesized client-side in `ItemManager::LoadItemTable` (clone of the
+  2030 battle-bow `TItemTable` row) and cloned server-side in
+  `tools/tps-seed.sql` (INSERT-SELECT + a seeded inventory row). Icon /
+  gr2 / `item_list.txt` come from the data overlay.
+- **Headless driving**: `web/drive_headless.py` + CDP `Input.dispatch*`
+  works, but F-keys and level-triggered fire need DOM-dispatched events
+  (`KeyboardEvent` with `keyCode` forced via `defineProperty`, held
+  `mousedown` on `#canvas`) — CDP `rawKeyDown` for F6 did not reach the
+  wasm key path in our runs.
+- **Shoot packets die in `CInputMain::Attack` on `CanUseSkill`**: the
+  dispatcher reinterprets packet bytes as `{header,type}` and calls
+  `ch->CanUseSkill(type)` for any `type > 0` — our bType 60/61 reads as a
+  skill vnum the char doesn't know, so `Shoot()` was never reached.
+  Verified by stderr probes: FlyTarget packets arrived and resolved VIDs
+  while `Shoot` logged nothing. Fixed by bypassing the skill gate for
+  shoot types 60/61 in `input_main.cpp`.
+- **`IS_SPEED_HACK` zeroes gun damage**: it rejects same-victim refires
+  faster than `GET_ATTACK_SPEED(ch)`; the 300ms firearm cadence tripped
+  it every shot. Removed for gun shoot types only.
+- **Server `sys_log` never reaches the wasm console**: `g_syslog` is a
+  spdlog file sink (`syslog_rotate_sink`). For debugging use
+  `fprintf(stderr, ...)` — worker stderr is forwarded to the page
+  console as `[m2game.js]` lines.
+- **`m2pw` URL param is mandatory**: `local.html` gates on a passphrase;
+  `?m2pw=x&m2acc=test:test123` is the working headless URL. Without it
+  the page sits at the gate with no error.
+- **Wiping `cdp-profile` costs ~200-280s of pack staging** before world
+  entry; keep the profile between runs.
+- **Procedural gun instead of .gr2**: `__RenderShooterWeapon` draws a
+  9-box carbine parented to the right-hand bone (actor-space verts via
+  the bone matrix + `SaveTransform(D3DTS_WORLD)`). Real .gr2 authoring
+  has no toolchain on Linux; a proper modeled firearm + hold anim is
+  follow-up work.
+- **Real AK-47 mesh**: procedural boxes replaced by a CC0 AK-47
+  (opengameart "ak" pack) exported to a flat vertex soup
+  `ymir work/pc/tps/ak47.m2m` (`<u32 count><5f x,y,z,u,v>`) + `ak.tga`,
+  shipped inside `client-p14.m2pack` and drawn via `DrawPrimitiveUP`.
+  `icon/item/05301.tga` is a software-rendered side view of the same
+  mesh (script-generated, muzzle up, 32x64).
+- **m2pack append**: packs are gzip of `M2PK` + `<u32 bootCount><u32
+  total>` + per-file `<u32 pathLen><path><u64 size><bytes>`; `ver` in
+  packs.json = `sha256(gz)[:16]`. Appending `icon/item/05301.tga` is how
+  the inventory icon ships without repacking the big client parts.
+- **Shoulder offset belongs inside `__UpdateCamera`**: `ShooterUpdate`
+  runs at frame end in `OnPortFrame`, but `__UpdateCamera` rebuilds
+  `m_v3Eye`/`m_v3Target` from stored scalars EVERY frame in `Update()`
+  — eye/target written late are wiped next frame. The lateral offset
+  is applied inside `__UpdateCamera` right after `SetPositionCamera`,
+  pushing `GetCross() * -dist * 0.38` (0.42 aiming) onto eye+target.
+  Distance/pitch survive because they are stored scalars.
+- **Bone-space weapon convention**: attached weapons are parented to
+  the bone raw (`AttachModelInstance` → `SetParentModelInstance`);
+  weapon .gr2s are authored in bone space. Bow mesh (item/weapon/
+  02100.gr2, extracted via `third_party/OpenGr2ndma` built natively)
+  has its long axis on +Z — weapons lie along Z, not Y.
+- **Headless gotchas**: `KeyboardEvent`/`MouseEvent` on `#canvas` reach
+  the game; CDP `key` does not. `movementX` is a read-only getter —
+  must `Object.defineProperty(e,'movementX',{value})`. `window.*` is
+  worker-scoped: EM_ASM on the game pthread cannot see main-thread
+  `window` (crashes with ReferenceError — guard `typeof window`).
+  Spawn gate that actually works: `window._m2gc` set by
+  `M2Plat::SetGameControlsVisible` (fires when map ready + char
+  spawned, on the main thread).
+- **Serve/playwright**: `web/serve.py --root <dir> --port 8081` uses
+  flags, not positional args. `pkill -f drive_headless` kills the
+  caller's own shell — launch with `setsid nohup`.
+- **AK-47 bone pose**: the AK mesh (`ymir work/pc/tps/ak47.m2m`, CC0,
+  +Y muzzle / +Z up / grip at origin) is posed by `matPre` in
+  `InstanceBase::__RenderShooterWeapon`: `matWorld = matPre * boneMat`,
+  matching the direct bone-attach convention real weapons use. The pose
+  was hand-tuned in an interactive WebGL aligner (`/tmp/akview`):
+  textured AK + real bow wireframe (extracted from 02100.gr2) + stick
+  mannequin + wrist-box + direction arrow, sliders for roll/pitch/yaw
+  and XYZ move, prints a D3DXMATRIX. Roll slider applies in gun-local
+  space first so it always spins around the barrel.
+- **Headless load takes 200-350s** before game-phase connect; size
+  drive runs accordingly (~480s) since the log ends at cutoff.

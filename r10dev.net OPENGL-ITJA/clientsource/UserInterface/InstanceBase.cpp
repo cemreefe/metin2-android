@@ -16,6 +16,12 @@
 #include "PythonSystem.h"
 #include "PythonTextTail.h"
 #endif
+#include "../EterBase/MappedFile.h"
+#include "../EterLib/GrpImageTexture.h"
+#include "../eterPack/EterPackManager.h"
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+#endif
 
 BOOL HAIR_COLOR_ENABLE = FALSE;
 BOOL USE_ARMOR_SPECULAR = FALSE;
@@ -1022,6 +1028,10 @@ bool CInstanceBase::SetRace(DWORD eRace)
 
 BOOL CInstanceBase::__IsChangableWeapon(int iWeaponID)
 {
+	// the TPS Carbine always renders — costume shapes may not suppress it
+	if (iWeaponID == 5301)
+		return true;
+
 	// �巹�� �԰� �������� ���ɿ��� ���� ������ �ʰ�..
 	if (IsWearingDress())
 	{
@@ -2066,6 +2076,111 @@ void CInstanceBase::RenderTrace()
 	m_GraphicThingInstance.RenderTrace();
 }
 
+// The TPS Carbine (vnum 5301) has no .gr2 in the shipped pack - there is no
+// Granny authoring toolchain on Linux. Instead a CC0 AK-47 model (baked
+// offline from glTF) ships in the pack as d:/ymir work/pc/tps/ak47.m2m: a
+// flat list of {x,y,z,u,v} verts (3 per tri) in bone space - +Y muzzle, +Z
+// up, grip at origin, ~90 units long - plus the albedo
+// d:/ymir work/pc/tps/ak.tga. Both are loaded lazily here and drawn parented
+// to the weapon bone each frame while TPS mode is on.
+static struct SGunMesh
+{
+	bool tried = false;
+	std::vector<SPDTVertexRaw> verts;   // bone-space, diffuse pre-colored white
+	CGraphicImageTexture tex;
+	bool ok = false;
+} s_gunMesh;
+
+void CInstanceBase::__RenderShooterWeapon()
+{
+	if (!CPythonPlayer::Instance().IsShooterMode())
+		return;
+
+	if (!s_gunMesh.tried)
+	{
+		s_gunMesh.tried = true;
+		CMappedFile file;
+		LPCVOID pData = NULL;
+		if (CEterPackManager::Instance().Get(file, "d:/ymir work/pc/tps/ak47.m2m", &pData))
+		{
+			const DWORD nVerts = *(const DWORD*)pData;
+			const float* pf = (const float*)((const BYTE*)pData + 4);
+			if ((DWORD)file.Size() >= 4 + nVerts * 5 * sizeof(float))
+			{
+				s_gunMesh.verts.resize(nVerts);
+				for (DWORD i = 0; i < nVerts; ++i)
+				{
+					SPDTVertexRaw vtx = { pf[i*5+0], pf[i*5+1], pf[i*5+2],
+										  0xFFFFFFFF, pf[i*5+3], pf[i*5+4] };
+					s_gunMesh.verts[i] = vtx;
+				}
+				CMappedFile tga;
+				LPCVOID pTga = NULL;
+				if (CEterPackManager::Instance().Get(tga, "d:/ymir work/pc/tps/ak.tga", &pTga))
+					s_gunMesh.ok = s_gunMesh.tex.CreateFromMemoryFile(
+						tga.Size(), pTga, D3DFMT_UNKNOWN, D3DX_FILTER_LINEAR);
+			}
+		}
+		if (!s_gunMesh.ok)
+			TraceError("TPS: failed to load ymir work/pc/tps/ak47.m2m + ak.tga");
+	}
+	if (!s_gunMesh.ok)
+		return;
+
+	const char* szBoneName = NULL;
+	if (!m_GraphicThingInstance.GetAttachingBoneName(CRaceData::PART_WEAPON, &szBoneName))
+		return;
+	int iBone = -1;
+	if (!m_GraphicThingInstance.FindBoneIndex(CRaceData::PART_MAIN, szBoneName, &iBone))
+		return;
+	D3DXMATRIX* pBoneMat = NULL;
+	if (!m_GraphicThingInstance.GetBoneMatrix(CRaceData::PART_MAIN, iBone, &pBoneMat))
+		return;
+
+	// Weapon-bone attach: real weapons are authored in bone space and rendered
+	// with the bone matrix untouched. matPre (hand-tuned in the bone-space
+	// aligner) re-poses the AK so its grip sits in the hand and the muzzle
+	// matches the bow direction: matWorld = matPre * boneMatrix.
+	D3DXMATRIX matPre;
+	memset(&matPre, 0, sizeof(matPre));
+	matPre._11 = -0.1143f; matPre._12 = 0.9933f; matPre._13 = 0.0157f;
+	matPre._21 = 0.8921f;  matPre._22 = 0.1095f; matPre._23 = -0.4384f;
+	matPre._31 = -0.4372f; matPre._32 = -0.0361f; matPre._33 = -0.8987f;
+	matPre._41 = 11.00f;   matPre._42 = 6.50f;   matPre._43 = 4.00f;
+	matPre._44 = 1.0f;
+	D3DXMATRIX matWorld;
+	D3DXMatrixMultiply(&matWorld, &matPre, pBoneMat);
+
+
+	static std::vector<SPDTVertexRaw> verts;
+	verts.resize(s_gunMesh.verts.size());
+	for (size_t i = 0; i < s_gunMesh.verts.size(); ++i)
+	{
+		const SPDTVertexRaw& s = s_gunMesh.verts[i];
+		D3DXVECTOR3 w;
+		D3DXVec3TransformCoord(&w, &D3DXVECTOR3(s.px, s.py, s.pz), &matWorld);
+		verts[i] = { w.x, w.y, w.z, s.diffuse, s.u, s.v };
+	}
+
+	STATEMANAGER.SaveTransform(D3DTS_WORLD, &m_GraphicThingInstance.GetWorldMatrix());
+	STATEMANAGER.SaveRenderState(D3DRS_LIGHTING, FALSE);
+	STATEMANAGER.SetTexture(0, s_gunMesh.tex.GetD3DTexture());
+	STATEMANAGER.SetTexture(1, NULL);
+	STATEMANAGER.SaveTextureStageState(0, D3DTSS_COLORARG1, D3DTA_TEXTURE);
+	STATEMANAGER.SaveTextureStageState(0, D3DTSS_COLORARG2, D3DTA_DIFFUSE);
+	STATEMANAGER.SaveTextureStageState(0, D3DTSS_COLOROP, D3DTOP_MODULATE);
+	STATEMANAGER.SaveTextureStageState(1, D3DTSS_COLOROP, D3DTOP_DISABLE);
+	STATEMANAGER.SetVertexShader(D3DFVF_XYZ | D3DFVF_DIFFUSE | D3DFVF_TEX1);
+	STATEMANAGER.DrawPrimitiveUP(D3DPT_TRIANGLELIST, (UINT)(verts.size() / 3),
+								 &verts[0], sizeof(SPDTVertexRaw));
+	STATEMANAGER.RestoreTextureStageState(1, D3DTSS_COLOROP);
+	STATEMANAGER.RestoreTextureStageState(0, D3DTSS_COLOROP);
+	STATEMANAGER.RestoreTextureStageState(0, D3DTSS_COLORARG2);
+	STATEMANAGER.RestoreTextureStageState(0, D3DTSS_COLORARG1);
+	STATEMANAGER.RestoreRenderState(D3DRS_LIGHTING);
+	STATEMANAGER.RestoreTransform(D3DTS_WORLD);
+}
+
 void CInstanceBase::Render()
 {
 	// 2004.07.17.levites.isShow�� ViewFrustumCheck�� ����
@@ -2076,6 +2191,7 @@ void CInstanceBase::Render()
 
 	m_kHorse.Render();
 	m_GraphicThingInstance.Render();
+	__RenderShooterWeapon();
 
 	if (CActorInstance::IsDirLine())
 	{
@@ -3072,6 +3188,15 @@ bool CInstanceBase::SetWeapon(DWORD eWeapon)
 
 	m_GraphicThingInstance.AttachWeapon(eWeapon);
 	m_awPart[CRaceData::PART_WEAPON] = eWeapon;
+
+	// The TPS Carbine has no shipped model: drop whatever the attach left on
+	// the weapon bone so the procedural mesh in __RenderShooterWeapon is the
+	// only thing drawn.
+	if (eWeapon == 5301)
+	{
+		m_GraphicThingInstance.RegisterModelThing(CRaceData::PART_WEAPON, NULL);
+		m_GraphicThingInstance.RefreshActorInstance();
+	}
 
 	//Weapon Effect
 	CItemData* pItemData;

@@ -107,8 +107,21 @@ namespace
 		*y = cssH > 0 ? (int)(e->targetY * (double)s_iSurfaceH / cssH) : e->targetY;
 	}
 
+	static bool s_bPointerLocked = false;
+
+	EM_BOOL PointerLockCb(int type, const EmscriptenPointerlockChangeEvent* e, void*)
+	{
+		s_bPointerLocked = e->isActive;
+		return EM_TRUE;
+	}
+
 	EM_BOOL MouseCb(int type, const EmscriptenMouseEvent* e, void*)
 	{
+		if (s_bPointerLocked && type == EMSCRIPTEN_EVENT_MOUSEMOVE)
+		{
+			CMSApplication::PushTouchEvent(CMSApplication::TOUCH_LOOK, (int)e->movementX, (int)e->movementY);
+			return EM_TRUE;
+		}
 		int x, y;
 		SurfacePoint(e, &x, &y);
 		switch (type)
@@ -210,7 +223,10 @@ void M2Plat::SetKeyboardVisible(bool visible, float focusBottomFraction)
 
 void M2Plat::SetGameControlsVisible(bool visible)
 {
-	MAIN_THREAD_ASYNC_EM_ASM({ if (Module.m2SetGameControls) Module.m2SetGameControls($0); }, (int)visible);
+	MAIN_THREAD_ASYNC_EM_ASM({
+		if (Module.m2SetGameControls) Module.m2SetGameControls($0);
+		window._m2gc = $0; // headless test hook: 1 once map ready + char spawned
+	}, (int)visible);
 }
 
 void M2Plat::SetTouchBlockers(const SRect* rects, int count, int width, int height)
@@ -241,6 +257,19 @@ bool M2Plat::IsTouchPrimary()
 void M2Plat::SetPointerVisible(bool bVisible)
 {
 	MAIN_THREAD_ASYNC_EM_ASM({ var c = Module.canvas; if (c) c.style.cursor = $0 ? "" : "none"; }, bVisible ? 1 : 0);
+}
+
+void M2Plat::SetPointerLocked(bool bLocked)
+{
+	MAIN_THREAD_ASYNC_EM_ASM({
+		var c = Module.canvas;
+		if (!c) return;
+		if ($0) {
+			if (c.requestPointerLock) c.requestPointerLock();
+		} else if (document.exitPointerLock) {
+			document.exitPointerLock();
+		}
+	}, bLocked ? 1 : 0);
 }
 
 int M2Plat::GetEnv(const char* name, char* out, size_t outSize)
@@ -424,6 +453,7 @@ int main(int argc, char** argv)
 	emscripten_set_touchend_callback("#canvas", NULL, EM_TRUE, TouchCb);
 	emscripten_set_touchmove_callback("#canvas", NULL, EM_TRUE, TouchCb);
 	emscripten_set_touchcancel_callback("#canvas", NULL, EM_TRUE, TouchCb);
+	emscripten_set_pointerlockchange_callback(EMSCRIPTEN_EVENT_TARGET_DOCUMENT, NULL, EM_TRUE, PointerLockCb);
 	emscripten_set_resize_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, NULL, EM_TRUE, ResizeCb);
 
 	// python2 needs its library path up front: the staged pyc set lives in

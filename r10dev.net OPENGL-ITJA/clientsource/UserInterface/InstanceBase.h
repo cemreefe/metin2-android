@@ -884,6 +884,9 @@ protected:
 	} m_kHorse;
 
 protected:
+	// Draws the procedural TPS Carbine mesh (vnum 5301) on the weapon bone
+	void					__RenderShooterWeapon();
+
 	// Blend Mode
 	void					__SetBlendRenderingMode();
 	void					__SetAlphaValue(float fAlpha);

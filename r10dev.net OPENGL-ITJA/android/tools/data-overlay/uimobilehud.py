@@ -544,8 +544,13 @@ class MobileHud(ui.Window):
 		self.AddFlag("not_pick")
 
 		cx, cy = w - 78, h - 82
-		self.attack = self.__Disc(ATTACK, self.__Attack, cx - ATTACK / 2, cy - ATTACK / 2)
+		self.attack = self.__Disc(ATTACK, self.__Attack, cx - ATTACK / 2, cy - ATTACK / 2, self.__AttackPress)
 		self.attack.SetIcon(T + "mouse_button_attack_01.sub", 0.6, FRAMED)
+		self.shooterMode = False
+		self.aim = self.__Disc(SMALL, None, cx - ATTACK - SMALL - 12, cy - SMALL / 2, self.__AimPress)
+		self.aim.SetIcon(T + "mouse_button_attack_01.sub", 0.5, FRAMED)
+		self.aim.SetLabel("AIM", below = True)
+		self.aim.Hide()
 
 		self.slots = []
 		for n, (index, key) in enumerate(self.SLOTS):
@@ -576,9 +581,23 @@ class MobileHud(ui.Window):
 		d.SetPosition(x, y)
 		return d
 
-	# one swing per tap; tapping a monster is what keeps attacking it
+	# one swing per tap; tapping a monster is what keeps attacking it.
+	# In shooter mode the disc turns into a hold-to-fire trigger instead.
 	def __Attack(self):
+		if self.shooterMode:
+			return
 		player.AttackOnce()
+
+	def __AttackPress(self, down):
+		if self.shooterMode:
+			player.ShooterSetFire(down)
+
+	def __AimPress(self, down):
+		player.ShooterSetAim(down)
+
+	def __ToggleTPS(self):
+		player.ShooterModeToggle()
+		self.wheel.Hide()
 
 	def __UseSlot(self, index):
 		if app.IsRTL():
@@ -612,6 +631,7 @@ class MobileHud(ui.Window):
 			("Friends", T + "community_button_01.sub", FRAMED, i.ToggleMessenger),
 			("Names", T + "g.sub", FRAMED, self.__ToggleNames),
 			("Ride", T + "mouse_button_move_and_attack_01.sub", FRAMED, lambda: net.SendChatPacket("/ride")),
+			("TPS", T + "mouse_button_attack_01.sub", FRAMED, self.__ToggleTPS),
 			("Settings", T + "system_button_01.sub", FRAMED, i.ToggleSystemDialog),
 		)
 
@@ -668,6 +688,11 @@ class MobileHud(ui.Window):
 		if now < self.nextRefresh:
 			return
 		self.nextRefresh = now + REFRESH_SEC
+		mode = bool(player.IsShooterMode())
+		if mode != self.shooterMode:
+			self.shooterMode = mode
+			self.attack.SetLabel("FIRE" if mode else "")
+			self.aim.Show() if mode else self.aim.Hide()
 		for d, (index, key) in zip(self.slots, self.SLOTS):
 			icon, cool, active = self.__SlotIcon(index)
 			d.SetIcon(icon)

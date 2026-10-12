@@ -76,7 +76,12 @@ async def main():
                             "type": "rawKeyDown" if kind == "keyDown" else "keyUp",
                             "key": a["key"], "code": a["key"]})
                 elif op == "eval":
-                    await send(ws, "Runtime.evaluate", {"expression": a["expr"]})
+                    eid = await send(ws, "Runtime.evaluate", {"expression": a["expr"], "returnByValue": True})
+                    for _ in range(30):
+                        msg = json.loads(await asyncio.wait_for(ws.recv(), 0.5))
+                        if msg.get("id") == eid:
+                            logs.append(f"[eval t={a.get('t')}] " + str(msg["result"]["result"].get("value", ""))[:4000])
+                            break
                 logs.append(f"[action t={a.get('t')}] {op} done")
             while time.time() < end:
                 now = time.time()

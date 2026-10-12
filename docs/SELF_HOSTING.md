@@ -373,7 +373,12 @@ Notes:
   becomes a process env var, and `debug.m2.*` maps to `GetDebugProperty`.
 - `web/drive_headless.py <url> <secs> <shotdir> [actions.json]` drives
   headless Chrome over CDP — screenshots, console capture and a timed
-  action list for scripted login tests.
+  action list for scripted login tests. Budget ~350 s of asset load
+  before the character spawns (size runs ≥480 s); gate in-game actions
+  on `window._m2gc===1` (set by `M2Plat::SetGameControlsVisible`) plus
+  a fixed-time fallback — the gate alone can fire early or not at all.
+  Kill stale `--headless=new` Chromes between runs: they hold CDP port
+  9223 and the next run attaches to the wrong browser.
 
 
 ### 5.3 Serverless single player (no server, no bridge)
@@ -482,6 +487,7 @@ emulator images, database dumps with real accounts, and any credentials.
 | Disconnected right after the login screen | Server newer than `66068c1` (handshake `0xf8`) |
 | Kicked back to server select after choosing a character | Client can't reach the core that hosts the character's map. Check `ENTERGAME`/redirect lines in syslog, `BIND_IP` and the reachable ports |
 | Server accepts no connections | Linux patch not applied (`select` with `nfds = 0`) |
+| Web client stalls on the login splash, no error | Loopback select never fired — `m2lp_select` must scan the fake-fd table (fdwatch passes `nfds = 0`). Fixed in `server/web/m2lb_bridge.cpp` |
 | `Data truncated` in db syserr | `sql_mode` not set (2.3) |
 | Black screen / missing UI after login | Data not staged with `stage_client_data.sh` (protos/overlay missing). Check `syserr.txt` |
 | `INSTALL_FAILED_INTERNAL_ERROR: Error deriving application ABI` | Uninstall the old app first, or build for the device's ABI only |

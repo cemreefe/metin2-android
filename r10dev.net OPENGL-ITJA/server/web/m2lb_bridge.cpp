@@ -396,9 +396,14 @@ int m2lp_select(int nfds, fd_set* r, fd_set* w, fd_set* e, struct timeval* tv)
 		int ready = 0;
 		fd_set rr, ww;
 		FD_ZERO(&rr); FD_ZERO(&ww);
-		for (int fd = 0; fd < nfds && fd < FD_SETSIZE; fd++) {
-			M2lpFd* s = m2lp_get(fd);
-			if (!s) continue;
+		/* fdwatch calls select(0, ...) — nfds is meaningless here, so scan
+		 * the fake-fd table and test membership in the caller's fd_sets. */
+		(void)nfds;
+		for (int i = 0; i < M2LP_MAX_FD; i++) {
+			int fd = M2LP_FD_BASE + i;
+			M2lpFd* s = &s_fds[i];
+			if (s->kind == M2LP_FREE) continue;
+			if (!(r && FD_ISSET(fd, r)) && !(w && FD_ISSET(fd, w))) continue;
 			int st = 0;
 			if (s->kind == M2LP_LISTENER) {
 				st = m2lb_js_listener_pending(s->lid) > 0;

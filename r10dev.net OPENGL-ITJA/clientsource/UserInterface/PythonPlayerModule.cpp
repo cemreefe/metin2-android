@@ -387,6 +387,46 @@ PyObject* playerSetAttackKeyState(PyObject* poSelf, PyObject* poArgs)
 	return Py_BuildNone();
 }
 
+PyObject* playerShooterModeToggle(PyObject* poSelf, PyObject* poArgs)
+{
+	CPythonPlayer::Instance().ShooterModeToggle();
+	return Py_BuildNone();
+}
+
+PyObject* playerIsShooterMode(PyObject* poSelf, PyObject* poArgs)
+{
+	return Py_BuildValue("i", CPythonPlayer::Instance().IsShooterMode() ? 1 : 0);
+}
+
+PyObject* playerShooterSetAim(PyObject* poSelf, PyObject* poArgs)
+{
+	int isAim;
+	if (!PyTuple_GetInteger(poArgs, 0, &isAim))
+		return Py_BuildException("playerShooterSetAim(isAim) - There is no first argument");
+	CPythonPlayer::Instance().ShooterSetAim(isAim ? true : false);
+	return Py_BuildNone();
+}
+
+PyObject* playerShooterSetFire(PyObject* poSelf, PyObject* poArgs)
+{
+	int isFire;
+	if (!PyTuple_GetInteger(poArgs, 0, &isFire))
+		return Py_BuildException("playerShooterSetFire(isFire) - There is no first argument");
+	CPythonPlayer::Instance().ShooterSetFire(isFire ? true : false);
+	return Py_BuildNone();
+}
+
+PyObject* playerShooterOnLook(PyObject* poSelf, PyObject* poArgs)
+{
+	int iDx, iDy;
+	if (!PyTuple_GetInteger(poArgs, 0, &iDx))
+		return Py_BuildException("playerShooterOnLook(dx, dy) - There is no first argument");
+	if (!PyTuple_GetInteger(poArgs, 1, &iDy))
+		return Py_BuildException("playerShooterOnLook(dx, dy) - There is no second argument");
+	CPythonPlayer::Instance().ShooterOnLook(iDx, iDy);
+	return Py_BuildNone();
+}
+
 PyObject* playerSetSingleDIKKeyState(PyObject* poSelf, PyObject* poArgs)
 {
 	int eDIK;
@@ -2275,6 +2315,11 @@ void initPlayer()
 		{ "SetAutoCameraRotationSpeed",	playerSetAutoCameraRotationSpeed,	METH_VARARGS },
 		{ "SetAttackKeyState",			playerSetAttackKeyState,			METH_VARARGS },
 		{ "SetSingleDIKKeyState",		playerSetSingleDIKKeyState,			METH_VARARGS },
+		{ "ShooterModeToggle",			playerShooterModeToggle,				METH_VARARGS },
+		{ "IsShooterMode",				playerIsShooterMode,					METH_VARARGS },
+		{ "ShooterSetAim",				playerShooterSetAim,					METH_VARARGS },
+		{ "ShooterSetFire",			playerShooterSetFire,					METH_VARARGS },
+		{ "ShooterOnLook",				playerShooterOnLook,					METH_VARARGS },
 		{ "NEW_SetSingleDIKKeyState",	playerSetSingleDIKKeyState,			METH_VARARGS },
 		{ "EndKeyWalkingImmediately",	playerEndKeyWalkingImmediately,		METH_VARARGS },
 		{ "StartMouseWalking",			playerStartMouseWalking,			METH_VARARGS },

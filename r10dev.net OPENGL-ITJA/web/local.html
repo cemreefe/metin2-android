@@ -304,10 +304,14 @@ var Module = {
       // then the hidden local account logs in. ?m2auto=1 uses the seeded test
       // account and enters the world directly.
       var m2auto = new URLSearchParams(location.search).get('m2auto') === '1';
+      // ?m2acc=id:pwd overrides the seeded account (e.g. admin for GM commands)
+      var m2acc = new URLSearchParams(location.search).get('m2acc');
+      var accParts = m2acc ? m2acc.split(':') : null;
       FS.writeFile('/data/loginInfo.py',
         'addr = "127.0.0.1"\nport = 11011\n' +
         'account_addr = "127.0.0.1"\naccount_port = 11000\n' +
         (m2realm ? ''
+                : accParts ? 'id = "' + accParts[0] + '"\npwd = "' + (accParts[1] || '') + '"\nautoSelect = 1\nautoLogin = 1\n'
                 : m2auto ? 'id = "test"\npwd = "test123"\nautoSelect = 1\nautoLogin = 1\n'
                 : 'id = "local"\npwd = "1234"\nautoSelect = 0\nhiddenAccount = 1\n') +
         'serverName = "' + (m2realm ? m2realm.name : 'Single Player') + '"\nslot = 0\n');
@@ -412,6 +416,17 @@ async function m2boot() {
   var client = packs['client'];
   var firstSpec = client.boot || (client.parts && client.parts[0]) || client;
   var pw = await m2gateLoop(firstSpec);
+
+  // ?m2_reset=1 wipes the saved-game snapshot so the pack's sqlite seed
+  // wins again on this load (e.g. to pick up a re-seeded item).
+  if (new URLSearchParams(location.search).get('m2_reset')) {
+    try {
+      await new Promise(function (res) {
+        var q = indexedDB.deleteDatabase('m2save-v2');
+        q.onsuccess = q.onerror = q.onblocked = function () { res(); };
+      });
+    } catch (e) {}
+  }
 
   // Server workers stage + boot in parallel with the client download.
   // Each worker has a private FS -> every node gets its own seeded sqlite
